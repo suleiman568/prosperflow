@@ -27,8 +27,12 @@ class ProductsRepository {
   final PendingSyncRepository _pendingSyncRepository;
   final ConnectivityService _connectivityService;
   final SupabaseClient _client;
+  bool _isSyncing = false;
 
   Future<List<Product>> fetchProducts() async {
+    if (await _canUseSupabase()) {
+      await hydrateFromRemote();
+    }
     return fetchLocalProducts();
   }
 
@@ -79,7 +83,11 @@ ORDER BY COALESCE(created_at, updated_at, id) ASC
       createdAt: product.createdAt ?? DateTime.now(),
     );
 
-    await _upsertLocalProduct(localProduct, syncStatus: 'pending');
+    await _upsertLocalProduct(
+      localProduct,
+      syncStatus: 'pending',
+      isDeleted: 0,
+    );
     await _pendingSyncRepository.enqueue(
       tableName: _tableName,
       recordId: localProduct.id,
@@ -92,7 +100,7 @@ ORDER BY COALESCE(created_at, updated_at, id) ASC
   }
 
   Future<Product> updateProduct(Product product) async {
-    await _upsertLocalProduct(product, syncStatus: 'pending');
+    await _upsertLocalProduct(product, syncStatus: 'pending', isDeleted: 0);
     await _pendingSyncRepository.enqueue(
       tableName: _tableName,
       recordId: product.id,
@@ -142,6 +150,11 @@ WHERE id = ?
   }
 
   Future<void> syncPendingChanges() async {
+    if (_isSyncing) {
+      return;
+    }
+
+    _isSyncing = true;
     try {
       if (!await _canUseSupabase()) {
         return;
@@ -165,12 +178,40 @@ WHERE id = ?
       }
     } catch (_) {
       // Product sync is best-effort; queued rows remain pending for retry.
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  Future<void> hydrateFromRemote() async {
+    try {
+      if (!await _canUseSupabase()) {
+        return;
+      }
+
+      await syncPendingChanges();
+
+      if (!await _canUseSupabase()) {
+        return;
+      }
+
+      debugPrint('PRODUCTS_SUPABASE_FETCH');
+      final rows = await _client.from(_tableName).select();
+      for (final row in rows) {
+        await _upsertRemoteProduct(
+          Product.fromJson(row),
+          userId: (row['user_id'] ?? _client.auth.currentUser?.id)?.toString(),
+        );
+      }
+    } catch (_) {
+      // Product hydration is best-effort; local rows remain the UI source.
     }
   }
 
   Future<void> _upsertLocalProduct(
     Product product, {
     required String syncStatus,
+    required int isDeleted,
   }) async {
     final now = DateTime.now().toIso8601String();
     await _database.customStatement(
@@ -189,7 +230,7 @@ INSERT INTO products (
   is_deleted,
   created_at,
   updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   name = excluded.name,
   sku = excluded.sku,
@@ -199,7 +240,7 @@ ON CONFLICT(id) DO UPDATE SET
   stock_quantity = excluded.stock_quantity,
   reorder_level = excluded.reorder_level,
   sync_status = excluded.sync_status,
-  is_deleted = 0,
+  is_deleted = excluded.is_deleted,
   updated_at = excluded.updated_at
 ''',
       [
@@ -213,6 +254,63 @@ ON CONFLICT(id) DO UPDATE SET
         product.quantityInStock,
         product.reorderLevel,
         syncStatus,
+        isDeleted,
+        product.createdAt?.toIso8601String() ?? now,
+        now,
+      ],
+    );
+  }
+
+  Future<void> _upsertRemoteProduct(
+    Product product, {
+    required String? userId,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    await _database.customStatement(
+      '''
+INSERT INTO products (
+  id,
+  user_id,
+  name,
+  sku,
+  category,
+  cost_price,
+  selling_price,
+  stock_quantity,
+  reorder_level,
+  sync_status,
+  is_deleted,
+  last_synced_at,
+  created_at,
+  updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+  user_id = excluded.user_id,
+  name = excluded.name,
+  sku = excluded.sku,
+  category = excluded.category,
+  cost_price = excluded.cost_price,
+  selling_price = excluded.selling_price,
+  stock_quantity = excluded.stock_quantity,
+  reorder_level = excluded.reorder_level,
+  sync_status = 'synced',
+  is_deleted = excluded.is_deleted,
+  last_synced_at = excluded.last_synced_at,
+  updated_at = excluded.updated_at
+WHERE products.sync_status != 'pending'
+''',
+      [
+        product.id,
+        userId,
+        product.name,
+        product.sku,
+        product.category,
+        product.costPrice,
+        product.sellingPrice,
+        product.quantityInStock,
+        product.reorderLevel,
+        0,
+        now,
         product.createdAt?.toIso8601String() ?? now,
         now,
       ],
@@ -260,9 +358,18 @@ ON CONFLICT(id) DO UPDATE SET
 
   Future<void> _markLocalSynced(PendingSyncItem item) async {
     if (item.action == PendingSyncAction.delete) {
-      await _database.customStatement('DELETE FROM products WHERE id = ?', [
-        item.recordId,
-      ]);
+      final now = DateTime.now().toIso8601String();
+      await _database.customStatement(
+        '''
+UPDATE products
+SET is_deleted = 1,
+    sync_status = 'synced',
+    last_synced_at = ?,
+    updated_at = ?
+WHERE id = ?
+''',
+        [now, now, item.recordId],
+      );
       return;
     }
 

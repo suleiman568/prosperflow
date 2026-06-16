@@ -27,8 +27,10 @@ final productsProvider = FutureProvider<List<Product>>((ref) {
       orElse: () => false,
     );
     if (isOnline) {
-      unawaited(repository.syncPendingChanges());
-      ref.read(productsLocalRefreshProvider.notifier).state++;
+      unawaited(() async {
+        await repository.hydrateFromRemote();
+        ref.read(productsLocalRefreshProvider.notifier).state++;
+      }());
     }
   });
 

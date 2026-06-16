@@ -39,22 +39,34 @@ class _WebMemoryDatabase extends QueryExecutor {
     final variables = args ?? const [];
 
     if (normalized.startsWith('insert into customers')) {
-      _upsertCustomer(variables);
+      _upsertCustomer(
+        variables,
+        isRemoteHydration: _isRemoteHydration(normalized),
+      );
       return;
     }
 
     if (normalized.startsWith('insert into products')) {
-      _upsertProduct(variables);
+      _upsertProduct(
+        variables,
+        isRemoteHydration: _isRemoteHydration(normalized),
+      );
       return;
     }
 
     if (normalized.startsWith('update customers set is_deleted')) {
-      _softDeleteCustomer(variables);
+      _softDeleteCustomer(
+        variables,
+        isSyncedDelete: normalized.contains("sync_status = 'synced'"),
+      );
       return;
     }
 
     if (normalized.startsWith('update products set is_deleted')) {
-      _softDeleteProduct(variables);
+      _softDeleteProduct(
+        variables,
+        isSyncedDelete: normalized.contains("sync_status = 'synced'"),
+      );
       return;
     }
 
@@ -151,9 +163,17 @@ class _WebMemoryDatabase extends QueryExecutor {
     return 0;
   }
 
-  void _upsertCustomer(List<Object?> variables) {
+  void _upsertCustomer(
+    List<Object?> variables, {
+    required bool isRemoteHydration,
+  }) {
     final id = variables[0]?.toString() ?? '';
     final existingIndex = _customers.indexWhere((row) => row['id'] == id);
+    if (isRemoteHydration &&
+        existingIndex >= 0 &&
+        _customers[existingIndex]['sync_status'] == 'pending') {
+      return;
+    }
     final row = <String, Object?>{
       'id': id,
       'user_id': variables[1],
@@ -161,10 +181,13 @@ class _WebMemoryDatabase extends QueryExecutor {
       'email': variables[3]?.toString() ?? '',
       'phone': variables[4]?.toString() ?? '',
       'company': variables[5]?.toString() ?? '',
-      'sync_status': variables[6]?.toString() ?? 'pending',
-      'is_deleted': 0,
-      'created_at': variables[7]?.toString(),
-      'updated_at': variables[8]?.toString(),
+      'sync_status': isRemoteHydration
+          ? 'synced'
+          : variables[6]?.toString() ?? 'pending',
+      'is_deleted': _asInt(variables[isRemoteHydration ? 6 : 7]),
+      'last_synced_at': isRemoteHydration ? variables[7]?.toString() : null,
+      'created_at': variables[8]?.toString(),
+      'updated_at': variables[9]?.toString(),
     };
 
     if (existingIndex >= 0) {
@@ -179,22 +202,34 @@ class _WebMemoryDatabase extends QueryExecutor {
     }
   }
 
-  void _softDeleteCustomer(List<Object?> variables) {
-    final id = variables[1]?.toString();
+  void _softDeleteCustomer(
+    List<Object?> variables, {
+    required bool isSyncedDelete,
+  }) {
+    final id = variables[isSyncedDelete ? 2 : 1]?.toString();
     final existingIndex = _customers.indexWhere((row) => row['id'] == id);
     if (existingIndex >= 0) {
       _customers[existingIndex] = {
         ..._customers[existingIndex],
         'is_deleted': 1,
-        'sync_status': 'pending',
-        'updated_at': variables[0]?.toString(),
+        'sync_status': isSyncedDelete ? 'synced' : 'pending',
+        'last_synced_at': isSyncedDelete ? variables[0]?.toString() : null,
+        'updated_at': variables[isSyncedDelete ? 1 : 0]?.toString(),
       };
     }
   }
 
-  void _upsertProduct(List<Object?> variables) {
+  void _upsertProduct(
+    List<Object?> variables, {
+    required bool isRemoteHydration,
+  }) {
     final id = variables[0]?.toString() ?? '';
     final existingIndex = _products.indexWhere((row) => row['id'] == id);
+    if (isRemoteHydration &&
+        existingIndex >= 0 &&
+        _products[existingIndex]['sync_status'] == 'pending') {
+      return;
+    }
     final row = <String, Object?>{
       'id': id,
       'user_id': variables[1],
@@ -205,10 +240,13 @@ class _WebMemoryDatabase extends QueryExecutor {
       'selling_price': _asDouble(variables[6]),
       'stock_quantity': _asInt(variables[7]),
       'reorder_level': _asInt(variables[8]),
-      'sync_status': variables[9]?.toString() ?? 'pending',
-      'is_deleted': 0,
-      'created_at': variables[10]?.toString(),
-      'updated_at': variables[11]?.toString(),
+      'sync_status': isRemoteHydration
+          ? 'synced'
+          : variables[9]?.toString() ?? 'pending',
+      'is_deleted': _asInt(variables[isRemoteHydration ? 9 : 10]),
+      'last_synced_at': isRemoteHydration ? variables[10]?.toString() : null,
+      'created_at': variables[11]?.toString(),
+      'updated_at': variables[12]?.toString(),
     };
 
     if (existingIndex >= 0) {
@@ -223,15 +261,19 @@ class _WebMemoryDatabase extends QueryExecutor {
     }
   }
 
-  void _softDeleteProduct(List<Object?> variables) {
-    final id = variables[1]?.toString();
+  void _softDeleteProduct(
+    List<Object?> variables, {
+    required bool isSyncedDelete,
+  }) {
+    final id = variables[isSyncedDelete ? 2 : 1]?.toString();
     final existingIndex = _products.indexWhere((row) => row['id'] == id);
     if (existingIndex >= 0) {
       _products[existingIndex] = {
         ..._products[existingIndex],
         'is_deleted': 1,
-        'sync_status': 'pending',
-        'updated_at': variables[0]?.toString(),
+        'sync_status': isSyncedDelete ? 'synced' : 'pending',
+        'last_synced_at': isSyncedDelete ? variables[0]?.toString() : null,
+        'updated_at': variables[isSyncedDelete ? 1 : 0]?.toString(),
       };
     }
   }
@@ -262,6 +304,11 @@ class _WebMemoryDatabase extends QueryExecutor {
 
   String _normalize(String statement) {
     return statement.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+  }
+
+  bool _isRemoteHydration(String normalizedStatement) {
+    return normalizedStatement.contains('last_synced_at') &&
+        normalizedStatement.contains("sync_status = 'synced'");
   }
 
   double _asDouble(Object? value) {

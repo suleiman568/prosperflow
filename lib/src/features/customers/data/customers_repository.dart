@@ -27,10 +27,11 @@ class CustomersRepository {
   final PendingSyncRepository _pendingSyncRepository;
   final ConnectivityService _connectivityService;
   final SupabaseClient _client;
+  bool _isSyncing = false;
 
   Future<List<Customer>> fetchCustomers() async {
-    if (!await _connectivityService.isOnline()) {
-      debugPrint('Skipped Supabase fetch while offline');
+    if (await _canUseSupabase()) {
+      await hydrateFromRemote();
     }
     return fetchLocalCustomers();
   }
@@ -51,7 +52,11 @@ class CustomersRepository {
       createdAt: customer.createdAt ?? DateTime.now(),
     );
 
-    await _upsertLocalCustomer(localCustomer, syncStatus: 'pending');
+    await _upsertLocalCustomer(
+      localCustomer,
+      syncStatus: 'pending',
+      isDeleted: 0,
+    );
     debugPrint('Saved customer locally');
     await _pendingSyncRepository.enqueue(
       tableName: _tableName,
@@ -66,7 +71,7 @@ class CustomersRepository {
   }
 
   Future<Customer> updateCustomer(Customer customer) async {
-    await _upsertLocalCustomer(customer, syncStatus: 'pending');
+    await _upsertLocalCustomer(customer, syncStatus: 'pending', isDeleted: 0);
     debugPrint('Saved customer locally');
     await _pendingSyncRepository.enqueue(
       tableName: _tableName,
@@ -103,6 +108,11 @@ WHERE id = ?
   }
 
   Future<void> syncPendingChanges() async {
+    if (_isSyncing) {
+      return;
+    }
+
+    _isSyncing = true;
     try {
       if (!await _canUseSupabase()) {
         return;
@@ -126,6 +136,32 @@ WHERE id = ?
       }
     } catch (error) {
       debugPrint('Customer Supabase sync failed silently: $error');
+    } finally {
+      _isSyncing = false;
+    }
+  }
+
+  Future<void> hydrateFromRemote() async {
+    try {
+      if (!await _canUseSupabase()) {
+        return;
+      }
+
+      await syncPendingChanges();
+
+      if (!await _canUseSupabase()) {
+        return;
+      }
+
+      final rows = await _client.from(_tableName).select();
+      for (final row in rows) {
+        await _upsertRemoteCustomer(
+          Customer.fromJson(row),
+          userId: (row['user_id'] ?? _client.auth.currentUser?.id)?.toString(),
+        );
+      }
+    } catch (error) {
+      debugPrint('Customer Supabase hydration failed silently: $error');
     }
   }
 
@@ -154,6 +190,7 @@ ORDER BY COALESCE(created_at, updated_at, id) ASC
   Future<void> _upsertLocalCustomer(
     Customer customer, {
     required String syncStatus,
+    required int isDeleted,
   }) async {
     final now = DateTime.now().toIso8601String();
     await _database.customStatement(
@@ -169,14 +206,14 @@ INSERT INTO customers (
   is_deleted,
   created_at,
   updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   name = excluded.name,
   email = excluded.email,
   phone = excluded.phone,
   company = excluded.company,
   sync_status = excluded.sync_status,
-  is_deleted = 0,
+  is_deleted = excluded.is_deleted,
   updated_at = excluded.updated_at
 ''',
       [
@@ -187,6 +224,54 @@ ON CONFLICT(id) DO UPDATE SET
         customer.phone,
         customer.company,
         syncStatus,
+        isDeleted,
+        customer.createdAt?.toIso8601String() ?? now,
+        now,
+      ],
+    );
+  }
+
+  Future<void> _upsertRemoteCustomer(
+    Customer customer, {
+    required String? userId,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    await _database.customStatement(
+      '''
+INSERT INTO customers (
+  id,
+  user_id,
+  name,
+  email,
+  phone,
+  company,
+  sync_status,
+  is_deleted,
+  last_synced_at,
+  created_at,
+  updated_at
+) VALUES (?, ?, ?, ?, ?, ?, 'synced', ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+  user_id = excluded.user_id,
+  name = excluded.name,
+  email = excluded.email,
+  phone = excluded.phone,
+  company = excluded.company,
+  sync_status = 'synced',
+  is_deleted = excluded.is_deleted,
+  last_synced_at = excluded.last_synced_at,
+  updated_at = excluded.updated_at
+WHERE customers.sync_status != 'pending'
+''',
+      [
+        customer.id,
+        userId,
+        customer.name,
+        customer.email,
+        customer.phone,
+        customer.company,
+        0,
+        now,
         customer.createdAt?.toIso8601String() ?? now,
         now,
       ],
@@ -235,9 +320,18 @@ ON CONFLICT(id) DO UPDATE SET
 
   Future<void> _markLocalSynced(PendingSyncItem item) async {
     if (item.action == PendingSyncAction.delete) {
-      await _database.customStatement('DELETE FROM customers WHERE id = ?', [
-        item.recordId,
-      ]);
+      final now = DateTime.now().toIso8601String();
+      await _database.customStatement(
+        '''
+UPDATE customers
+SET is_deleted = 1,
+    sync_status = 'synced',
+    last_synced_at = ?,
+    updated_at = ?
+WHERE id = ?
+''',
+        [now, now, item.recordId],
+      );
       return;
     }
 
