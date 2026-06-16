@@ -28,11 +28,12 @@ class CustomersRepository {
   final ConnectivityService _connectivityService;
   final SupabaseClient _client;
   bool _isSyncing = false;
+  bool _isHydrating = false;
+  DateTime? _lastHydratedAt;
+
+  static const _minimumHydrationInterval = Duration(minutes: 1);
 
   Future<List<Customer>> fetchCustomers() async {
-    if (await _canUseSupabase()) {
-      await hydrateFromRemote();
-    }
     return fetchLocalCustomers();
   }
 
@@ -141,16 +142,31 @@ WHERE id = ?
     }
   }
 
-  Future<void> hydrateFromRemote() async {
+  Future<bool> hydrateFromRemote() async {
+    if (_isHydrating) {
+      return false;
+    }
+
+    final lastHydratedAt = _lastHydratedAt;
+    if (lastHydratedAt != null &&
+        DateTime.now().difference(lastHydratedAt) < _minimumHydrationInterval) {
+      return false;
+    }
+
+    _isHydrating = true;
     try {
       if (!await _canUseSupabase()) {
-        return;
+        return false;
+      }
+
+      if (_isSyncing) {
+        return false;
       }
 
       await syncPendingChanges();
 
       if (!await _canUseSupabase()) {
-        return;
+        return false;
       }
 
       final rows = await _client.from(_tableName).select();
@@ -160,8 +176,13 @@ WHERE id = ?
           userId: (row['user_id'] ?? _client.auth.currentUser?.id)?.toString(),
         );
       }
+      _lastHydratedAt = DateTime.now();
+      return true;
     } catch (error) {
       debugPrint('Customer Supabase hydration failed silently: $error');
+      return false;
+    } finally {
+      _isHydrating = false;
     }
   }
 

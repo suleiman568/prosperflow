@@ -21,15 +21,27 @@ final productsProvider = FutureProvider<List<Product>>((ref) {
   final repository = ref.watch(productsRepositoryProvider);
   ref.watch(productsLocalRefreshProvider);
 
+  unawaited(() async {
+    final didHydrate = await repository.hydrateFromRemote();
+    if (didHydrate) {
+      ref.read(productsLocalRefreshProvider.notifier).state++;
+    }
+  }());
+
   ref.listen(isOnlineProvider, (previous, next) {
+    final wasOnline =
+        previous?.maybeWhen(data: (value) => value, orElse: () => false) ??
+        false;
     final isOnline = next.maybeWhen(
       data: (value) => value,
       orElse: () => false,
     );
-    if (isOnline) {
+    if (!wasOnline && isOnline && previous != null) {
       unawaited(() async {
-        await repository.hydrateFromRemote();
-        ref.read(productsLocalRefreshProvider.notifier).state++;
+        final didHydrate = await repository.hydrateFromRemote();
+        if (didHydrate) {
+          ref.read(productsLocalRefreshProvider.notifier).state++;
+        }
       }());
     }
   });
