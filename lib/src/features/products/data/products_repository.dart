@@ -225,11 +225,9 @@ WHERE id = ?
         return false;
       }
 
-      if (_isSyncing) {
-        return false;
+      if (!_isSyncing) {
+        await syncPendingChanges();
       }
-
-      await syncPendingChanges();
 
       if (!await _canUseSupabase()) {
         return false;
@@ -241,6 +239,7 @@ WHERE id = ?
         await _upsertRemoteProduct(
           Product.fromJson(row),
           userId: (row['user_id'] ?? _client.auth.currentUser?.id)?.toString(),
+          isDeleted: _asInt(row['is_deleted']),
         );
       }
       _lastHydratedAt = DateTime.now();
@@ -309,6 +308,7 @@ ON CONFLICT(id) DO UPDATE SET
   Future<void> _upsertRemoteProduct(
     Product product, {
     required String? userId,
+    required int isDeleted,
   }) async {
     final now = DateTime.now().toIso8601String();
     await _database.customStatement(
@@ -343,6 +343,7 @@ ON CONFLICT(id) DO UPDATE SET
   last_synced_at = excluded.last_synced_at,
   updated_at = excluded.updated_at
 WHERE products.sync_status != 'pending'
+  AND ? = ?
 ''',
       [
         product.id,
@@ -354,10 +355,12 @@ WHERE products.sync_status != 'pending'
         product.sellingPrice,
         product.quantityInStock,
         product.reorderLevel,
-        0,
+        isDeleted,
         now,
         product.createdAt?.toIso8601String() ?? now,
         now,
+        'remote_hydration',
+        'remote_hydration',
       ],
     );
   }
@@ -463,6 +466,13 @@ WHERE id = ?
       section(8, 10),
       section(10, 16),
     ].join('-');
+  }
+
+  int _asInt(dynamic value) {
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse((value ?? '0').toString()) ?? 0;
   }
 }
 

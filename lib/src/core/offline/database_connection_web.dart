@@ -41,7 +41,7 @@ class _WebMemoryDatabase extends QueryExecutor {
     if (normalized.startsWith('insert into customers')) {
       _upsertCustomer(
         variables,
-        isRemoteHydration: _isRemoteHydration(normalized),
+        isRemoteHydration: _hasRemoteHydrationMarker(variables),
       );
       return;
     }
@@ -49,7 +49,7 @@ class _WebMemoryDatabase extends QueryExecutor {
     if (normalized.startsWith('insert into products')) {
       _upsertProduct(
         variables,
-        isRemoteHydration: _isRemoteHydration(normalized),
+        isRemoteHydration: _hasRemoteHydrationMarker(variables),
       );
       return;
     }
@@ -57,7 +57,7 @@ class _WebMemoryDatabase extends QueryExecutor {
     if (normalized.startsWith('update customers set is_deleted')) {
       _softDeleteCustomer(
         variables,
-        isSyncedDelete: normalized.contains("sync_status = 'synced'"),
+        isSyncedDelete: variables.length == 3,
       );
       return;
     }
@@ -65,7 +65,7 @@ class _WebMemoryDatabase extends QueryExecutor {
     if (normalized.startsWith('update products set is_deleted')) {
       _softDeleteProduct(
         variables,
-        isSyncedDelete: normalized.contains("sync_status = 'synced'"),
+        isSyncedDelete: variables.length == 3,
       );
       return;
     }
@@ -306,9 +306,10 @@ class _WebMemoryDatabase extends QueryExecutor {
     return statement.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
   }
 
-  bool _isRemoteHydration(String normalizedStatement) {
-    return normalizedStatement.contains('last_synced_at') &&
-        normalizedStatement.contains("sync_status = 'synced'");
+  bool _hasRemoteHydrationMarker(List<Object?> variables) {
+    return variables.length >= 2 &&
+        variables[variables.length - 2] == 'remote_hydration' &&
+        variables[variables.length - 1] == 'remote_hydration';
   }
 
   double _asDouble(Object? value) {
