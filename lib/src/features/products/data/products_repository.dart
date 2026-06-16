@@ -28,13 +28,36 @@ class ProductsRepository {
   final ConnectivityService _connectivityService;
   final SupabaseClient _client;
   bool _isSyncing = false;
-  bool _isHydrating = false;
+  bool _isHydratingProducts = false;
   DateTime? _lastHydratedAt;
 
   static const _minimumHydrationInterval = Duration(minutes: 1);
 
   Future<List<Product>> fetchProducts() async {
     return fetchLocalProducts();
+  }
+
+  void maybeHydrateFromRemoteInBackground({
+    required VoidCallback onHydrated,
+    bool force = false,
+  }) {
+    if (_isHydratingProducts) {
+      return;
+    }
+
+    final lastHydratedAt = _lastHydratedAt;
+    if (!force &&
+        lastHydratedAt != null &&
+        DateTime.now().difference(lastHydratedAt) < _minimumHydrationInterval) {
+      return;
+    }
+
+    unawaited(() async {
+      final didHydrate = await hydrateFromRemote(force: force);
+      if (didHydrate) {
+        onHydrated();
+      }
+    }());
   }
 
   Future<List<Product>> fetchLocalProducts() async {
@@ -184,18 +207,19 @@ WHERE id = ?
     }
   }
 
-  Future<bool> hydrateFromRemote() async {
-    if (_isHydrating) {
+  Future<bool> hydrateFromRemote({bool force = false}) async {
+    if (_isHydratingProducts) {
       return false;
     }
 
     final lastHydratedAt = _lastHydratedAt;
-    if (lastHydratedAt != null &&
+    if (!force &&
+        lastHydratedAt != null &&
         DateTime.now().difference(lastHydratedAt) < _minimumHydrationInterval) {
       return false;
     }
 
-    _isHydrating = true;
+    _isHydratingProducts = true;
     try {
       if (!await _canUseSupabase()) {
         return false;
@@ -225,7 +249,7 @@ WHERE id = ?
       // Product hydration is best-effort; local rows remain the UI source.
       return false;
     } finally {
-      _isHydrating = false;
+      _isHydratingProducts = false;
     }
   }
 

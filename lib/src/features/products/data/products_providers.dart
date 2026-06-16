@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -17,16 +15,20 @@ final productsRepositoryProvider = Provider<ProductsRepository>((ref) {
 
 final productsLocalRefreshProvider = StateProvider<int>((ref) => 0);
 
+var _productsStartupHydrationStarted = false;
+
 final productsProvider = FutureProvider<List<Product>>((ref) {
   final repository = ref.watch(productsRepositoryProvider);
   ref.watch(productsLocalRefreshProvider);
 
-  unawaited(() async {
-    final didHydrate = await repository.hydrateFromRemote();
-    if (didHydrate) {
-      ref.read(productsLocalRefreshProvider.notifier).state++;
-    }
-  }());
+  if (!_productsStartupHydrationStarted) {
+    _productsStartupHydrationStarted = true;
+    repository.maybeHydrateFromRemoteInBackground(
+      onHydrated: () {
+        ref.read(productsLocalRefreshProvider.notifier).state++;
+      },
+    );
+  }
 
   ref.listen(isOnlineProvider, (previous, next) {
     final wasOnline =
@@ -37,12 +39,12 @@ final productsProvider = FutureProvider<List<Product>>((ref) {
       orElse: () => false,
     );
     if (!wasOnline && isOnline && previous != null) {
-      unawaited(() async {
-        final didHydrate = await repository.hydrateFromRemote();
-        if (didHydrate) {
+      repository.maybeHydrateFromRemoteInBackground(
+        force: true,
+        onHydrated: () {
           ref.read(productsLocalRefreshProvider.notifier).state++;
-        }
-      }());
+        },
+      );
     }
   });
 

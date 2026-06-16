@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -19,16 +17,20 @@ final customersRepositoryProvider = Provider<CustomersRepository>((ref) {
 
 final customersLocalRefreshProvider = StateProvider<int>((ref) => 0);
 
+var _customersStartupHydrationStarted = false;
+
 final customersProvider = FutureProvider<List<Customer>>((ref) {
   final repository = ref.watch(customersRepositoryProvider);
   ref.watch(customersLocalRefreshProvider);
 
-  unawaited(() async {
-    final didHydrate = await repository.hydrateFromRemote();
-    if (didHydrate) {
-      ref.read(customersLocalRefreshProvider.notifier).state++;
-    }
-  }());
+  if (!_customersStartupHydrationStarted) {
+    _customersStartupHydrationStarted = true;
+    repository.maybeHydrateFromRemoteInBackground(
+      onHydrated: () {
+        ref.read(customersLocalRefreshProvider.notifier).state++;
+      },
+    );
+  }
 
   ref.listen(isOnlineProvider, (previous, next) {
     final wasOnline =
@@ -39,12 +41,12 @@ final customersProvider = FutureProvider<List<Customer>>((ref) {
       orElse: () => false,
     );
     if (!wasOnline && isOnline && previous != null) {
-      unawaited(() async {
-        final didHydrate = await repository.hydrateFromRemote();
-        if (didHydrate) {
+      repository.maybeHydrateFromRemoteInBackground(
+        force: true,
+        onHydrated: () {
           ref.read(customersLocalRefreshProvider.notifier).state++;
-        }
-      }());
+        },
+      );
     }
   });
 
