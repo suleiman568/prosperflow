@@ -29,6 +29,7 @@ class CustomersRepository {
   final SupabaseClient _client;
   bool _isSyncing = false;
   bool _isHydratingCustomers = false;
+  bool _hasStartedStartupHydration = false;
   DateTime? _lastHydratedAt;
 
   static const _minimumHydrationInterval = Duration(minutes: 1);
@@ -40,7 +41,15 @@ class CustomersRepository {
   void maybeHydrateFromRemoteInBackground({
     required VoidCallback onHydrated,
     bool force = false,
+    bool startup = false,
   }) {
+    if (startup) {
+      if (_hasStartedStartupHydration) {
+        return;
+      }
+      _hasStartedStartupHydration = true;
+    }
+
     if (_isHydratingCustomers) {
       return;
     }
@@ -58,6 +67,10 @@ class CustomersRepository {
         onHydrated();
       }
     }());
+  }
+
+  void resetStartupHydration() {
+    _hasStartedStartupHydration = false;
   }
 
   Future<List<Customer>> fetchLocalCustomers() async {

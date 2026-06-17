@@ -17,20 +17,17 @@ final customersRepositoryProvider = Provider<CustomersRepository>((ref) {
 
 final customersLocalRefreshProvider = StateProvider<int>((ref) => 0);
 
-var _customersStartupHydrationStarted = false;
-
 final customersProvider = FutureProvider<List<Customer>>((ref) {
   final repository = ref.watch(customersRepositoryProvider);
   ref.watch(customersLocalRefreshProvider);
+  ref.onDispose(repository.resetStartupHydration);
 
-  if (!_customersStartupHydrationStarted) {
-    _customersStartupHydrationStarted = true;
-    repository.maybeHydrateFromRemoteInBackground(
-      onHydrated: () {
-        ref.read(customersLocalRefreshProvider.notifier).state++;
-      },
-    );
-  }
+  repository.maybeHydrateFromRemoteInBackground(
+    startup: true,
+    onHydrated: () {
+      ref.read(customersLocalRefreshProvider.notifier).state++;
+    },
+  );
 
   ref.listen(isOnlineProvider, (previous, next) {
     final wasOnline =
