@@ -18,13 +18,24 @@ final productsLocalRefreshProvider = StateProvider<int>((ref) => 0);
 final productsProvider = FutureProvider<List<Product>>((ref) {
   final repository = ref.watch(productsRepositoryProvider);
   ref.watch(productsLocalRefreshProvider);
-  ref.onDispose(repository.resetStartupHydration);
+  final localRefresh = ref.read(productsLocalRefreshProvider.notifier);
+  var isDisposed = false;
+
+  ref.onDispose(() {
+    isDisposed = true;
+    repository.resetStartupHydration();
+  });
+
+  void refreshLocalProductsIfAlive() {
+    if (isDisposed) {
+      return;
+    }
+    localRefresh.state++;
+  }
 
   repository.maybeHydrateFromRemoteInBackground(
     startup: true,
-    onHydrated: () {
-      ref.read(productsLocalRefreshProvider.notifier).state++;
-    },
+    onHydrated: refreshLocalProductsIfAlive,
   );
 
   ref.listen(isOnlineProvider, (previous, next) {
@@ -38,9 +49,7 @@ final productsProvider = FutureProvider<List<Product>>((ref) {
     if (!wasOnline && isOnline && previous != null) {
       repository.maybeHydrateFromRemoteInBackground(
         force: true,
-        onHydrated: () {
-          ref.read(productsLocalRefreshProvider.notifier).state++;
-        },
+        onHydrated: refreshLocalProductsIfAlive,
       );
     }
   });

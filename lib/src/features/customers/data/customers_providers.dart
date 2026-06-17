@@ -20,13 +20,24 @@ final customersLocalRefreshProvider = StateProvider<int>((ref) => 0);
 final customersProvider = FutureProvider<List<Customer>>((ref) {
   final repository = ref.watch(customersRepositoryProvider);
   ref.watch(customersLocalRefreshProvider);
-  ref.onDispose(repository.resetStartupHydration);
+  final localRefresh = ref.read(customersLocalRefreshProvider.notifier);
+  var isDisposed = false;
+
+  ref.onDispose(() {
+    isDisposed = true;
+    repository.resetStartupHydration();
+  });
+
+  void refreshLocalCustomersIfAlive() {
+    if (isDisposed) {
+      return;
+    }
+    localRefresh.state++;
+  }
 
   repository.maybeHydrateFromRemoteInBackground(
     startup: true,
-    onHydrated: () {
-      ref.read(customersLocalRefreshProvider.notifier).state++;
-    },
+    onHydrated: refreshLocalCustomersIfAlive,
   );
 
   ref.listen(isOnlineProvider, (previous, next) {
@@ -40,9 +51,7 @@ final customersProvider = FutureProvider<List<Customer>>((ref) {
     if (!wasOnline && isOnline && previous != null) {
       repository.maybeHydrateFromRemoteInBackground(
         force: true,
-        onHydrated: () {
-          ref.read(customersLocalRefreshProvider.notifier).state++;
-        },
+        onHydrated: refreshLocalCustomersIfAlive,
       );
     }
   });
