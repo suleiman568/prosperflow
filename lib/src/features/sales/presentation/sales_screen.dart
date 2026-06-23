@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../customers/data/customers_providers.dart';
 import '../../customers/domain/customer.dart';
+import '../../../core/offline/offline_providers.dart';
 import '../../products/data/products_providers.dart';
 import '../../products/domain/product.dart';
 import '../data/sales_providers.dart';
@@ -95,8 +96,6 @@ class SalesScreen extends ConsumerWidget {
     final customers = lookup.customers;
     final products = lookup.products;
     final canCreateLocalSale = customers.isNotEmpty && products.isNotEmpty;
-    debugPrint('SALES_LOCAL_CUSTOMERS_COUNT=${customers.length}');
-    debugPrint('SALES_LOCAL_PRODUCTS_COUNT=${products.length}');
     if (!context.mounted) {
       return;
     }
@@ -109,6 +108,7 @@ class SalesScreen extends ConsumerWidget {
       return;
     }
 
+    debugPrint('SALES_FORM_OPEN');
     final result = await showDialog<Sale>(
       context: context,
       builder: (context) =>
@@ -125,7 +125,7 @@ class SalesScreen extends ConsumerWidget {
       } else {
         await repository.updateSale(result);
       }
-      _refreshLocalSales(ref);
+      await _refreshLocalSales(ref);
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -163,7 +163,7 @@ class SalesScreen extends ConsumerWidget {
 
     try {
       await ref.read(salesRepositoryProvider).deleteSale(sale);
-      _refreshLocalSales(ref);
+      await _refreshLocalSales(ref);
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -173,8 +173,14 @@ class SalesScreen extends ConsumerWidget {
     }
   }
 
-  void _refreshLocalSales(WidgetRef ref) {
+  Future<void> _refreshLocalSales(WidgetRef ref) async {
+    final sales = await ref.read(salesRepositoryProvider).fetchLocalSales();
+    debugPrint('SALES_LIST_REFRESHED_COUNT=${sales.length}');
     ref.read(salesLocalRefreshProvider.notifier).state++;
+    ref.invalidate(salesProvider);
+    ref.invalidate(salesLookupProvider);
+    ref.invalidate(productsProvider);
+    await ref.read(salesProvider.future);
   }
 
   Future<SalesLookupData> _readLocalLookup(WidgetRef ref) async {
@@ -184,11 +190,23 @@ class SalesScreen extends ConsumerWidget {
     final localProducts = await ref
         .read(productsRepositoryProvider)
         .fetchLocalProducts();
-    debugPrint('Sales fetchLocalCustomers count: ${localCustomers.length}');
-    debugPrint('Sales fetchLocalProducts count: ${localProducts.length}');
+    debugPrint('SALES_LOCAL_CUSTOMERS_COUNT=${localCustomers.length}');
+    debugPrint('SALES_LOCAL_PRODUCTS_COUNT=${localProducts.length}');
 
-    final customers = await ref.read(customersProvider.future);
-    final products = await ref.read(productsProvider.future);
+    final isOnline = ref.read(isOnlineProvider).valueOrNull ?? false;
+    if (!isOnline) {
+      return SalesLookupData(
+        customers: localCustomers,
+        products: localProducts,
+      );
+    }
+
+    final customers = await ref
+        .read(customersProvider.future)
+        .catchError((_) => localCustomers);
+    final products = await ref
+        .read(productsProvider.future)
+        .catchError((_) => localProducts);
     debugPrint('Sales customersProvider count: ${customers.length}');
     debugPrint('Sales productsProvider count: ${products.length}');
 

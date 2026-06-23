@@ -73,7 +73,8 @@ ORDER BY COALESCE(sale_date, created_at, updated_at, id) DESC
           syncStatus: row.read<String>('sync_status'),
         );
       }).toList();
-    } catch (_) {
+    } catch (error) {
+      debugPrint('SALES_LOCAL_FETCH_FAILED: $error');
       return const [];
     }
   }
@@ -136,9 +137,8 @@ ORDER BY COALESCE(sale_date, created_at, updated_at, id) DESC
       action: PendingSyncAction.create,
       stockUpdates: stockUpdates,
     );
-    if (await _canUseSupabase()) {
-      unawaited(_syncIfOnline());
-    }
+    debugPrint('SALES_CREATED_LOCAL');
+    unawaited(_syncIfOnline());
 
     return localSale;
   }
@@ -201,9 +201,7 @@ ORDER BY COALESCE(sale_date, created_at, updated_at, id) DESC
       action: PendingSyncAction.update,
       stockUpdates: stockUpdates,
     );
-    if (await _canUseSupabase()) {
-      unawaited(_syncIfOnline());
-    }
+    unawaited(_syncIfOnline());
 
     return updatedSale;
   }
@@ -240,9 +238,7 @@ WHERE id = ?
       action: PendingSyncAction.delete,
       stockUpdates: stockUpdates,
     );
-    if (await _canUseSupabase()) {
-      unawaited(_syncIfOnline());
-    }
+    unawaited(_syncIfOnline());
   }
 
   Future<void> syncPendingChanges() async {
