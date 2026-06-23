@@ -7,6 +7,7 @@ QueryExecutor openDatabaseConnection() {
 class _WebMemoryDatabase extends QueryExecutor {
   final List<Map<String, Object?>> _customers = [];
   final List<Map<String, Object?>> _products = [];
+  final List<Map<String, Object?>> _sales = [];
   final List<Map<String, Object?>> _pendingSync = [];
   var _nextPendingSyncId = 1;
 
@@ -54,6 +55,11 @@ class _WebMemoryDatabase extends QueryExecutor {
       return;
     }
 
+    if (normalized.startsWith('insert into sales')) {
+      _upsertSale(variables);
+      return;
+    }
+
     if (normalized.startsWith('update customers set is_deleted')) {
       _softDeleteCustomer(
         variables,
@@ -67,6 +73,24 @@ class _WebMemoryDatabase extends QueryExecutor {
         variables,
         isSyncedDelete: variables.length == 3,
       );
+      return;
+    }
+
+    if (normalized.startsWith('update sales set is_deleted')) {
+      _softDeleteSale(
+        variables,
+        isSyncedDelete: variables.length == 3,
+      );
+      return;
+    }
+
+    if (normalized.startsWith('update products set stock_quantity')) {
+      _updateProductStock(variables);
+      return;
+    }
+
+    if (normalized.startsWith('update sales set sync_status')) {
+      _markSaleSynced(variables);
       return;
     }
 
@@ -92,6 +116,11 @@ class _WebMemoryDatabase extends QueryExecutor {
 
     if (normalized.startsWith('delete from products')) {
       _products.removeWhere((row) => row['id'] == variables[0]);
+      return;
+    }
+
+    if (normalized.startsWith('delete from sales')) {
+      _sales.removeWhere((row) => row['id'] == variables[0]);
     }
   }
 
@@ -142,6 +171,40 @@ class _WebMemoryDatabase extends QueryExecutor {
         final aKey = (a['created_at'] ?? a['updated_at'] ?? a['id']).toString();
         final bKey = (b['created_at'] ?? b['updated_at'] ?? b['id']).toString();
         return aKey.compareTo(bKey);
+      });
+      return rows;
+    }
+
+    if (normalized.startsWith('select stock_quantity from products')) {
+      final productId = args.first?.toString();
+      Map<String, Object?>? product;
+      for (final row in _products) {
+        if (row['id'] == productId && row['is_deleted'] != 1) {
+          product = row;
+          break;
+        }
+      }
+      if (product == null) {
+        return const [];
+      }
+      return [
+        {'stock_quantity': product['stock_quantity']},
+      ];
+    }
+
+    if (normalized.startsWith('select id, customer_id, product_id')) {
+      var rows = _sales
+          .where((row) => row['is_deleted'] != 1)
+          .map((row) => Map<String, Object?>.from(row))
+          .toList();
+      if (normalized.contains('where id = ?')) {
+        final saleId = args.first?.toString();
+        rows = rows.where((row) => row['id'] == saleId).toList();
+      }
+      rows.sort((a, b) {
+        final aKey = (a['sale_date'] ?? a['created_at'] ?? a['id']).toString();
+        final bKey = (b['sale_date'] ?? b['created_at'] ?? b['id']).toString();
+        return bKey.compareTo(aKey);
       });
       return rows;
     }
@@ -274,6 +337,79 @@ class _WebMemoryDatabase extends QueryExecutor {
         'sync_status': isSyncedDelete ? 'synced' : 'pending',
         'last_synced_at': isSyncedDelete ? variables[0]?.toString() : null,
         'updated_at': variables[isSyncedDelete ? 1 : 0]?.toString(),
+      };
+    }
+  }
+
+  void _upsertSale(List<Object?> variables) {
+    final id = variables[0]?.toString() ?? '';
+    final existingIndex = _sales.indexWhere((row) => row['id'] == id);
+    final row = <String, Object?>{
+      'id': id,
+      'user_id': variables[1],
+      'customer_id': variables[2]?.toString() ?? '',
+      'product_id': variables[3]?.toString() ?? '',
+      'quantity': _asInt(variables[4]),
+      'unit_price': _asDouble(variables[5]),
+      'total_amount': _asDouble(variables[6]),
+      'payment_status': variables[7]?.toString() ?? 'pending',
+      'sale_date': variables[8]?.toString(),
+      'sync_status': variables[9]?.toString() ?? 'pending',
+      'is_deleted': _asInt(variables[10]),
+      'created_at': variables[11]?.toString(),
+      'updated_at': variables[12]?.toString(),
+    };
+
+    if (existingIndex >= 0) {
+      _sales[existingIndex] = {
+        ..._sales[existingIndex],
+        ...row,
+        'created_at': _sales[existingIndex]['created_at'] ?? row['created_at'],
+      };
+    } else {
+      _sales.add(row);
+    }
+  }
+
+  void _softDeleteSale(
+    List<Object?> variables, {
+    required bool isSyncedDelete,
+  }) {
+    final id = variables[isSyncedDelete ? 2 : 1]?.toString();
+    final existingIndex = _sales.indexWhere((row) => row['id'] == id);
+    if (existingIndex >= 0) {
+      _sales[existingIndex] = {
+        ..._sales[existingIndex],
+        'is_deleted': 1,
+        'sync_status': isSyncedDelete ? 'synced' : 'pending',
+        'last_synced_at': isSyncedDelete ? variables[0]?.toString() : null,
+        'updated_at': variables[isSyncedDelete ? 1 : 0]?.toString(),
+      };
+    }
+  }
+
+  void _markSaleSynced(List<Object?> variables) {
+    final id = variables[2]?.toString();
+    final existingIndex = _sales.indexWhere((row) => row['id'] == id);
+    if (existingIndex >= 0) {
+      _sales[existingIndex] = {
+        ..._sales[existingIndex],
+        'sync_status': 'synced',
+        'last_synced_at': variables[0]?.toString(),
+        'updated_at': variables[1]?.toString(),
+      };
+    }
+  }
+
+  void _updateProductStock(List<Object?> variables) {
+    final id = variables[2]?.toString();
+    final existingIndex = _products.indexWhere((row) => row['id'] == id);
+    if (existingIndex >= 0) {
+      _products[existingIndex] = {
+        ..._products[existingIndex],
+        'stock_quantity': _asInt(variables[0]),
+        'sync_status': 'pending',
+        'updated_at': variables[1]?.toString(),
       };
     }
   }

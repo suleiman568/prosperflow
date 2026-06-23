@@ -9,6 +9,7 @@ class Sale {
     required this.paymentStatus,
     required this.saleDate,
     required this.createdAt,
+    this.syncStatus = 'synced',
   });
 
   final String id;
@@ -20,6 +21,7 @@ class Sale {
   final String paymentStatus;
   final DateTime? saleDate;
   final DateTime? createdAt;
+  final String syncStatus;
 
   factory Sale.fromJson(Map<String, dynamic> json) {
     return Sale(
@@ -32,6 +34,7 @@ class Sale {
       paymentStatus: (json['payment_status'] ?? 'pending').toString(),
       saleDate: DateTime.tryParse((json['sale_date'] ?? '').toString()),
       createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
+      syncStatus: (json['sync_status'] ?? 'synced').toString(),
     );
   }
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../sales/data/sales_providers.dart';
 import '../data/products_providers.dart';
 import '../domain/product.dart';
 
@@ -200,6 +201,7 @@ class ProductsScreen extends ConsumerWidget {
 Future<void> _refreshLocalProducts(WidgetRef ref) async {
   ref.read(productsLocalRefreshProvider.notifier).state++;
   await ref.read(productsRepositoryProvider).fetchLocalProducts();
+  ref.invalidate(salesLookupProvider);
 }
 
 enum _ProductAction { edit, delete }

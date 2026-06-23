@@ -9,75 +9,66 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final summary = ref.watch(dashboardSummaryProvider);
+    final summary =
+        ref.watch(dashboardSummaryProvider).value ?? DashboardSummary.empty();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Dashboard')),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(dashboardSummaryProvider.future),
-        child: summary.when(
-          data: (data) => ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text('Business overview', style: theme.textTheme.titleLarge),
-              const SizedBox(height: 16),
-              _MetricGrid(
-                metrics: [
-                  _Metric(label: 'Total Revenue', value: _money(data.totalRevenue)),
-                  _Metric(
-                    label: 'Total Customers',
-                    value: data.totalCustomers.toString(),
-                  ),
-                  _Metric(
-                    label: 'Total Products',
-                    value: data.totalProducts.toString(),
-                  ),
-                  _Metric(label: 'Total Sales', value: _money(data.totalSales)),
-                  _Metric(
-                    label: 'Cost of Goods',
-                    value: _money(data.costOfGoods),
-                  ),
-                  _Metric(
-                    label: 'Total Expenses',
-                    value: _money(data.totalExpenses),
-                  ),
-                  _Metric(
-                    label: 'Low Stock Products',
-                    value: data.lowStockProducts.toString(),
-                  ),
-                  _Metric(label: 'Tasks', value: '${data.openTasks} open'),
-                  _Metric(
-                    label: 'Today\'s Net Profit',
-                    value: _money(data.todayProfit),
-                  ),
-                  _Metric(
-                    label: 'Monthly Net Profit',
-                    value: _money(data.monthlyProfit),
-                  ),
-                  _Metric(label: 'Net Profit', value: _money(data.totalProfit)),
-                ],
-              ),
-              const SizedBox(height: 24),
-              _RevenueChart(points: data.revenueChart),
-            ],
-          ),
-          error: (error, stackTrace) => ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              Text('Unable to load dashboard data.', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(error.toString(), style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  onPressed: () => ref.invalidate(dashboardSummaryProvider),
-                  child: const Text('Retry'),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Business overview', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 16),
+            _MetricGrid(
+              metrics: [
+                _Metric(
+                  label: 'Total Revenue',
+                  value: _money(summary.totalRevenue),
                 ),
-              ),
-            ],
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
+                _Metric(
+                  label: 'Total Customers',
+                  value: summary.totalCustomers.toString(),
+                ),
+                _Metric(
+                  label: 'Total Products',
+                  value: summary.totalProducts.toString(),
+                ),
+                _Metric(
+                  label: 'Total Sales',
+                  value: _money(summary.totalSales),
+                ),
+                _Metric(
+                  label: 'Cost of Goods',
+                  value: _money(summary.costOfGoods),
+                ),
+                _Metric(
+                  label: 'Total Expenses',
+                  value: _money(summary.totalExpenses),
+                ),
+                _Metric(
+                  label: 'Low Stock Products',
+                  value: summary.lowStockProducts.toString(),
+                ),
+                _Metric(label: 'Tasks', value: '${summary.openTasks} open'),
+                _Metric(
+                  label: 'Today\'s Net Profit',
+                  value: _money(summary.todayProfit),
+                ),
+                _Metric(
+                  label: 'Monthly Net Profit',
+                  value: _money(summary.monthlyProfit),
+                ),
+                _Metric(
+                  label: 'Net Profit',
+                  value: _money(summary.totalProfit),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _RevenueChart(points: summary.revenueChart),
+          ],
         ),
       ),
     );
@@ -150,11 +141,7 @@ class _RevenueChartPainter extends CustomPainter {
       ..strokeWidth = 1;
     for (var index = 0; index < 4; index++) {
       final y = topPadding + chartHeight * index / 3;
-      canvas.drawLine(
-        Offset(leftPadding, y),
-        Offset(size.width, y),
-        gridPaint,
-      );
+      canvas.drawLine(Offset(leftPadding, y), Offset(size.width, y), gridPaint);
     }
 
     if (points.isEmpty) {

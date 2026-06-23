@@ -4,10 +4,10 @@ import 'connectivity_service.dart';
 import 'local_database.dart';
 import 'pending_sync_repository.dart';
 
+final AppDatabase _appDatabase = AppDatabase();
+
 final localDatabaseProvider = Provider<AppDatabase>((ref) {
-  final database = AppDatabase();
-  ref.onDispose(database.close);
-  return database;
+  return _appDatabase;
 });
 
 final connectivityServiceProvider = Provider<ConnectivityService>((ref) {

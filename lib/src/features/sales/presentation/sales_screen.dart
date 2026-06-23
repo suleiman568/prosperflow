@@ -13,9 +13,10 @@ class SalesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sales = ref.watch(salesProvider);
-    final customers = ref.watch(customersProvider);
-    final products = ref.watch(productsProvider);
+    final sales = ref.watch(salesProvider).value ?? const <Sale>[];
+    final lookup = ref.watch(salesLookupProvider).value;
+    final customers = lookup?.customers ?? const <Customer>[];
+    final products = lookup?.products ?? const <Product>[];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Sales')),
@@ -24,83 +25,63 @@ class SalesScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Sale'),
       ),
-      body: sales.when(
-        data: (items) {
-          final customerItems = customers.value ?? const <Customer>[];
-          final productItems = products.value ?? const <Product>[];
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(customersProvider);
-              ref.invalidate(productsProvider);
-              ref.invalidate(salesProvider);
-              await Future.wait([
-                ref.read(customersProvider.future),
-                ref.read(productsProvider.future),
-                ref.read(salesProvider.future),
-              ]);
-            },
-            child: items.isEmpty
-                ? const _EmptySales()
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemBuilder: (context, index) {
-                      final sale = items[index];
-                      final customerName = _customerName(
-                        customerItems,
-                        sale.customerId,
-                      );
-                      final productName = _productName(
-                        productItems,
-                        sale.productId,
-                      );
-                      return Card(
-                        child: ListTile(
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.point_of_sale),
-                          ),
-                          title: Text(productName),
-                          subtitle: Text(
-                            '$customerName - ${sale.quantity} sold',
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(_money(sale.totalAmount)),
-                              PopupMenuButton<_SaleAction>(
-                                onSelected: (action) {
-                                  if (action == _SaleAction.edit) {
-                                    _openSaleDialog(context, ref, sale: sale);
-                                  } else {
-                                    _deleteSale(context, ref, sale);
-                                  }
-                                },
-                                itemBuilder: (context) => const [
-                                  PopupMenuItem(
-                                    value: _SaleAction.edit,
-                                    child: Text('Edit'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: _SaleAction.delete,
-                                    child: Text('Delete'),
-                                  ),
-                                ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(salesLookupProvider);
+          ref.invalidate(salesProvider);
+          await ref.read(salesProvider.future);
+          await ref.read(salesLookupProvider.future);
+        },
+        child: sales.isEmpty
+            ? const _EmptySales()
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemBuilder: (context, index) {
+                  final sale = sales[index];
+                  final customerName = _customerName(
+                    customers,
+                    sale.customerId,
+                  );
+                  final productName = _productName(products, sale.productId);
+                  return Card(
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.point_of_sale),
+                      ),
+                      title: Text(productName),
+                      subtitle: Text('$customerName - ${sale.quantity} sold'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_money(sale.totalAmount)),
+                          PopupMenuButton<_SaleAction>(
+                            onSelected: (action) {
+                              if (action == _SaleAction.edit) {
+                                _openSaleDialog(context, ref, sale: sale);
+                              } else {
+                                _deleteSale(context, ref, sale);
+                              }
+                            },
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: _SaleAction.edit,
+                                child: Text('Edit'),
+                              ),
+                              PopupMenuItem(
+                                value: _SaleAction.delete,
+                                child: Text('Delete'),
                               ),
                             ],
                           ),
-                        ),
-                      );
-                    },
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
-                    itemCount: items.length,
-                  ),
-          );
-        },
-        error: (error, stackTrace) => _ErrorState(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(salesProvider),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
+                itemCount: sales.length,
+              ),
       ),
     );
   }
@@ -110,12 +91,16 @@ class SalesScreen extends ConsumerWidget {
     WidgetRef ref, {
     Sale? sale,
   }) async {
-    final customers = await ref.read(customersProvider.future);
-    final products = await ref.read(productsProvider.future);
+    final lookup = await _readLocalLookup(ref);
+    final customers = lookup.customers;
+    final products = lookup.products;
+    final canCreateLocalSale = customers.isNotEmpty && products.isNotEmpty;
+    debugPrint('SALES_LOCAL_CUSTOMERS_COUNT=${customers.length}');
+    debugPrint('SALES_LOCAL_PRODUCTS_COUNT=${products.length}');
     if (!context.mounted) {
       return;
     }
-    if (customers.isEmpty || products.isEmpty) {
+    if (!canCreateLocalSale) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Add at least one customer and product first.'),
@@ -140,8 +125,7 @@ class SalesScreen extends ConsumerWidget {
       } else {
         await repository.updateSale(result);
       }
-      ref.invalidate(salesProvider);
-      ref.invalidate(productsProvider);
+      _refreshLocalSales(ref);
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -179,8 +163,7 @@ class SalesScreen extends ConsumerWidget {
 
     try {
       await ref.read(salesRepositoryProvider).deleteSale(sale);
-      ref.invalidate(salesProvider);
-      ref.invalidate(productsProvider);
+      _refreshLocalSales(ref);
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -188,6 +171,21 @@ class SalesScreen extends ConsumerWidget {
         );
       }
     }
+  }
+
+  void _refreshLocalSales(WidgetRef ref) {
+    ref.read(salesLocalRefreshProvider.notifier).state++;
+  }
+
+  Future<SalesLookupData> _readLocalLookup(WidgetRef ref) async {
+    final customers = await ref
+        .read(customersRepositoryProvider)
+        .fetchLocalCustomers();
+    final products = await ref
+        .read(productsRepositoryProvider)
+        .fetchLocalProducts();
+
+    return SalesLookupData(customers: customers, products: products);
   }
 }
 
@@ -399,30 +397,6 @@ class _EmptySales extends StatelessWidget {
         SizedBox(height: 12),
         Center(child: Text('No sales yet')),
       ],
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
-          ],
-        ),
-      ),
     );
   }
 }
