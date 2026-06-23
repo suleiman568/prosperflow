@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -54,7 +55,15 @@ final productsProvider = FutureProvider<List<Product>>((ref) {
     }
   });
 
-  return repository.fetchProducts().catchError((_) {
-    return repository.fetchLocalProducts();
-  });
+  return repository
+      .fetchProducts()
+      .then((products) {
+        debugPrint('productsProvider count: ${products.length}');
+        return products;
+      })
+      .catchError((_) async {
+        final products = await repository.fetchLocalProducts();
+        debugPrint('productsProvider count: ${products.length}');
+        return products;
+      });
 });

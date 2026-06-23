@@ -76,6 +76,7 @@ class CustomersRepository {
   Future<List<Customer>> fetchLocalCustomers() async {
     final customers = await _fetchLocalCustomers();
     debugPrint('Loaded customers from local DB');
+    debugPrint('fetchLocalCustomers count: ${customers.length}');
     return customers;
   }
 

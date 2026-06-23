@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -64,13 +65,14 @@ final salesLookupProvider = FutureProvider<SalesLookupData>((ref) async {
   ref.watch(productsLocalRefreshProvider);
 
   final customers = await ref
-      .watch(customersRepositoryProvider)
-      .fetchLocalCustomers()
+      .watch(customersProvider.future)
       .catchError((_) => const <Customer>[]);
   final products = await ref
-      .watch(productsRepositoryProvider)
-      .fetchLocalProducts()
+      .watch(productsProvider.future)
       .catchError((_) => const <Product>[]);
+
+  debugPrint('salesLookup customersProvider count: ${customers.length}');
+  debugPrint('salesLookup productsProvider count: ${products.length}');
 
   return SalesLookupData(customers: customers, products: products);
 });

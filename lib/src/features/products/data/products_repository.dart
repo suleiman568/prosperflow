@@ -90,7 +90,7 @@ WHERE is_deleted = 0
 ORDER BY COALESCE(created_at, updated_at, id) ASC
 ''').get();
 
-    return rows.map((row) {
+    final products = rows.map((row) {
       return Product(
         id: row.read<String>('id'),
         name: row.read<String>('name'),
@@ -105,6 +105,8 @@ ORDER BY COALESCE(created_at, updated_at, id) ASC
         ),
       );
     }).toList();
+    debugPrint('fetchLocalProducts count: ${products.length}');
+    return products;
   }
 
   Future<Product> createProduct(Product product) async {

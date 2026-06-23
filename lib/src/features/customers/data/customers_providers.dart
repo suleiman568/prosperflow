@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -56,7 +57,15 @@ final customersProvider = FutureProvider<List<Customer>>((ref) {
     }
   });
 
-  return repository.fetchCustomers().catchError((_) {
-    return repository.fetchLocalCustomers();
-  });
+  return repository
+      .fetchCustomers()
+      .then((customers) {
+        debugPrint('customersProvider count: ${customers.length}');
+        return customers;
+      })
+      .catchError((_) async {
+        final customers = await repository.fetchLocalCustomers();
+        debugPrint('customersProvider count: ${customers.length}');
+        return customers;
+      });
 });

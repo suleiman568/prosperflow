@@ -178,12 +178,19 @@ class SalesScreen extends ConsumerWidget {
   }
 
   Future<SalesLookupData> _readLocalLookup(WidgetRef ref) async {
-    final customers = await ref
+    final localCustomers = await ref
         .read(customersRepositoryProvider)
         .fetchLocalCustomers();
-    final products = await ref
+    final localProducts = await ref
         .read(productsRepositoryProvider)
         .fetchLocalProducts();
+    debugPrint('Sales fetchLocalCustomers count: ${localCustomers.length}');
+    debugPrint('Sales fetchLocalProducts count: ${localProducts.length}');
+
+    final customers = await ref.read(customersProvider.future);
+    final products = await ref.read(productsProvider.future);
+    debugPrint('Sales customersProvider count: ${customers.length}');
+    debugPrint('Sales productsProvider count: ${products.length}');
 
     return SalesLookupData(customers: customers, products: products);
   }
