@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/coming_soon_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/login/login_screen.dart';
+import 'screens/products/products_screen.dart';
 import 'screens/record_sale/record_sale_screen.dart';
 import 'theme/tokens.dart';
 import 'widgets/app_tab_bar.dart';
@@ -30,8 +31,7 @@ class ProsperFlowApp extends StatelessWidget {
         LoginScreen.route: (_) => const LoginScreen(),
         DashboardScreen.route: (_) => const DashboardScreen(),
         RecordSaleScreen.route: (_) => const RecordSaleScreen(),
-        '/products': (_) => const ComingSoonScreen(
-            title: 'Products', tab: AppTab.products),
+        ProductsScreen.route: (_) => const ProductsScreen(),
         '/expenses': (_) => const ComingSoonScreen(title: 'Expenses'),
         '/reports': (_) =>
             const ComingSoonScreen(title: 'Reports', tab: AppTab.reports),

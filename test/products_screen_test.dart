@@ -1,0 +1,67 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:prosperflow/src/screens/products/products_screen.dart';
+import 'package:prosperflow/src/widgets/primary_button.dart';
+
+Widget _app() => const MaterialApp(home: ProductsScreen());
+
+void _usePhoneSurface(WidgetTester tester) {
+  tester.view.physicalSize = const Size(390, 1400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+}
+
+void main() {
+  testWidgets('products list shows cards with prices and stock badges',
+      (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_app());
+
+    expect(find.text('Palm Oil (25L)'), findsOneWidget);
+    expect(find.text('42 bottles'), findsOneWidget);
+    expect(find.text('₦6,800 → ₦9,200'), findsOneWidget);
+    expect(find.text('42'), findsOneWidget); // healthy stock badge
+
+    // Two products at/below the threshold show LOW badges.
+    expect(find.text('LOW'), findsNWidgets(2));
+  });
+
+  testWidgets('FAB opens Add Product sheet and adds a product',
+      (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_app());
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+    expect(find.text('Add Product'), findsNWidgets(2)); // title + button
+
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Palm Oil (25L)'), 'Garri (paint)');
+    await tester.enterText(find.widgetWithText(TextField, 'bottles'), 'paints');
+    await tester.enterText(find.widgetWithText(TextField, '6800'), '1500');
+    await tester.enterText(find.widgetWithText(TextField, '9200'), '2200');
+    await tester.enterText(find.widgetWithText(TextField, '42'), '30');
+    await tester.tap(find.byType(PrimaryButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Garri (paint)'), findsOneWidget);
+    expect(find.text('30 paints'), findsOneWidget);
+    expect(find.text('₦1,500 → ₦2,200'), findsOneWidget);
+  });
+
+  testWidgets('incomplete Add Product form is rejected with a toast',
+      (tester) async {
+    _usePhoneSurface(tester);
+    await tester.pumpWidget(_app());
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PrimaryButton));
+    await tester.pump();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    // Sheet stays open.
+    expect(find.text('PRODUCT NAME'), findsOneWidget);
+  });
+}

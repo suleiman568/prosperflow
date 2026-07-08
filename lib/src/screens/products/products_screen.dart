@@ -1,0 +1,329 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../data/demo_data.dart';
+import '../../theme/tokens.dart';
+import '../../utils/naira.dart';
+import '../../widgets/app_card.dart';
+import '../../widgets/app_tab_bar.dart';
+import '../../widgets/app_toast.dart';
+import '../../widgets/filled_input.dart';
+import '../../widgets/primary_button.dart';
+
+/// Screen 4 — Products.
+///
+/// Product cards (name, stock + unit, buy → sell price, stock/LOW badge);
+/// green FAB opens the Add Product bottom sheet (name, unit, buy/sell price,
+/// opening stock).
+class ProductsScreen extends StatefulWidget {
+  const ProductsScreen({super.key});
+
+  static const route = '/products';
+
+  @override
+  State<ProductsScreen> createState() => _ProductsScreenState();
+}
+
+class _ProductsScreenState extends State<ProductsScreen> {
+  final List<DemoProduct> _products = List.of(demoProducts);
+
+  void _openAddProduct() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => _AddProductSheet(
+        onAdd: (product) {
+          setState(() => _products.add(product));
+          showAppToast(context, '✅ ${product.name} added');
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.appBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _Header(),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
+                itemCount: _products.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: AppShape.cardGap),
+                itemBuilder: (_, index) =>
+                    _ProductCard(product: _products[index]),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: _Fab(onTap: _openAddProduct),
+      bottomNavigationBar: const AppTabBar(active: AppTab.products),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () {
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.pop();
+              } else {
+                navigator.pushReplacementNamed('/dashboard');
+              }
+            },
+            child: const Icon(Icons.arrow_back,
+                size: 20, color: AppColors.textPrimary),
+          ),
+          const SizedBox(width: 12),
+          Text('Products', style: AppText.screenTitle),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductCard extends StatelessWidget {
+  const _ProductCard({required this.product});
+
+  final DemoProduct product;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  style:
+                      AppText.style(FontWeight.w700, 15, AppColors.textPrimary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${product.stock} ${product.unit}',
+                  style: AppText.style(
+                      FontWeight.w600, 12, AppColors.textSecondary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatNaira(product.buyPrice)} → '
+                  '${formatNaira(product.sellPrice)}',
+                  style: AppText.style(
+                      FontWeight.w600, 12, AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(
+              color: product.isLow ? AppColors.orangeTint : AppColors.mintTint,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              product.isLow ? 'LOW' : '${product.stock}',
+              style: AppText.style(
+                FontWeight.w800,
+                10,
+                product.isLow ? AppColors.accentOrange : AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Fab extends StatelessWidget {
+  const _Fab({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.primary,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x590B8F4E),
+              offset: Offset(0, 8),
+              blurRadius: 20,
+            ),
+          ],
+        ),
+        child: const Icon(Icons.add, size: 24, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _AddProductSheet extends StatefulWidget {
+  const _AddProductSheet({required this.onAdd});
+
+  final ValueChanged<DemoProduct> onAdd;
+
+  @override
+  State<_AddProductSheet> createState() => _AddProductSheetState();
+}
+
+class _AddProductSheetState extends State<_AddProductSheet> {
+  final _name = TextEditingController();
+  final _unit = TextEditingController();
+  final _buyPrice = TextEditingController();
+  final _sellPrice = TextEditingController();
+  final _stock = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _unit.dispose();
+    _buyPrice.dispose();
+    _sellPrice.dispose();
+    _stock.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _name.text.trim();
+    final unit = _unit.text.trim();
+    final buy = int.tryParse(_buyPrice.text.trim());
+    final sell = int.tryParse(_sellPrice.text.trim());
+    final stock = int.tryParse(_stock.text.trim());
+    if (name.isEmpty ||
+        unit.isEmpty ||
+        buy == null ||
+        sell == null ||
+        stock == null) {
+      showAppToast(context, '⚠ Fill in every field to add a product');
+      return;
+    }
+    widget.onAdd(DemoProduct(
+      name: name,
+      unit: unit,
+      stock: stock,
+      buyPrice: buy,
+      sellPrice: sell,
+    ));
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 18,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Add Product', style: AppText.screenTitle),
+          const SizedBox(height: 16),
+          _label('PRODUCT NAME'),
+          FilledInput(
+            hint: 'Palm Oil (25L)',
+            controller: _name,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          _label('UNIT'),
+          FilledInput(
+            hint: 'bottles',
+            controller: _unit,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label('BUY PRICE (₦)'),
+                    _numberInput('6800', _buyPrice),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppShape.gridGap),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label('SELL PRICE (₦)'),
+                    _numberInput('9200', _sellPrice),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          _label('OPENING STOCK'),
+          _numberInput('42', _stock),
+          const SizedBox(height: 22),
+          PrimaryButton(label: 'Add Product', onPressed: _submit),
+        ],
+      ),
+    );
+  }
+
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(text, style: AppText.fieldLabel),
+      );
+
+  Widget _numberInput(String hint, TextEditingController controller) =>
+      TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: AppText.input,
+        cursorColor: AppColors.primary,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: AppText.inputHint,
+          filled: true,
+          fillColor: AppColors.inputBg,
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppShape.controlRadius),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      );
+}
