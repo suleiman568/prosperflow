@@ -25,6 +25,6 @@ void main() {
     await tester.tap(find.byType(PrimaryButton));
     await tester.pumpAndSettle();
 
-    expect(find.text('Dashboard — coming next'), findsOneWidget);
+    expect(find.text('Welcome back, Prosper 👋'), findsOneWidget);
   });
 }
