@@ -6,10 +6,13 @@ enum AppTab { home, products, reports, credits }
 
 /// Tab bar per the component inventory: 64px, white, 1px top border #ECECEC;
 /// 4 tabs (Home, Products, Reports, Credits); active = primary, inactive #999.
+///
+/// [active] is null on non-tab screens (e.g. Record Sale) where the bar is
+/// visible but no destination is highlighted.
 class AppTabBar extends StatelessWidget {
-  const AppTabBar({super.key, required this.active});
+  const AppTabBar({super.key, this.active});
 
-  final AppTab active;
+  final AppTab? active;
 
   static const _tabs = [
     (AppTab.home, Icons.home_rounded, 'Home', '/dashboard'),
