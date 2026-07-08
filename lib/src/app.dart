@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/coming_soon_screen.dart';
+import 'screens/credits/credits_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/expenses/expenses_screen.dart';
 import 'screens/login/login_screen.dart';
@@ -8,7 +8,6 @@ import 'screens/products/products_screen.dart';
 import 'screens/record_sale/record_sale_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'theme/tokens.dart';
-import 'widgets/app_tab_bar.dart';
 
 class ProsperFlowApp extends StatelessWidget {
   const ProsperFlowApp({super.key});
@@ -36,8 +35,7 @@ class ProsperFlowApp extends StatelessWidget {
         ProductsScreen.route: (_) => const ProductsScreen(),
         ExpensesScreen.route: (_) => const ExpensesScreen(),
         ReportsScreen.route: (_) => const ReportsScreen(),
-        '/credits': (_) => const ComingSoonScreen(
-            title: 'Outstanding Credits', tab: AppTab.credits),
+        CreditsScreen.route: (_) => const CreditsScreen(),
       },
     );
   }

@@ -4,15 +4,17 @@ A digital sales ledger for Nigerian market traders — record sales, track
 stock, expenses, credits, and profit. Built with Flutter, designed
 offline-first for low-end Android phones.
 
-Implementation of the ProsperFlow design handoff (7 screens):
+Implementation of the ProsperFlow design handoff. All 7 screens are built
+(UI-only, on demo data); the offline-first local database and sync backend
+come next:
 
 1. **Login** ✅
-2. Dashboard
-3. Record Sale
-4. Products
-5. Expenses
-6. Reports
-7. Outstanding Credits
+2. **Dashboard** ✅
+3. **Record Sale** ✅
+4. **Products** ✅
+5. **Expenses** ✅
+6. **Reports** ✅
+7. **Outstanding Credits** ✅
 
 ## Design system
 
