@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../data/demo_data.dart';
 import '../../theme/tokens.dart';
@@ -274,7 +273,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _label('BUY PRICE (₦)'),
-                    _numberInput('6800', _buyPrice),
+                    FilledInput(hint: '6800', controller: _buyPrice, digitsOnly: true, textInputAction: TextInputAction.next),
                   ],
                 ),
               ),
@@ -284,7 +283,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _label('SELL PRICE (₦)'),
-                    _numberInput('9200', _sellPrice),
+                    FilledInput(hint: '9200', controller: _sellPrice, digitsOnly: true, textInputAction: TextInputAction.next),
                   ],
                 ),
               ),
@@ -292,7 +291,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
           ),
           const SizedBox(height: AppShape.cardGap),
           _label('OPENING STOCK'),
-          _numberInput('42', _stock),
+          FilledInput(hint: '42', controller: _stock, digitsOnly: true, textInputAction: TextInputAction.done),
           const SizedBox(height: 22),
           PrimaryButton(label: 'Add Product', onPressed: _submit),
         ],
@@ -305,25 +304,4 @@ class _AddProductSheetState extends State<_AddProductSheet> {
         child: Text(text, style: AppText.fieldLabel),
       );
 
-  Widget _numberInput(String hint, TextEditingController controller) =>
-      TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: AppText.input,
-        cursorColor: AppColors.primary,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: AppText.inputHint,
-          filled: true,
-          fillColor: AppColors.inputBg,
-          isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppShape.controlRadius),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      );
 }

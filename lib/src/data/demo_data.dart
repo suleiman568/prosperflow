@@ -27,16 +27,20 @@ class DemoProduct {
       '${name.replaceAll(RegExp(r'\s*\(.*\)'), '')} — $stock $unit left';
 }
 
+enum ExpenseCategory { delivery, stock, rent, transport, other }
+
 class DemoExpense {
   const DemoExpense({
     required this.name,
     required this.amount,
     required this.date,
+    required this.category,
   });
 
   final String name;
   final int amount;
   final String date;
+  final ExpenseCategory category;
 }
 
 class DemoCredit {
@@ -92,10 +96,26 @@ const demoPayPos = 37440;
 const demoPayCredit = 15600;
 
 const demoExpenses = [
-  DemoExpense(name: 'Delivery Cost', amount: 8500, date: 'Friday, 3 July'),
-  DemoExpense(name: 'Stock Purchase', amount: 18000, date: 'Thursday, 2 July'),
-  DemoExpense(name: 'Stall Rent', amount: 10000, date: 'Wednesday, 1 July'),
-  DemoExpense(name: 'Fuel/Transport', amount: 5800, date: 'Tuesday, 30 June'),
+  DemoExpense(
+      name: 'Delivery Cost',
+      amount: 8500,
+      date: 'Friday, 3 July',
+      category: ExpenseCategory.delivery),
+  DemoExpense(
+      name: 'Stock Purchase',
+      amount: 18000,
+      date: 'Thursday, 2 July',
+      category: ExpenseCategory.stock),
+  DemoExpense(
+      name: 'Stall Rent',
+      amount: 10000,
+      date: 'Wednesday, 1 July',
+      category: ExpenseCategory.rent),
+  DemoExpense(
+      name: 'Fuel/Transport',
+      amount: 5800,
+      date: 'Tuesday, 30 June',
+      category: ExpenseCategory.transport),
 ];
 
 const demoCredits = [

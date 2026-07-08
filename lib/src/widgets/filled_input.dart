@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/tokens.dart';
 
@@ -10,6 +11,7 @@ class FilledInput extends StatelessWidget {
     required this.hint,
     this.controller,
     this.obscureText = false,
+    this.digitsOnly = false,
     this.keyboardType,
     this.textInputAction,
   });
@@ -17,6 +19,11 @@ class FilledInput extends StatelessWidget {
   final String hint;
   final TextEditingController? controller;
   final bool obscureText;
+
+  /// Integer-only fields (prices, stock, amounts) — numeric keyboard and
+  /// digit filtering, per the "amounts are integers" rule.
+  final bool digitsOnly;
+
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
 
@@ -25,7 +32,9 @@ class FilledInput extends StatelessWidget {
     return TextField(
       controller: controller,
       obscureText: obscureText,
-      keyboardType: keyboardType,
+      keyboardType: digitsOnly ? TextInputType.number : keyboardType,
+      inputFormatters:
+          digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
       textInputAction: textInputAction,
       style: AppText.input,
       cursorColor: AppColors.primary,

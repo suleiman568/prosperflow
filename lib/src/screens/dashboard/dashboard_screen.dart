@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/demo_data.dart';
 import '../../theme/tokens.dart';
+import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -17,19 +18,6 @@ class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   static const route = '/dashboard';
-
-  static const _weekdays = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
-    'Sunday', //
-  ];
-  static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-    'September', 'October', 'November', 'December', //
-  ];
-
-  /// "Tuesday, 7 July 2026" — the handoff's date format.
-  static String _formatDate(DateTime d) =>
-      '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]} ${d.year}';
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +42,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _formatDate(DateTime.now()),
+                    formatFullDate(DateTime.now()),
                     style: AppText.style(
                         FontWeight.w500, 13, AppColors.textSecondary),
                   ),
