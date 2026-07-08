@@ -13,7 +13,10 @@ void main() {
     expect(find.text('prosper@market.ng'), findsOneWidget);
     expect(find.text('Forgot password?'), findsOneWidget);
     expect(find.text('Log In'), findsOneWidget);
-    expect(find.text('Create account'), findsOneWidget);
+    expect(
+      find.textContaining('Create account', findRichText: true),
+      findsOneWidget,
+    );
   });
 
   testWidgets('logging in navigates to the dashboard', (tester) async {
