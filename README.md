@@ -1,17 +1,34 @@
-# prosperflow
+# ProsperFlow
 
-A new Flutter project.
+A digital sales ledger for Nigerian market traders — record sales, track
+stock, expenses, credits, and profit. Built with Flutter, designed
+offline-first for low-end Android phones.
 
-## Getting Started
+Implementation of the ProsperFlow design handoff (7 screens):
 
-This project is a starting point for a Flutter application.
+1. **Login** ✅
+2. Dashboard
+3. Record Sale
+4. Products
+5. Expenses
+6. Reports
+7. Outstanding Credits
 
-A few resources to get you started if this is your first Flutter project:
+## Design system
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Tokens (colors, Inter typography, shape, spacing) live in
+`lib/src/theme/tokens.dart`, taken from the Developer Handoff v1.0.
+Inter is bundled in `assets/fonts/` so the app renders correctly offline.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Running
+
+```sh
+flutter pub get
+flutter run
+```
+
+## Tests
+
+```sh
+flutter test
+```
