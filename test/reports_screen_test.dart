@@ -1,60 +1,62 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 
-Widget _app() => const MaterialApp(home: ReportsScreen());
-
-void _usePhoneSurface(WidgetTester tester) {
-  tester.view.physicalSize = const Size(390, 1600);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.reset);
-}
+import 'helpers.dart';
 
 void main() {
-  testWidgets('week report shows profit, totals, and breakdowns',
+  testWidgets('week report computes profit, totals, and breakdowns',
       (tester) async {
-    _usePhoneSurface(tester);
-    await tester.pumpWidget(_app());
-
-    // Profit = 312,000 − 42,300.
-    expect(find.text('NET PROFIT'), findsOneWidget);
-    expect(find.text('₦269,700'), findsOneWidget);
-    expect(find.text("📈 You're on track! Great week."), findsOneWidget);
-
-    expect(find.text('₦312,000'), findsOneWidget);
-    expect(find.text('67 transactions'), findsOneWidget);
-    expect(find.text('₦42,300'), findsOneWidget);
-    expect(find.text('12 items'), findsOneWidget);
-
-    // Top products bars.
-    expect(find.text('68% of sales'), findsOneWidget);
-    expect(find.text('22% of sales'), findsOneWidget);
-
-    // Payment breakdown amounts (weekly).
-    expect(find.text('₦140,400'), findsOneWidget);
-    expect(find.text('₦118,560'), findsOneWidget);
-    expect(find.text('₦37,440'), findsOneWidget);
-    expect(find.text('₦15,600'), findsOneWidget);
-  });
-
-  testWidgets('switching period scales the report', (tester) async {
-    _usePhoneSurface(tester);
-    await tester.pumpWidget(_app());
-
-    await tester.tap(find.text('Month'));
+    usePhoneSurface(tester, height: 1700);
+    await pumpWithStore(tester, const ReportsScreen());
     await tester.pump();
 
-    // 312,000 × 4.3 and 42,300 × 4.3.
-    expect(find.text('₦1,341,600'), findsOneWidget);
-    expect(find.text('₦181,890'), findsOneWidget);
-    expect(find.text('₦1,159,710'), findsOneWidget); // profit
-    expect(find.text("📈 You're on track! Great month."), findsOneWidget);
-    expect(find.text('288 transactions'), findsOneWidget); // 67 × 4.3 rounded
+    // Sales ₦103,800 − expenses ₦42,300.
+    expect(find.text('NET PROFIT'), findsOneWidget);
+    expect(find.text('₦61,500'), findsOneWidget);
+    expect(find.text("📈 You're on track! Great week."), findsOneWidget);
+
+    expect(find.text('₦103,800'), findsOneWidget);
+    expect(find.text('6 transactions'), findsOneWidget);
+    expect(find.text('₦42,300'), findsOneWidget);
+    expect(find.text('4 items'), findsOneWidget);
+
+    // Top products by revenue: Yam ₦40,000 (39%), Palm Oil ₦36,800 (35%).
+    expect(find.text('39% of sales'), findsOneWidget);
+    expect(find.text('35% of sales'), findsOneWidget);
+
+    // Payment breakdown: credit sales still owed count as credit.
+    expect(find.text('₦18,400'), findsOneWidget); // cash
+    expect(find.text('₦10,000'), findsOneWidget); // transfer
+    expect(find.text('₦6,000'), findsOneWidget); // POS
+    expect(find.text('₦69,400'), findsOneWidget); // credit
+  });
+
+  testWidgets('collected credits count as cash in the breakdown',
+      (tester) async {
+    usePhoneSurface(tester, height: 1700);
+    final store = fixtureStore();
+    await store.markCreditPaid('c1'); // ₦18,400 collected
+    await pumpWithStore(tester, const ReportsScreen(), store: store);
+    await tester.pump();
+
+    // Cash 18,400 + 18,400; credit 69,400 − 18,400.
+    expect(find.text('₦36,800'), findsOneWidget);
+    expect(find.text('₦51,000'), findsOneWidget);
+  });
+
+  testWidgets('switching period changes the window', (tester) async {
+    usePhoneSurface(tester, height: 1700);
+    await pumpWithStore(tester, const ReportsScreen());
+    await tester.pump();
 
     await tester.tap(find.text('All'));
     await tester.pump();
+    await tester.pump(); // stream delivers the new period's report
+
+    // All-time expenses include the 40-day-old ₦6,400: total ₦48,700.
+    expect(find.text('₦48,700'), findsOneWidget);
+    expect(find.text('5 items'), findsOneWidget);
     expect(find.text("📈 You're on track! Great run."), findsOneWidget);
-    expect(find.text('₦4,056,000'), findsOneWidget); // 312,000 × 13
   });
 }

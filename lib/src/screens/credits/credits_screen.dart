@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../data/demo_data.dart';
+import '../../data/app_scope.dart';
+import '../../data/models.dart';
 import '../../theme/tokens.dart';
+import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -22,12 +24,9 @@ class CreditsScreen extends StatefulWidget {
 }
 
 class _CreditsScreenState extends State<CreditsScreen> {
-  final List<DemoCredit> _credits = List.of(demoCredits);
-
-  int get _total => _credits.fold(0, (sum, c) => sum + c.amount);
-
-  void _markPaid(DemoCredit credit) {
-    setState(() => _credits.remove(credit));
+  Future<void> _markPaid(Credit credit) async {
+    await AppScope.of(context).markCreditPaid(credit.saleId);
+    if (!mounted) return;
     showAppToast(
       context,
       '✅ ${formatNaira(credit.amount)} collected from ${credit.customerName}',
@@ -36,6 +35,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final store = AppScope.of(context);
     return Scaffold(
       backgroundColor: AppColors.appBg,
       body: SafeArea(
@@ -43,11 +43,16 @@ class _CreditsScreenState extends State<CreditsScreen> {
           children: [
             _Header(),
             Expanded(
-              child: _credits.isEmpty
-                  ? const _EmptyState()
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-                      children: [
+              child: StreamBuilder<List<Credit>>(
+                stream: store.watchOwedCredits(),
+                builder: (context, snapshot) {
+                  final credits = snapshot.data;
+                  if (credits == null) return const SizedBox.shrink();
+                  if (credits.isEmpty) return const _EmptyState();
+                  final total = credits.fold(0, (sum, c) => sum + c.amount);
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                    children: [
                         AppCard.tinted(
                           color: AppColors.orangeTint,
                           borderColor: AppColors.orangeBorder,
@@ -66,7 +71,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    formatNaira(_total),
+                                    formatNaira(total),
                                     style: AppText.style(FontWeight.w900, 24,
                                         AppColors.accentOrange),
                                   ),
@@ -77,15 +82,17 @@ class _CreditsScreenState extends State<CreditsScreen> {
                             ],
                           ),
                         ),
-                        for (final credit in _credits) ...[
-                          const SizedBox(height: AppShape.cardGap),
-                          _CreditCard(
-                            credit: credit,
-                            onMarkPaid: () => _markPaid(credit),
-                          ),
-                        ],
+                      for (final credit in credits) ...[
+                        const SizedBox(height: AppShape.cardGap),
+                        _CreditCard(
+                          credit: credit,
+                          onMarkPaid: () => _markPaid(credit),
+                        ),
                       ],
-                    ),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -135,7 +142,7 @@ class _Header extends StatelessWidget {
 class _CreditCard extends StatelessWidget {
   const _CreditCard({required this.credit, required this.onMarkPaid});
 
-  final DemoCredit credit;
+  final Credit credit;
   final VoidCallback onMarkPaid;
 
   @override
@@ -175,7 +182,7 @@ class _CreditCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Sold: ${credit.soldOn}',
+                            'Sold: ${formatDayMonthYear(credit.soldAt)}',
                             style: AppText.style(
                                 FontWeight.w600, 11, AppColors.textSecondary),
                           ),

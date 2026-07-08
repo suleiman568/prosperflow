@@ -14,3 +14,7 @@ String formatFullDate(DateTime d) =>
 /// "Friday, 3 July" — expense list date format.
 String formatWeekdayDayMonth(DateTime d) =>
     '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]}';
+
+/// "1 July 2026" — credit "Sold:" date format.
+String formatDayMonthYear(DateTime d) =>
+    '${d.day} ${_months[d.month - 1]} ${d.year}';

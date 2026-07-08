@@ -4,19 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:prosperflow/src/screens/products/products_screen.dart';
 import 'package:prosperflow/src/widgets/primary_button.dart';
 
-Widget _app() => const MaterialApp(home: ProductsScreen());
-
-void _usePhoneSurface(WidgetTester tester) {
-  tester.view.physicalSize = const Size(390, 1400);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.reset);
-}
+import 'helpers.dart';
 
 void main() {
   testWidgets('products list shows cards with prices and stock badges',
       (tester) async {
-    _usePhoneSurface(tester);
-    await tester.pumpWidget(_app());
+    usePhoneSurface(tester);
+    await pumpWithStore(tester, const ProductsScreen());
+    await tester.pump();
 
     expect(find.text('Palm Oil (25L)'), findsOneWidget);
     expect(find.text('42 bottles'), findsOneWidget);
@@ -29,8 +24,9 @@ void main() {
 
   testWidgets('FAB opens Add Product sheet and adds a product',
       (tester) async {
-    _usePhoneSurface(tester);
-    await tester.pumpWidget(_app());
+    usePhoneSurface(tester);
+    await pumpWithStore(tester, const ProductsScreen());
+    await tester.pump();
 
     await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
@@ -52,8 +48,9 @@ void main() {
 
   testWidgets('incomplete Add Product form is rejected with a toast',
       (tester) async {
-    _usePhoneSurface(tester);
-    await tester.pumpWidget(_app());
+    usePhoneSurface(tester);
+    await pumpWithStore(tester, const ProductsScreen());
+    await tester.pump();
 
     await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
@@ -61,7 +58,6 @@ void main() {
     await tester.pump();
 
     expect(find.byType(SnackBar), findsOneWidget);
-    // Sheet stays open.
-    expect(find.text('PRODUCT NAME'), findsOneWidget);
+    expect(find.text('PRODUCT NAME'), findsOneWidget); // sheet stays open
   });
 }

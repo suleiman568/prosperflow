@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../data/demo_data.dart';
+import '../../data/app_scope.dart';
+import '../../data/models.dart';
 import '../../theme/tokens.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
@@ -24,9 +25,8 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  final List<DemoProduct> _products = List.of(demoProducts);
-
   void _openAddProduct() {
+    final store = AppScope.of(context);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -35,9 +35,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) => _AddProductSheet(
-        onAdd: (product) {
-          setState(() => _products.add(product));
-          showAppToast(context, '✅ ${product.name} added');
+        onAdd: (name, unit, stock, buyPrice, sellPrice) async {
+          await store.addProduct(
+            name: name,
+            unit: unit,
+            stock: stock,
+            buyPrice: buyPrice,
+            sellPrice: sellPrice,
+          );
+          if (!mounted) return;
+          showAppToast(context, '✅ $name added');
         },
       ),
     );
@@ -45,6 +52,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final store = AppScope.of(context);
     return Scaffold(
       backgroundColor: AppColors.appBg,
       body: SafeArea(
@@ -52,13 +60,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
           children: [
             _Header(),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
-                itemCount: _products.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: AppShape.cardGap),
-                itemBuilder: (_, index) =>
-                    _ProductCard(product: _products[index]),
+              child: StreamBuilder<List<Product>>(
+                stream: store.watchProducts(),
+                builder: (context, snapshot) {
+                  final products = snapshot.data ?? const <Product>[];
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
+                    itemCount: products.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppShape.cardGap),
+                    itemBuilder: (_, index) =>
+                        _ProductCard(product: products[index]),
+                  );
+                },
               ),
             ),
           ],
@@ -104,7 +118,7 @@ class _Header extends StatelessWidget {
 class _ProductCard extends StatelessWidget {
   const _ProductCard({required this.product});
 
-  final DemoProduct product;
+  final Product product;
 
   @override
   Widget build(BuildContext context) {
@@ -187,10 +201,13 @@ class _Fab extends StatelessWidget {
   }
 }
 
+typedef _AddProduct = Future<void> Function(
+    String name, String unit, int stock, int buyPrice, int sellPrice);
+
 class _AddProductSheet extends StatefulWidget {
   const _AddProductSheet({required this.onAdd});
 
-  final ValueChanged<DemoProduct> onAdd;
+  final _AddProduct onAdd;
 
   @override
   State<_AddProductSheet> createState() => _AddProductSheetState();
@@ -227,13 +244,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
       showAppToast(context, '⚠ Fill in every field to add a product');
       return;
     }
-    widget.onAdd(DemoProduct(
-      name: name,
-      unit: unit,
-      stock: stock,
-      buyPrice: buy,
-      sellPrice: sell,
-    ));
+    widget.onAdd(name, unit, stock, buy, sell);
     Navigator.of(context).pop();
   }
 

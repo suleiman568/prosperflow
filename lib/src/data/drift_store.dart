@@ -1,0 +1,396 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
+
+import 'data_store.dart';
+import 'db/app_database.dart';
+import 'models.dart';
+import 'seed.dart';
+
+/// Drift/SQLite-backed [DataStore] — the production implementation.
+/// Every mutation runs in a transaction and appends to the outbox so the
+/// sync engine can push it later (Backend Plan §5).
+class DriftStore implements DataStore {
+  DriftStore(this.db);
+
+  final AppDatabase db;
+  final _uuid = const Uuid();
+
+  // ---------------------------------------------------------------- mapping
+
+  Product _product(ProductRow row) => Product(
+        id: row.id,
+        name: row.name,
+        unit: row.unit,
+        stock: row.stock,
+        buyPrice: row.buyPrice,
+        sellPrice: row.sellPrice,
+        lowStockThreshold: row.lowStockThreshold,
+      );
+
+  Sale _sale(SaleRow row, Map<String, String> productNames) => Sale(
+        id: row.id,
+        productId: row.productId,
+        productName: productNames[row.productId] ?? 'Unknown product',
+        qty: row.qty,
+        unitPrice: row.unitPrice,
+        total: row.total,
+        method: row.method,
+        fulfilment: row.fulfilment,
+        customerName: row.customerName,
+        location: row.location,
+        soldAt: row.soldAt,
+      );
+
+  Expense _expense(ExpenseRow row) => Expense(
+        id: row.id,
+        description: row.description,
+        amount: row.amount,
+        category: row.category,
+        spentOn: row.spentOn,
+      );
+
+  Credit _credit(CreditRow row) => Credit(
+        saleId: row.saleId,
+        customerName: row.customerName,
+        amount: row.amount,
+        product: row.product,
+        status: row.status,
+        soldAt: row.soldAt,
+        paidAt: row.paidAt,
+      );
+
+  Future<void> _appendOutbox(String entity, String entityId, String op,
+      Map<String, Object?> payload) {
+    return db.into(db.outbox).insert(OutboxCompanion.insert(
+          entity: entity,
+          entityId: entityId,
+          op: op,
+          payloadJson: jsonEncode(payload),
+          createdAt: DateTime.now(),
+        ));
+  }
+
+  // ------------------------------------------------------------------ seed
+
+  @override
+  Future<void> seedIfEmpty() async {
+    final existing = await db.select(db.products).get();
+    if (existing.isNotEmpty) return;
+    final seed = SeedData.build(DateTime.now());
+    final now = DateTime.now();
+    await db.batch((batch) {
+      batch.insertAll(db.products, [
+        for (final p in seed.products)
+          ProductsCompanion.insert(
+            id: p.id,
+            name: p.name,
+            unit: p.unit,
+            stock: p.stock,
+            buyPrice: p.buyPrice,
+            sellPrice: p.sellPrice,
+            lowStockThreshold: Value(p.lowStockThreshold),
+            updatedAt: now,
+            synced: const Value(true),
+          ),
+      ]);
+      batch.insertAll(db.sales, [
+        for (final s in seed.sales)
+          SalesCompanion.insert(
+            id: s.id,
+            productId: s.productId,
+            qty: s.qty,
+            unitPrice: s.unitPrice,
+            total: s.total,
+            method: s.method,
+            fulfilment: s.fulfilment,
+            customerName: Value(s.customerName),
+            location: Value(s.location),
+            soldAt: s.soldAt,
+            synced: const Value(true),
+          ),
+      ]);
+      batch.insertAll(db.credits, [
+        for (final c in seed.credits)
+          CreditsCompanion.insert(
+            saleId: c.saleId,
+            customerName: c.customerName,
+            amount: c.amount,
+            product: c.product,
+            status: c.status,
+            soldAt: c.soldAt,
+            updatedAt: now,
+            synced: const Value(true),
+          ),
+      ]);
+      batch.insertAll(db.expenses, [
+        for (final e in seed.expenses)
+          ExpensesCompanion.insert(
+            id: e.id,
+            description: e.description,
+            amount: e.amount,
+            category: e.category,
+            spentOn: e.spentOn,
+            updatedAt: now,
+            synced: const Value(true),
+          ),
+      ]);
+    });
+  }
+
+  // -------------------------------------------------------------- products
+
+  @override
+  Stream<List<Product>> watchProducts() {
+    final query = db.select(db.products)
+      ..where((p) => p.deleted.equals(false));
+    return query.watch().map((rows) => rows.map(_product).toList());
+  }
+
+  @override
+  Future<void> addProduct({
+    required String name,
+    required String unit,
+    required int stock,
+    required int buyPrice,
+    required int sellPrice,
+  }) async {
+    final id = _uuid.v4();
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await db.into(db.products).insert(ProductsCompanion.insert(
+            id: id,
+            name: name,
+            unit: unit,
+            stock: stock,
+            buyPrice: buyPrice,
+            sellPrice: sellPrice,
+            updatedAt: now,
+          ));
+      await _appendOutbox('product', id, 'create', {
+        'id': id,
+        'name': name,
+        'unit': unit,
+        'stock': stock,
+        'buy_price': buyPrice,
+        'sell_price': sellPrice,
+        'updated_at': now.toIso8601String(),
+      });
+    });
+  }
+
+  // ----------------------------------------------------------------- sales
+
+  Stream<SalesStats> _watchStatsSince(DateTime Function() start) {
+    final query = db.select(db.sales);
+    return query.watch().map((rows) {
+      final since = start();
+      var total = 0;
+      var count = 0;
+      for (final row in rows) {
+        if (!row.soldAt.isBefore(since)) {
+          total += row.total;
+          count++;
+        }
+      }
+      return SalesStats(total: total, count: count);
+    });
+  }
+
+  @override
+  Stream<SalesStats> watchTodayStats() =>
+      _watchStatsSince(() => startOfToday(DateTime.now()));
+
+  @override
+  Stream<SalesStats> watchWeekStats() =>
+      _watchStatsSince(() => DateTime.now().subtract(const Duration(days: 7)));
+
+  @override
+  Future<void> recordSale({
+    required String productId,
+    required int qty,
+    required PaymentMethod method,
+    required Fulfilment fulfilment,
+    String? customerName,
+    String? location,
+  }) async {
+    await db.transaction(() async {
+      final product = await (db.select(db.products)
+            ..where((p) => p.id.equals(productId)))
+          .getSingle();
+      final saleId = _uuid.v4();
+      final now = DateTime.now();
+      final total = qty * product.sellPrice;
+
+      await db.into(db.sales).insert(SalesCompanion.insert(
+            id: saleId,
+            productId: productId,
+            qty: qty,
+            unitPrice: product.sellPrice,
+            total: total,
+            method: method,
+            fulfilment: fulfilment,
+            customerName: Value(customerName),
+            location: Value(location),
+            soldAt: now,
+          ));
+      await _appendOutbox('sale', saleId, 'create', {
+        'id': saleId,
+        'product_id': productId,
+        'qty': qty,
+        'unit_price': product.sellPrice,
+        'total': total,
+        'method': method.name,
+        'fulfilment': fulfilment.name,
+        'customer_name': customerName,
+        'location': location,
+        'sold_at': now.toIso8601String(),
+      });
+
+      final newStock = (product.stock - qty).clamp(0, 1 << 31);
+      await (db.update(db.products)..where((p) => p.id.equals(productId)))
+          .write(ProductsCompanion(
+        stock: Value(newStock),
+        updatedAt: Value(now),
+        synced: const Value(false),
+      ));
+      await _appendOutbox('product', productId, 'update', {
+        'id': productId,
+        'stock': newStock,
+        'updated_at': now.toIso8601String(),
+      });
+
+      if (method == PaymentMethod.credit) {
+        await db.into(db.credits).insert(CreditsCompanion.insert(
+              saleId: saleId,
+              customerName: customerName ?? '',
+              amount: total,
+              product: '${product.name} × $qty',
+              status: CreditStatus.owed,
+              soldAt: now,
+              updatedAt: now,
+            ));
+        await _appendOutbox('credit', saleId, 'create', {
+          'sale_id': saleId,
+          'customer_name': customerName,
+          'amount': total,
+          'status': 'owed',
+          'updated_at': now.toIso8601String(),
+        });
+      }
+    });
+  }
+
+  // -------------------------------------------------------------- expenses
+
+  @override
+  Stream<List<Expense>> watchExpenses() {
+    final query = db.select(db.expenses)
+      ..orderBy([(e) => OrderingTerm.desc(e.spentOn)]);
+    return query.watch().map((rows) => rows.map(_expense).toList());
+  }
+
+  @override
+  Future<void> addExpense({
+    required String description,
+    required int amount,
+    required ExpenseCategory category,
+    required DateTime spentOn,
+  }) async {
+    final id = _uuid.v4();
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await db.into(db.expenses).insert(ExpensesCompanion.insert(
+            id: id,
+            description: description,
+            amount: amount,
+            category: category,
+            spentOn: spentOn,
+            updatedAt: now,
+          ));
+      await _appendOutbox('expense', id, 'create', {
+        'id': id,
+        'description': description,
+        'amount': amount,
+        'category': category.name,
+        'spent_on': spentOn.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+    });
+  }
+
+  // --------------------------------------------------------------- credits
+
+  @override
+  Stream<List<Credit>> watchOwedCredits() {
+    final query = db.select(db.credits)
+      ..where((c) => c.status.equalsValue(CreditStatus.owed))
+      ..orderBy([(c) => OrderingTerm.desc(c.soldAt)]);
+    return query.watch().map((rows) => rows.map(_credit).toList());
+  }
+
+  @override
+  Future<void> markCreditPaid(String saleId) async {
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await (db.update(db.credits)..where((c) => c.saleId.equals(saleId)))
+          .write(CreditsCompanion(
+        status: const Value(CreditStatus.paid),
+        paidAt: Value(now),
+        updatedAt: Value(now),
+        synced: const Value(false),
+      ));
+      await _appendOutbox('credit', saleId, 'update', {
+        'sale_id': saleId,
+        'status': 'paid',
+        'paid_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+    });
+  }
+
+  // --------------------------------------------------------------- reports
+
+  @override
+  Stream<ReportData> watchReport(ReportPeriod period) {
+    // A trivial query watching every table the report reads from; each
+    // change re-runs the aggregation below.
+    final tick = db.customSelect(
+      'SELECT 1',
+      readsFrom: {db.sales, db.expenses, db.credits, db.products},
+    );
+    return tick.watch().asyncMap((_) => _computeReport(period));
+  }
+
+  Future<ReportData> _computeReport(ReportPeriod period) async {
+    final since = periodStart(period, DateTime.now());
+
+    final productRows = await db.select(db.products).get();
+    final names = {for (final p in productRows) p.id: p.name};
+
+    var salesQuery = db.select(db.sales);
+    if (since != null) {
+      salesQuery = salesQuery..where((s) => s.soldAt.isBiggerThanValue(since));
+    }
+    final sales =
+        (await salesQuery.get()).map((row) => _sale(row, names)).toList();
+
+    var expensesQuery = db.select(db.expenses);
+    if (since != null) {
+      expensesQuery = expensesQuery
+        ..where((e) => e.spentOn.isBiggerThanValue(since));
+    }
+    final expenses = (await expensesQuery.get()).map(_expense).toList();
+
+    final paidRows = await (db.select(db.credits)
+          ..where((c) => c.status.equalsValue(CreditStatus.paid)))
+        .get();
+
+    return buildReport(
+      sales: sales,
+      expenses: expenses,
+      paidCreditSaleIds: {for (final c in paidRows) c.saleId},
+    );
+  }
+}
