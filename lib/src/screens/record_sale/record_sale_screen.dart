@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/app_scope.dart';
 import '../../data/models.dart';
+import '../../sync/sync_engine.dart';
 import '../../theme/tokens.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
@@ -9,6 +10,7 @@ import '../../widgets/app_tab_bar.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 3 — Record Sale.
 ///
@@ -113,7 +115,12 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
           : null,
     );
     if (!mounted) return;
-    showAppToast(context, '✅ Sale saved on this phone');
+    showAppToast(
+      context,
+      AppScope.syncOf(context).state.online
+          ? '✅ Sale saved and backed up'
+          : '✅ Saved on phone! Will back up when online',
+    );
     if (navigator.canPop()) {
       navigator.pop();
     } else {
@@ -124,12 +131,18 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
   @override
   Widget build(BuildContext context) {
     final store = AppScope.of(context);
+    final sync = AppScope.syncOf(context);
     return Scaffold(
       backgroundColor: AppColors.appBg,
       body: SafeArea(
         child: Column(
           children: [
             _Header(),
+            StreamBuilder<SyncState>(
+              stream: sync.watchState(),
+              builder: (_, snapshot) =>
+                  OfflinePill(state: snapshot.data ?? sync.state),
+            ),
             Expanded(
               child: StreamBuilder<List<Product>>(
                 stream: store.watchProducts(),

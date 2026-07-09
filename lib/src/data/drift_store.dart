@@ -275,7 +275,9 @@ class DriftStore implements DataStore {
           'sale_id': saleId,
           'customer_name': customerName,
           'amount': total,
+          'product': '${product.name} × $qty',
           'status': 'owed',
+          'sold_at': now.toIso8601String(),
           'updated_at': now.toIso8601String(),
         });
       }

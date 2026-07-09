@@ -6,6 +6,7 @@ import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/data/data_store.dart';
 import 'package:prosperflow/src/data/memory_store.dart';
 import 'package:prosperflow/src/data/models.dart';
+import 'package:prosperflow/src/sync/sync_engine.dart';
 
 const palm = Product(
     id: 'p1',
@@ -148,12 +149,14 @@ Future<DataStore> pumpWithStore(
   Widget home, {
   MemoryStore? store,
   AuthService? auth,
+  SyncEngine? sync,
 }) async {
   final dataStore = store ?? fixtureStore();
   await tester.pumpWidget(
     AppScope(
       store: dataStore,
       auth: auth ?? FakeAuthService(signedIn: true),
+      sync: sync ?? NoopSyncEngine(),
       child: MaterialApp(home: home),
     ),
   );

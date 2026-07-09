@@ -6,7 +6,9 @@ import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
+import '../../sync/sync_engine.dart';
 import '../../widgets/app_tab_bar.dart';
+import '../../widgets/sync_widgets.dart';
 import '../login/login_screen.dart';
 
 /// Screen 2 — Dashboard.
@@ -23,6 +25,7 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = AppScope.of(context);
+    final sync = AppScope.syncOf(context);
 
     return Scaffold(
       backgroundColor: AppColors.appBg,
@@ -30,6 +33,11 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           children: [
             _AppBar(),
+            StreamBuilder<SyncState>(
+              stream: sync.watchState(),
+              builder: (_, snapshot) =>
+                  OfflinePill(state: snapshot.data ?? sync.state),
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
@@ -148,47 +156,10 @@ class DashboardScreen extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: AppShape.cardGap),
-                  AppCard.tinted(
-                    color: AppColors.mintTint,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    onTap: () {},
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            '✅ Saved on this phone',
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.style(
-                              FontWeight.w700,
-                              12,
-                              AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.sync_rounded,
-                              size: 13,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              'sync',
-                              style: AppText.style(
-                                FontWeight.w600,
-                                11,
-                                AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  StreamBuilder<SyncState>(
+                    stream: sync.watchState(),
+                    builder: (_, snapshot) =>
+                        SyncStatusRow(state: snapshot.data ?? sync.state),
                   ),
                   const SizedBox(height: AppShape.cardGap),
                   Text(
@@ -323,7 +294,10 @@ class _AppBar extends StatelessWidget {
           ),
           Row(
             children: [
-              _CircleIconButton(icon: Icons.sync_rounded, onTap: () {}),
+              _CircleIconButton(
+                icon: Icons.sync_rounded,
+                onTap: () => runManualSync(context),
+              ),
               const SizedBox(width: 14),
               _CircleIconButton(
                 icon: Icons.power_settings_new_rounded,

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:prosperflow/src/app.dart';
 import 'package:prosperflow/src/auth/auth_service.dart';
 import 'package:prosperflow/src/data/app_scope.dart';
+import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/primary_button.dart';
 
 import 'helpers.dart';
@@ -11,7 +12,7 @@ import 'helpers.dart';
 Future<FakeAuthService> _pumpApp(WidgetTester tester) async {
   final auth = FakeAuthService(); // signed out
   await tester.pumpWidget(
-    AppScope(store: fixtureStore(), auth: auth, child: const ProsperFlowApp()),
+    AppScope(store: fixtureStore(), auth: auth, sync: NoopSyncEngine(), child: const ProsperFlowApp()),
   );
   return auth;
 }
@@ -104,7 +105,10 @@ void main() {
     final auth = FakeAuthService(signedIn: true);
     await tester.pumpWidget(
       AppScope(
-          store: fixtureStore(), auth: auth, child: const ProsperFlowApp()),
+          store: fixtureStore(),
+          auth: auth,
+          sync: NoopSyncEngine(),
+          child: const ProsperFlowApp()),
     );
     await tester.pump();
 
