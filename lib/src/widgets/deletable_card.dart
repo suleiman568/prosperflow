@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 
-/// Swipe a card left to delete it, with a confirmation dialog in the app's
-/// design language. Used by the Products and Expenses lists; deletion is a
-/// soft delete in the local store that syncs to Supabase like any update.
+/// Swipe a card left — or long-press it — to delete it, with a confirmation
+/// dialog in the app's design language. Long-press covers mouse-driven
+/// platforms (web/desktop) where a swipe is awkward; on Android both work.
+/// Used by the Products and Expenses lists; deletion is a soft delete in
+/// the local store that syncs to Supabase like any update.
 class DeletableCard extends StatelessWidget {
   const DeletableCard({
     super.key,
@@ -70,6 +72,11 @@ class DeletableCard extends StatelessWidget {
     );
   }
 
+  Future<void> _longPressDelete(BuildContext context) async {
+    final confirmed = await _confirm(context);
+    if (confirmed == true) await onDelete();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dismissible(
@@ -86,7 +93,10 @@ class DeletableCard extends StatelessWidget {
         ),
         child: const Icon(Icons.delete_rounded, size: 24, color: Colors.white),
       ),
-      child: child,
+      child: GestureDetector(
+        onLongPress: () => _longPressDelete(context),
+        child: child,
+      ),
     );
   }
 }

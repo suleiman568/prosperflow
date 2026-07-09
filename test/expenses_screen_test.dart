@@ -81,4 +81,19 @@ void main() {
     // Weekly banner recomputes: 42,300 − 10,000.
     expect(find.text('₦32,300'), findsOneWidget);
   });
+
+  testWidgets('long-press also offers delete (mouse-friendly fallback)',
+      (tester) async {
+    usePhoneSurface(tester);
+    await pumpWithStore(tester, const ExpensesScreen());
+    await tester.pump();
+
+    await tester.longPress(find.text('Fuel/Transport'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Fuel/Transport?'), findsOneWidget);
+
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Fuel/Transport'), findsNothing);
+  });
 }

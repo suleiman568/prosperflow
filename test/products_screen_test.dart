@@ -87,4 +87,23 @@ void main() {
     final products = await store.watchProducts().first;
     expect(products.any((p) => p.name == 'Palm Oil (25L)'), isFalse);
   });
+
+  testWidgets('long-press also offers delete (mouse-friendly fallback)',
+      (tester) async {
+    usePhoneSurface(tester);
+    final store = fixtureStore();
+    await pumpWithStore(tester, const ProductsScreen(), store: store);
+    await tester.pump();
+
+    await tester.longPress(find.text('Yam (per tuber)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Yam (per tuber)?'), findsOneWidget);
+
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Yam (per tuber)'), findsNothing);
+    final products = await store.watchProducts().first;
+    expect(products.any((p) => p.name == 'Yam (per tuber)'), isFalse);
+  });
 }
