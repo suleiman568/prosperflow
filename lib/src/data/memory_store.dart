@@ -69,6 +69,12 @@ class MemoryStore implements DataStore {
     _notify();
   }
 
+  @override
+  Future<void> deleteProduct(String id) async {
+    _products.removeWhere((p) => p.id == id);
+    _notify();
+  }
+
   SalesStats _statsSince(DateTime since) {
     var total = 0;
     var count = 0;

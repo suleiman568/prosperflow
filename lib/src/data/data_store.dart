@@ -42,6 +42,10 @@ abstract class DataStore {
     required int sellPrice,
   });
 
+  /// Soft-deletes a product (Backend Plan §3: the `deleted` flag syncs like
+  /// any other update). Past sales referencing it stay intact in reports.
+  Future<void> deleteProduct(String id);
+
   Stream<SalesStats> watchTodayStats();
 
   /// Rolling last-7-days window.

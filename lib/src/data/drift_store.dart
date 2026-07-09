@@ -180,6 +180,24 @@ class DriftStore implements DataStore {
     });
   }
 
+  @override
+  Future<void> deleteProduct(String id) async {
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await (db.update(db.products)..where((p) => p.id.equals(id)))
+          .write(ProductsCompanion(
+        deleted: const Value(true),
+        updatedAt: Value(now),
+        synced: const Value(false),
+      ));
+      await _appendOutbox('product', id, 'update', {
+        'id': id,
+        'deleted': true,
+        'updated_at': now.toIso8601String(),
+      });
+    });
+  }
+
   // ----------------------------------------------------------------- sales
 
   Stream<SalesStats> _watchStatsSince(DateTime Function() start) {

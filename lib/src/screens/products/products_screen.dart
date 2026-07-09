@@ -50,6 +50,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
+  Future<void> _deleteProduct(Product product) async {
+    await AppScope.of(context).deleteProduct(product.id);
+    if (!mounted) return;
+    showAppToast(context, '✅ ${product.name} deleted');
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = AppScope.of(context);
@@ -69,8 +75,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     itemCount: products.length,
                     separatorBuilder: (_, _) =>
                         const SizedBox(height: AppShape.cardGap),
-                    itemBuilder: (_, index) =>
-                        _ProductCard(product: products[index]),
+                    itemBuilder: (_, index) => _DeletableProductCard(
+                      product: products[index],
+                      onDelete: () => _deleteProduct(products[index]),
+                    ),
                   );
                 },
               ),
@@ -168,6 +176,80 @@ class _ProductCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// Swipe left to delete, with a confirmation dialog. Deletion is a soft
+/// delete in the local store and syncs to Supabase like any other update.
+class _DeletableProductCard extends StatelessWidget {
+  const _DeletableProductCard({required this.product, required this.onDelete});
+
+  final Product product;
+  final Future<void> Function() onDelete;
+
+  Future<bool?> _confirm(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppShape.cardRadius),
+        ),
+        title: Text(
+          'Delete ${product.name}?',
+          style: AppText.style(FontWeight.w800, 17, AppColors.textPrimary),
+        ),
+        content: Text(
+          'It will be removed from your products. '
+          'Past sales are not affected.',
+          style: AppText.style(FontWeight.w500, 13, AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Cancel',
+              style:
+                  AppText.style(FontWeight.w700, 13, AppColors.textSecondary),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accentRed,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppShape.controlRadius),
+              ),
+            ),
+            child: Text(
+              'Delete',
+              style: AppText.style(FontWeight.w700, 13, Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: ValueKey(product.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirm(context),
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppColors.accentRed,
+          borderRadius: BorderRadius.circular(AppShape.cardRadius),
+        ),
+        child: const Icon(Icons.delete_rounded, size: 24, color: Colors.white),
+      ),
+      child: _ProductCard(product: product),
     );
   }
 }

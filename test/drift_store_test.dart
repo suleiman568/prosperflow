@@ -33,6 +33,31 @@ void main() {
     expect(outbox, isEmpty);
   });
 
+  test('deleteProduct soft-deletes, hides the product, and fills the outbox',
+      () async {
+    await store.seedIfEmpty();
+    final palm = (await store.watchProducts().first)
+        .firstWhere((p) => p.name == 'Palm Oil (25L)');
+
+    await store.deleteProduct(palm.id);
+
+    // Hidden from the app...
+    final products = await store.watchProducts().first;
+    expect(products.any((p) => p.id == palm.id), isFalse);
+
+    // ...but soft-deleted in the database, so reports keep the name.
+    final row = await (db.select(db.products)
+          ..where((p) => p.id.equals(palm.id)))
+        .getSingle();
+    expect(row.deleted, isTrue);
+    expect(row.synced, isFalse);
+
+    final outbox = await db.select(db.outbox).get();
+    expect(outbox.single.entity, 'product');
+    expect(outbox.single.op, 'update');
+    expect(outbox.single.payloadJson, contains('"deleted":true'));
+  });
+
   test('recordSale inserts the sale, decrements stock, and fills the outbox',
       () async {
     await store.seedIfEmpty();

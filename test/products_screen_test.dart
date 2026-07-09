@@ -60,4 +60,31 @@ void main() {
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.text('PRODUCT NAME'), findsOneWidget); // sheet stays open
   });
+
+  testWidgets('swipe-to-delete confirms and removes the product',
+      (tester) async {
+    usePhoneSurface(tester);
+    final store = fixtureStore();
+    await pumpWithStore(tester, const ProductsScreen(), store: store);
+    await tester.pump();
+
+    await tester.drag(find.text('Palm Oil (25L)'), const Offset(-400, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Palm Oil (25L)?'), findsOneWidget);
+
+    // Cancel keeps the product.
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Palm Oil (25L)'), findsOneWidget);
+
+    // Delete removes it from the store and the list.
+    await tester.drag(find.text('Palm Oil (25L)'), const Offset(-400, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Palm Oil (25L)'), findsNothing);
+    final products = await store.watchProducts().first;
+    expect(products.any((p) => p.name == 'Palm Oil (25L)'), isFalse);
+  });
 }
