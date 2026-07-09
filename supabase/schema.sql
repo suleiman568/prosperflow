@@ -8,6 +8,32 @@
 --     can only ever touch their own rows (isolation comes from auth.uid(),
 --     never from the payload).
 --   * Soft deletes via a `deleted` flag so deletions sync like updates.
+--
+-- Migration guard: the discarded prototype app created tables with a
+-- different shape (e.g. an `expenses` table keyed on `user_id`). Any
+-- existing table that lacks `trader_id` is renamed to `<name>_legacy` so
+-- its data is preserved and the new tables can be created cleanly.
+-- Drop the `_legacy` tables manually once you're sure they're not needed.
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['products', 'sales', 'expenses', 'credits'] loop
+    if exists (
+      select from information_schema.tables
+      where table_schema = 'public' and table_name = t
+    ) and not exists (
+      select from information_schema.columns
+      where table_schema = 'public'
+        and table_name = t
+        and column_name = 'trader_id'
+    ) then
+      execute format(
+        'alter table public.%I rename to %I', t, t || '_legacy');
+    end if;
+  end loop;
+end $$;
 
 create table if not exists public.products (
   id uuid primary key,
