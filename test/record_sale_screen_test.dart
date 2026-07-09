@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:prosperflow/src/auth/auth_service.dart';
 import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/screens/dashboard/dashboard_screen.dart';
 import 'package:prosperflow/src/screens/record_sale/record_sale_screen.dart';
@@ -83,6 +84,7 @@ void main() {
     await tester.pumpWidget(
       AppScope(
         store: store,
+        auth: FakeAuthService(signedIn: true),
         child: MaterialApp(
           home: const RecordSaleScreen(),
           routes: {'/dashboard': (_) => const DashboardScreen()},

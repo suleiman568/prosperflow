@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../data/app_scope.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/app_toast.dart';
 import '../../widgets/brand_logo.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
@@ -10,7 +12,9 @@ import '../dashboard/dashboard_screen.dart';
 ///
 /// Centered logo circle (green gradient), title + tagline, email/password
 /// filled inputs, "Forgot password?" link, primary Log In button, and a
-/// "New trader? Create account" footer.
+/// "New trader? Create account" footer. Auth runs through [AppScope.authOf]
+/// (Supabase on device); sessions persist so this screen only appears when
+/// the trader is signed out.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -23,6 +27,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -31,8 +36,57 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _logIn() {
-    Navigator.of(context).pushReplacementNamed(DashboardScreen.route);
+  Future<void> _logIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      showAppToast(context, '⚠ Enter your email and password');
+      return;
+    }
+    setState(() => _busy = true);
+    final auth = AppScope.authOf(context);
+    final navigator = Navigator.of(context);
+    final error = await auth.signIn(email: email, password: password);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (error != null) {
+      showAppToast(context, '⚠ $error');
+      return;
+    }
+    navigator.pushReplacementNamed(DashboardScreen.route);
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      showAppToast(context, '⚠ Enter your email above first');
+      return;
+    }
+    final error = await AppScope.authOf(context).resetPassword(email);
+    if (!mounted) return;
+    showAppToast(
+        context, error != null ? '⚠ $error' : '📧 Password reset email sent');
+  }
+
+  void _openCreateAccount() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _CreateAccountSheet(
+        onDone: (message) {
+          if (message != null) {
+            showAppToast(context, message);
+          } else {
+            Navigator.of(context)
+                .pushReplacementNamed(DashboardScreen.route);
+          }
+        },
+      ),
+    );
   }
 
   @override
@@ -78,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Padding(
                     padding: const EdgeInsets.only(top: 2, right: 4),
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: _forgotPassword,
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 4, vertical: 8),
@@ -94,26 +148,131 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                PrimaryButton(label: 'Log In', onPressed: _logIn),
+                PrimaryButton(label: 'Log In', onPressed: _logIn, busy: _busy),
                 const SizedBox(height: 18),
-                Text.rich(
-                  TextSpan(
-                    text: 'New trader? ',
-                    style: AppText.style(
-                        FontWeight.w500, 13, AppColors.textSecondary),
-                    children: [
-                      TextSpan(
-                        text: 'Create account',
-                        style: AppText.style(
-                            FontWeight.w700, 13, AppColors.primary),
-                      ),
-                    ],
+                GestureDetector(
+                  onTap: _openCreateAccount,
+                  child: Text.rich(
+                    TextSpan(
+                      text: 'New trader? ',
+                      style: AppText.style(
+                          FontWeight.w500, 13, AppColors.textSecondary),
+                      children: [
+                        TextSpan(
+                          text: 'Create account',
+                          style: AppText.style(
+                              FontWeight.w700, 13, AppColors.primary),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CreateAccountSheet extends StatefulWidget {
+  const _CreateAccountSheet({required this.onDone});
+
+  /// Called after a sign-up attempt: `null` means signed in (go to the
+  /// Dashboard); a message means show it and stay on Login.
+  final ValueChanged<String?> onDone;
+
+  @override
+  State<_CreateAccountSheet> createState() => _CreateAccountSheetState();
+}
+
+class _CreateAccountSheetState extends State<_CreateAccountSheet> {
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final name = _name.text.trim();
+    final email = _email.text.trim();
+    final password = _password.text;
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      showAppToast(context, '⚠ Fill in your name, email, and password');
+      return;
+    }
+    setState(() => _busy = true);
+    final auth = AppScope.authOf(context);
+    final navigator = Navigator.of(context);
+    final error =
+        await auth.signUp(name: name, email: email, password: password);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    navigator.pop();
+    widget.onDone(error);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 18,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Create account', style: AppText.screenTitle),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text('YOUR NAME', style: AppText.fieldLabel),
+          ),
+          FilledInput(
+            hint: 'Prosper Adeyemi',
+            controller: _name,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text('EMAIL', style: AppText.fieldLabel),
+          ),
+          FilledInput(
+            hint: 'prosper@market.ng',
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text('PASSWORD', style: AppText.fieldLabel),
+          ),
+          FilledInput(
+            hint: '••••••••',
+            controller: _password,
+            obscureText: true,
+            textInputAction: TextInputAction.done,
+          ),
+          const SizedBox(height: 22),
+          PrimaryButton(
+            label: 'Create Account',
+            onPressed: _submit,
+            busy: _busy,
+          ),
+        ],
       ),
     );
   }

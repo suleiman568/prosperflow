@@ -35,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
                 children: [
                   Text(
-                    'Welcome back, Prosper 👋',
+                    'Welcome back, ${AppScope.authOf(context).traderName} 👋',
                     style: AppText.style(
                       FontWeight.w800,
                       19,
@@ -327,9 +327,11 @@ class _AppBar extends StatelessWidget {
               const SizedBox(width: 14),
               _CircleIconButton(
                 icon: Icons.power_settings_new_rounded,
-                onTap: () => Navigator.of(
-                  context,
-                ).pushReplacementNamed(LoginScreen.route),
+                onTap: () async {
+                  final navigator = Navigator.of(context);
+                  await AppScope.authOf(context).signOut();
+                  navigator.pushReplacementNamed(LoginScreen.route);
+                },
               ),
             ],
           ),

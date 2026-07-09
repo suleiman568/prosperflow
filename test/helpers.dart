@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:prosperflow/src/auth/auth_service.dart';
 import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/data/data_store.dart';
 import 'package:prosperflow/src/data/memory_store.dart';
@@ -141,15 +142,18 @@ MemoryStore fixtureStore() => MemoryStore(
     );
 
 /// Pumps [home] under an [AppScope] with basic routes for navigation.
+/// The fake auth starts signed in as "Prosper" to mirror the design.
 Future<DataStore> pumpWithStore(
   WidgetTester tester,
   Widget home, {
   MemoryStore? store,
+  AuthService? auth,
 }) async {
   final dataStore = store ?? fixtureStore();
   await tester.pumpWidget(
     AppScope(
       store: dataStore,
+      auth: auth ?? FakeAuthService(signedIn: true),
       child: MaterialApp(home: home),
     ),
   );
