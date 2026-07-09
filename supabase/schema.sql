@@ -73,8 +73,13 @@ create table if not exists public.expenses (
     check (category in ('delivery', 'stock', 'rent', 'transport', 'other')),
   spent_on timestamptz not null,
   updated_at timestamptz not null default now(),
+  deleted boolean not null default false,
   received_at timestamptz not null default now()
 );
+
+-- v2 addition for projects provisioned before expenses became deletable.
+alter table public.expenses
+  add column if not exists deleted boolean not null default false;
 
 create table if not exists public.credits (
   sale_id uuid primary key,

@@ -8,6 +8,7 @@ import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/deletable_card.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
 
@@ -48,6 +49,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _deleteExpense(Expense expense) async {
+    await AppScope.of(context).deleteExpense(expense.id);
+    if (!mounted) return;
+    showAppToast(context, '\u2705 ${expense.description} deleted');
   }
 
   @override
@@ -94,7 +101,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ),
                       for (final expense in expenses) ...[
                         const SizedBox(height: AppShape.cardGap),
-                        _ExpenseCard(expense: expense),
+                        DeletableCard(
+                          itemKey: expense.id,
+                          title: 'Delete ${expense.description}?',
+                          message: 'The -${formatNaira(expense.amount)} '
+                              'expense will leave your totals and reports.',
+                          onDelete: () => _deleteExpense(expense),
+                          child: _ExpenseCard(expense: expense),
+                        ),
                       ],
                     ],
                   );

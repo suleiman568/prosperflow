@@ -50,6 +50,7 @@ class Expenses extends Table {
   TextColumn get category => textEnum<ExpenseCategory>()();
   DateTimeColumn get spentOn => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
 
   @override
@@ -89,5 +90,15 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // v2: expenses become soft-deletable, like products.
+            await m.addColumn(expenses, expenses.deleted);
+          }
+        },
+      );
 }

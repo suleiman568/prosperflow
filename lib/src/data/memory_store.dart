@@ -170,6 +170,12 @@ class MemoryStore implements DataStore {
   }
 
   @override
+  Future<void> deleteExpense(String id) async {
+    _expenses.removeWhere((e) => e.id == id);
+    _notify();
+  }
+
+  @override
   Stream<List<Credit>> watchOwedCredits() => _watch(() {
         final owed = _credits
             .where((c) => c.status == CreditStatus.owed)

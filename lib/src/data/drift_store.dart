@@ -307,6 +307,7 @@ class DriftStore implements DataStore {
   @override
   Stream<List<Expense>> watchExpenses() {
     final query = db.select(db.expenses)
+      ..where((e) => e.deleted.equals(false))
       ..orderBy([(e) => OrderingTerm.desc(e.spentOn)]);
     return query.watch().map((rows) => rows.map(_expense).toList());
   }
@@ -335,6 +336,24 @@ class DriftStore implements DataStore {
         'amount': amount,
         'category': category.name,
         'spent_on': spentOn.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+    });
+  }
+
+  @override
+  Future<void> deleteExpense(String id) async {
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await (db.update(db.expenses)..where((e) => e.id.equals(id)))
+          .write(ExpensesCompanion(
+        deleted: const Value(true),
+        updatedAt: Value(now),
+        synced: const Value(false),
+      ));
+      await _appendOutbox('expense', id, 'update', {
+        'id': id,
+        'deleted': true,
         'updated_at': now.toIso8601String(),
       });
     });
@@ -396,7 +415,8 @@ class DriftStore implements DataStore {
     final sales =
         (await salesQuery.get()).map((row) => _sale(row, names)).toList();
 
-    var expensesQuery = db.select(db.expenses);
+    var expensesQuery = db.select(db.expenses)
+      ..where((e) => e.deleted.equals(false));
     if (since != null) {
       expensesQuery = expensesQuery
         ..where((e) => e.spentOn.isBiggerThanValue(since));

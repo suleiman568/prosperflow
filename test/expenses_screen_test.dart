@@ -62,4 +62,23 @@ void main() {
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.text('DESCRIPTION'), findsOneWidget); // sheet stays open
   });
+
+  testWidgets('swipe-to-delete removes the expense and updates the total',
+      (tester) async {
+    usePhoneSurface(tester);
+    final store = fixtureStore();
+    await pumpWithStore(tester, const ExpensesScreen(), store: store);
+    await tester.pump();
+
+    await tester.drag(find.text('Stall Rent'), const Offset(-400, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Stall Rent?'), findsOneWidget);
+
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stall Rent'), findsNothing);
+    // Weekly banner recomputes: 42,300 − 10,000.
+    expect(find.text('₦32,300'), findsOneWidget);
+  });
 }

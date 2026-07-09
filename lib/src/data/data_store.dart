@@ -72,6 +72,10 @@ abstract class DataStore {
     required DateTime spentOn,
   });
 
+  /// Soft-deletes an expense; the deletion syncs like any other update
+  /// and the amount leaves every total and report.
+  Future<void> deleteExpense(String id);
+
   /// Open credits, newest sale first.
   Stream<List<Credit>> watchOwedCredits();
 

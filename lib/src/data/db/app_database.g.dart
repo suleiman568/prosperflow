@@ -1340,6 +1340,21 @@ class $ExpensesTable extends Expenses
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
   @override
   late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
@@ -1361,6 +1376,7 @@ class $ExpensesTable extends Expenses
     category,
     spentOn,
     updatedAt,
+    deleted,
     synced,
   ];
   @override
@@ -1415,6 +1431,12 @@ class $ExpensesTable extends Expenses
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
     if (data.containsKey('synced')) {
       context.handle(
         _syncedMeta,
@@ -1456,6 +1478,10 @@ class $ExpensesTable extends Expenses
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
       synced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}synced'],
@@ -1481,6 +1507,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
   final ExpenseCategory category;
   final DateTime spentOn;
   final DateTime updatedAt;
+  final bool deleted;
   final bool synced;
   const ExpenseRow({
     required this.id,
@@ -1489,6 +1516,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
     required this.category,
     required this.spentOn,
     required this.updatedAt,
+    required this.deleted,
     required this.synced,
   });
   @override
@@ -1504,6 +1532,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
     }
     map['spent_on'] = Variable<DateTime>(spentOn);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['deleted'] = Variable<bool>(deleted);
     map['synced'] = Variable<bool>(synced);
     return map;
   }
@@ -1516,6 +1545,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
       category: Value(category),
       spentOn: Value(spentOn),
       updatedAt: Value(updatedAt),
+      deleted: Value(deleted),
       synced: Value(synced),
     );
   }
@@ -1534,6 +1564,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
       ),
       spentOn: serializer.fromJson<DateTime>(json['spentOn']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
       synced: serializer.fromJson<bool>(json['synced']),
     );
   }
@@ -1549,6 +1580,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
       ),
       'spentOn': serializer.toJson<DateTime>(spentOn),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deleted': serializer.toJson<bool>(deleted),
       'synced': serializer.toJson<bool>(synced),
     };
   }
@@ -1560,6 +1592,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
     ExpenseCategory? category,
     DateTime? spentOn,
     DateTime? updatedAt,
+    bool? deleted,
     bool? synced,
   }) => ExpenseRow(
     id: id ?? this.id,
@@ -1568,6 +1601,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
     category: category ?? this.category,
     spentOn: spentOn ?? this.spentOn,
     updatedAt: updatedAt ?? this.updatedAt,
+    deleted: deleted ?? this.deleted,
     synced: synced ?? this.synced,
   );
   ExpenseRow copyWithCompanion(ExpensesCompanion data) {
@@ -1580,6 +1614,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
       category: data.category.present ? data.category.value : this.category,
       spentOn: data.spentOn.present ? data.spentOn.value : this.spentOn,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
       synced: data.synced.present ? data.synced.value : this.synced,
     );
   }
@@ -1593,6 +1628,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
           ..write('category: $category, ')
           ..write('spentOn: $spentOn, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
           ..write('synced: $synced')
           ..write(')'))
         .toString();
@@ -1606,6 +1642,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
     category,
     spentOn,
     updatedAt,
+    deleted,
     synced,
   );
   @override
@@ -1618,6 +1655,7 @@ class ExpenseRow extends DataClass implements Insertable<ExpenseRow> {
           other.category == this.category &&
           other.spentOn == this.spentOn &&
           other.updatedAt == this.updatedAt &&
+          other.deleted == this.deleted &&
           other.synced == this.synced);
 }
 
@@ -1628,6 +1666,7 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
   final Value<ExpenseCategory> category;
   final Value<DateTime> spentOn;
   final Value<DateTime> updatedAt;
+  final Value<bool> deleted;
   final Value<bool> synced;
   final Value<int> rowid;
   const ExpensesCompanion({
@@ -1637,6 +1676,7 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
     this.category = const Value.absent(),
     this.spentOn = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.deleted = const Value.absent(),
     this.synced = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1647,6 +1687,7 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
     required ExpenseCategory category,
     required DateTime spentOn,
     required DateTime updatedAt,
+    this.deleted = const Value.absent(),
     this.synced = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -1662,6 +1703,7 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
     Expression<String>? category,
     Expression<DateTime>? spentOn,
     Expression<DateTime>? updatedAt,
+    Expression<bool>? deleted,
     Expression<bool>? synced,
     Expression<int>? rowid,
   }) {
@@ -1672,6 +1714,7 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
       if (category != null) 'category': category,
       if (spentOn != null) 'spent_on': spentOn,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (deleted != null) 'deleted': deleted,
       if (synced != null) 'synced': synced,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1684,6 +1727,7 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
     Value<ExpenseCategory>? category,
     Value<DateTime>? spentOn,
     Value<DateTime>? updatedAt,
+    Value<bool>? deleted,
     Value<bool>? synced,
     Value<int>? rowid,
   }) {
@@ -1694,6 +1738,7 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
       category: category ?? this.category,
       spentOn: spentOn ?? this.spentOn,
       updatedAt: updatedAt ?? this.updatedAt,
+      deleted: deleted ?? this.deleted,
       synced: synced ?? this.synced,
       rowid: rowid ?? this.rowid,
     );
@@ -1722,6 +1767,9 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
     if (synced.present) {
       map['synced'] = Variable<bool>(synced.value);
     }
@@ -1740,6 +1788,7 @@ class ExpensesCompanion extends UpdateCompanion<ExpenseRow> {
           ..write('category: $category, ')
           ..write('spentOn: $spentOn, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('deleted: $deleted, ')
           ..write('synced: $synced, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3350,6 +3399,7 @@ typedef $$ExpensesTableCreateCompanionBuilder =
       required ExpenseCategory category,
       required DateTime spentOn,
       required DateTime updatedAt,
+      Value<bool> deleted,
       Value<bool> synced,
       Value<int> rowid,
     });
@@ -3361,6 +3411,7 @@ typedef $$ExpensesTableUpdateCompanionBuilder =
       Value<ExpenseCategory> category,
       Value<DateTime> spentOn,
       Value<DateTime> updatedAt,
+      Value<bool> deleted,
       Value<bool> synced,
       Value<int> rowid,
     });
@@ -3402,6 +3453,11 @@ class $$ExpensesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3450,6 +3506,11 @@ class $$ExpensesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get synced => $composableBuilder(
     column: $table.synced,
     builder: (column) => ColumnOrderings(column),
@@ -3484,6 +3545,9 @@ class $$ExpensesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
 
   GeneratedColumn<bool> get synced =>
       $composableBuilder(column: $table.synced, builder: (column) => column);
@@ -3526,6 +3590,7 @@ class $$ExpensesTableTableManager
                 Value<ExpenseCategory> category = const Value.absent(),
                 Value<DateTime> spentOn = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion(
@@ -3535,6 +3600,7 @@ class $$ExpensesTableTableManager
                 category: category,
                 spentOn: spentOn,
                 updatedAt: updatedAt,
+                deleted: deleted,
                 synced: synced,
                 rowid: rowid,
               ),
@@ -3546,6 +3612,7 @@ class $$ExpensesTableTableManager
                 required ExpenseCategory category,
                 required DateTime spentOn,
                 required DateTime updatedAt,
+                Value<bool> deleted = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExpensesCompanion.insert(
@@ -3555,6 +3622,7 @@ class $$ExpensesTableTableManager
                 category: category,
                 spentOn: spentOn,
                 updatedAt: updatedAt,
+                deleted: deleted,
                 synced: synced,
                 rowid: rowid,
               ),

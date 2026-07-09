@@ -58,6 +58,28 @@ void main() {
     expect(outbox.single.payloadJson, contains('"deleted":true'));
   });
 
+  test('deleteExpense soft-deletes, updates reports, and fills the outbox',
+      () async {
+    await store.seedIfEmpty();
+    final rent = (await store.watchExpenses().first)
+        .firstWhere((e) => e.description == 'Stall Rent');
+    final before = await store.watchReport(ReportPeriod.week).first;
+
+    await store.deleteExpense(rent.id);
+
+    final expenses = await store.watchExpenses().first;
+    expect(expenses.any((e) => e.id == rent.id), isFalse);
+
+    final after = await store.watchReport(ReportPeriod.week).first;
+    expect(after.expensesTotal, before.expensesTotal - rent.amount);
+    expect(after.expensesCount, before.expensesCount - 1);
+
+    final outbox = await db.select(db.outbox).get();
+    expect(outbox.single.entity, 'expense');
+    expect(outbox.single.op, 'update');
+    expect(outbox.single.payloadJson, contains('"deleted":true'));
+  });
+
   test('recordSale inserts the sale, decrements stock, and fills the outbox',
       () async {
     await store.seedIfEmpty();
