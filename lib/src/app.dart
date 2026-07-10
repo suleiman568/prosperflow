@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'data/app_scope.dart';
 import 'screens/credits/credits_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/expenses/expenses_screen.dart';
@@ -27,7 +28,9 @@ class ProsperFlowApp extends StatelessWidget {
         ),
         splashFactory: InkSparkle.splashFactory,
       ),
-      initialRoute: LoginScreen.route,
+      initialRoute: AppScope.authOf(context).isSignedIn
+          ? DashboardScreen.route
+          : LoginScreen.route,
       routes: {
         LoginScreen.route: (_) => const LoginScreen(),
         DashboardScreen.route: (_) => const DashboardScreen(),

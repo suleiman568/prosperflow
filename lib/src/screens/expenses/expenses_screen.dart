@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../data/demo_data.dart';
+import '../../data/app_scope.dart';
+import '../../data/models.dart';
 import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/deletable_card.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
 
@@ -25,11 +27,8 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  final List<DemoExpense> _expenses = List.of(demoExpenses);
-
-  int get _total => _expenses.fold(0, (sum, e) => sum + e.amount);
-
   void _openAddExpense() {
+    final store = AppScope.of(context);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -38,16 +37,29 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) => _AddExpenseSheet(
-        onAdd: (expense) {
-          setState(() => _expenses.insert(0, expense));
+        onAdd: (description, amount, category, spentOn) async {
+          await store.addExpense(
+            description: description,
+            amount: amount,
+            category: category,
+            spentOn: spentOn,
+          );
+          if (!mounted) return;
           showAppToast(context, '✅ Expense recorded');
         },
       ),
     );
   }
 
+  Future<void> _deleteExpense(Expense expense) async {
+    await AppScope.of(context).deleteExpense(expense.id);
+    if (!mounted) return;
+    showAppToast(context, '\u2705 ${expense.description} deleted');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final store = AppScope.of(context);
     return Scaffold(
       backgroundColor: AppColors.appBg,
       body: SafeArea(
@@ -55,34 +67,61 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           children: [
             _Header(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
-                children: [
-                  AppCard.tinted(
-                    color: AppColors.redTint,
-                    borderColor: AppColors.redBorder,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "THIS WEEK'S TOTAL",
-                          style: AppText.style(
-                              FontWeight.w700, 12, AppColors.accentRed),
+              child: StreamBuilder<List<Expense>>(
+                stream: store.watchExpenses(),
+                builder: (context, snapshot) {
+                  final expenses = snapshot.data ?? const <Expense>[];
+                  final weekStart =
+                      DateTime.now().subtract(const Duration(days: 7));
+                  final weekTotal = expenses
+                      .where((e) => e.spentOn.isAfter(weekStart))
+                      .fold(0, (sum, e) => sum + e.amount);
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
+                    children: [
+                      AppCard.tinted(
+                        color: AppColors.redTint,
+                        borderColor: AppColors.redBorder,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "THIS WEEK'S TOTAL",
+                              style: AppText.style(
+                                  FontWeight.w700, 12, AppColors.accentRed),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              formatNaira(weekTotal),
+                              style: AppText.style(
+                                  FontWeight.w900, 28, AppColors.accentRed),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formatNaira(_total),
-                          style: AppText.style(
-                              FontWeight.w900, 28, AppColors.accentRed),
+                      ),
+                      for (final expense in expenses) ...[
+                        const SizedBox(height: AppShape.cardGap),
+                        DeletableCard(
+                          itemKey: expense.id,
+                          title: 'Delete ${expense.description}?',
+                          message: 'The -${formatNaira(expense.amount)} '
+                              'expense will leave your totals and reports.',
+                          onDelete: () => _deleteExpense(expense),
+                          child: _ExpenseCard(
+                            expense: expense,
+                            menu: CardOverflowMenu(
+                              title: 'Delete ${expense.description}?',
+                              message: 'The -${formatNaira(expense.amount)} '
+                                  'expense will leave your totals and '
+                                  'reports.',
+                              onDelete: () => _deleteExpense(expense),
+                            ),
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                  for (final expense in _expenses) ...[
-                    const SizedBox(height: AppShape.cardGap),
-                    _ExpenseCard(expense: expense),
-                  ],
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -136,9 +175,10 @@ class _Header extends StatelessWidget {
 /// List card per the component inventory: white card with a 4px red left
 /// border, leading 42px tinted icon circle, trailing red amount.
 class _ExpenseCard extends StatelessWidget {
-  const _ExpenseCard({required this.expense});
+  const _ExpenseCard({required this.expense, this.menu});
 
-  final DemoExpense expense;
+  final Expense expense;
+  final Widget? menu;
 
   @override
   Widget build(BuildContext context) {
@@ -176,13 +216,13 @@ class _ExpenseCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          expense.name,
+                          expense.description,
                           style: AppText.style(
                               FontWeight.w700, 13, AppColors.textPrimary),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          expense.date,
+                          formatWeekdayDayMonth(expense.spentOn),
                           style: AppText.style(
                               FontWeight.w600, 11, AppColors.textSecondary),
                         ),
@@ -194,6 +234,10 @@ class _ExpenseCard extends StatelessWidget {
                     style:
                         AppText.style(FontWeight.w700, 13, AppColors.accentRed),
                   ),
+                  if (menu != null) ...[
+                    const SizedBox(width: 2),
+                    menu!,
+                  ],
                 ],
               ),
             ),
@@ -233,10 +277,13 @@ class _Fab extends StatelessWidget {
   }
 }
 
+typedef _AddExpense = Future<void> Function(
+    String description, int amount, ExpenseCategory category, DateTime spentOn);
+
 class _AddExpenseSheet extends StatefulWidget {
   const _AddExpenseSheet({required this.onAdd});
 
-  final ValueChanged<DemoExpense> onAdd;
+  final _AddExpense onAdd;
 
   @override
   State<_AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -280,12 +327,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
       showAppToast(context, '⚠ Enter a description and amount');
       return;
     }
-    widget.onAdd(DemoExpense(
-      name: description,
-      amount: amount,
-      date: formatWeekdayDayMonth(_date),
-      category: _category,
-    ));
+    widget.onAdd(description, amount, _category, _date);
     Navigator.of(context).pop();
   }
 

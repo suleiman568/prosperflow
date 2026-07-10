@@ -11,11 +11,15 @@ class PrimaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon = Icons.check,
+    this.busy = false,
   });
 
   final String label;
   final VoidCallback onPressed;
   final IconData? icon;
+
+  /// Shows a spinner and ignores taps while an async action runs.
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +37,7 @@ class PrimaryButton extends StatelessWidget {
         ],
       ),
       child: FilledButton(
-        onPressed: onPressed,
+        onPressed: busy ? null : onPressed,
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.pressed)
@@ -47,19 +51,28 @@ class PrimaryButton extends StatelessWidget {
           ),
           padding: const WidgetStatePropertyAll(EdgeInsets.zero),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: Colors.white),
-              const SizedBox(width: 8),
-            ],
-            Text(
-              label,
-              style: AppText.style(FontWeight.w700, 15, Colors.white),
-            ),
-          ],
-        ),
+        child: busy
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 18, color: Colors.white),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    label,
+                    style: AppText.style(FontWeight.w700, 15, Colors.white),
+                  ),
+                ],
+              ),
       ),
     );
   }

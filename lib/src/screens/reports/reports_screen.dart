@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../../data/demo_data.dart';
+import '../../data/app_scope.dart';
+import '../../data/data_store.dart';
+import '../../data/models.dart';
 import '../../theme/tokens.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
 
-enum ReportPeriod { week, month, all }
-
 /// Screen 6 — Reports.
 ///
 /// Week/Month/All pill selector; hero profit card (green gradient +
 /// encouraging message if ≥ 0, red gradient + warning if loss); Sales vs
-/// Expenses cards; Top Products bars; Payment Breakdown bars.
+/// Expenses cards; Top Products bars; Payment Breakdown bars. Aggregates
+/// are computed live from the local store for the selected period.
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
@@ -25,58 +26,42 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   ReportPeriod _period = ReportPeriod.week;
 
-  /// Scaling factors from the design prototype: a week of demo data
-  /// extrapolated to the longer periods.
-  static const _factors = {
-    ReportPeriod.week: 1.0,
-    ReportPeriod.month: 4.3,
-    ReportPeriod.all: 13.0,
-  };
-
-  double get _factor => _factors[_period]!;
-
   String get _periodWord => switch (_period) {
         ReportPeriod.week => 'week',
         ReportPeriod.month => 'month',
         ReportPeriod.all => 'run',
       };
 
+  static const _paymentSpecs = {
+    PaymentMethod.cash: (
+      Icons.payments_rounded,
+      'Cash',
+      AppColors.primary,
+      AppColors.mintTint
+    ),
+    PaymentMethod.transfer: (
+      Icons.account_balance_rounded,
+      'Transfer',
+      AppColors.accentBlue,
+      AppColors.blueTint
+    ),
+    PaymentMethod.pos: (
+      Icons.credit_card_rounded,
+      'POS',
+      AppColors.accentPurple,
+      AppColors.purpleTint
+    ),
+    PaymentMethod.credit: (
+      Icons.schedule_rounded,
+      'Credit',
+      AppColors.accentOrange,
+      AppColors.orangeTint
+    ),
+  };
+
   @override
   Widget build(BuildContext context) {
-    final weekExpenses = demoExpenses.fold(0, (sum, e) => sum + e.amount);
-    final sales = (demoWeekSalesTotal * _factor).round();
-    final expenses = (weekExpenses * _factor).round();
-    final profit = sales - expenses;
-    final salesCount = (demoWeekSalesCount * _factor).round();
-    final expensesCount = (demoExpenses.length * 3 * _factor).round();
-
-    const payTotal = demoPayCash + demoPayTransfer + demoPayPos + demoPayCredit;
-    final payRows = [
-      (Icons.payments_rounded, 'Cash', AppColors.primary, AppColors.mintTint,
-          demoPayCash),
-      (
-        Icons.account_balance_rounded,
-        'Transfer',
-        AppColors.accentBlue,
-        AppColors.blueTint,
-        demoPayTransfer
-      ),
-      (
-        Icons.credit_card_rounded,
-        'POS',
-        AppColors.accentPurple,
-        AppColors.purpleTint,
-        demoPayPos
-      ),
-      (
-        Icons.schedule_rounded,
-        'Credit',
-        AppColors.accentOrange,
-        AppColors.orangeTint,
-        demoPayCredit
-      ),
-    ];
-
+    final store = AppScope.of(context);
     return Scaffold(
       backgroundColor: AppColors.appBg,
       body: SafeArea(
@@ -84,120 +69,137 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             _Header(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-                children: [
-                  Row(
-                    children: [
-                      for (final period in ReportPeriod.values) ...[
-                        _PeriodPill(
-                          label: switch (period) {
-                            ReportPeriod.week => 'Week',
-                            ReportPeriod.month => 'Month',
-                            ReportPeriod.all => 'All',
-                          },
-                          selected: _period == period,
-                          onTap: () => setState(() => _period = period),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppShape.cardRadius),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: profit >= 0
-                            ? const [AppColors.primary, AppColors.primaryDark]
-                            : const [AppColors.accentRed, Color(0xFFB71C1C)],
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profit >= 0 ? 'NET PROFIT' : 'NET LOSS',
-                          style: AppText.style(FontWeight.w700, 11,
-                              Colors.white.withValues(alpha: 0.9)),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(formatNaira(profit.abs()),
-                            style: AppText.moneyHero),
-                        const SizedBox(height: 6),
-                        Text(
-                          profit >= 0
-                              ? "📈 You're on track! Great $_periodWord."
-                              : '⚠ Spending more than you earn.',
-                          style: AppText.style(FontWeight.w600, 12,
-                              Colors.white.withValues(alpha: 0.85)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _TotalsCard(
-                          label: 'SALES',
-                          labelColor: AppColors.primary,
-                          amount: sales,
-                          caption: '$salesCount transactions',
-                        ),
-                      ),
-                      const SizedBox(width: AppShape.gridGap),
-                      Expanded(
-                        child: _TotalsCard(
-                          label: 'EXPENSES',
-                          labelColor: AppColors.accentRed,
-                          amount: expenses,
-                          caption: '$expensesCount items',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  Text(
-                    'Top Products',
-                    style: AppText.style(
-                        FontWeight.w800, 13, AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 10),
-                  const _TopProductCard(
-                      name: 'Palm Oil (25L)', fraction: 0.68),
-                  const SizedBox(height: 8),
-                  const _TopProductCard(
-                      name: 'Yam (per tuber)', fraction: 0.22),
-                  const SizedBox(height: AppShape.cardGap),
-                  Text(
-                    'Payment Breakdown',
-                    style: AppText.style(
-                        FontWeight.w800, 13, AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 10),
-                  for (final (icon, label, color, tint, amount) in payRows) ...[
-                    _PaymentRowCard(
-                      icon: icon,
-                      label: label,
-                      color: color,
-                      tint: tint,
-                      amount: (amount * _factor).round(),
-                      fraction: amount / payTotal,
-                    ),
-                    if (label != 'Credit') const SizedBox(height: 8),
-                  ],
-                ],
+              child: StreamBuilder<ReportData>(
+                stream: store.watchReport(_period),
+                builder: (context, snapshot) {
+                  final report = snapshot.data;
+                  if (report == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return _buildReport(report);
+                },
               ),
             ),
           ],
         ),
       ),
       bottomNavigationBar: const AppTabBar(active: AppTab.reports),
+    );
+  }
+
+  Widget _buildReport(ReportData report) {
+    final profit = report.profit;
+    final paymentTotal = report.paymentBuckets
+        .fold(0, (sum, bucket) => sum + bucket.amount);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      children: [
+        Row(
+          children: [
+            for (final period in ReportPeriod.values) ...[
+              _PeriodPill(
+                label: switch (period) {
+                  ReportPeriod.week => 'Week',
+                  ReportPeriod.month => 'Month',
+                  ReportPeriod.all => 'All',
+                },
+                selected: _period == period,
+                onTap: () => setState(() => _period = period),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ],
+        ),
+        const SizedBox(height: AppShape.cardGap),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppShape.cardRadius),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: profit >= 0
+                  ? const [AppColors.primary, AppColors.primaryDark]
+                  : const [AppColors.accentRed, Color(0xFFB71C1C)],
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                profit >= 0 ? 'NET PROFIT' : 'NET LOSS',
+                style: AppText.style(
+                    FontWeight.w700, 11, Colors.white.withValues(alpha: 0.9)),
+              ),
+              const SizedBox(height: 4),
+              Text(formatNaira(profit.abs()), style: AppText.moneyHero),
+              const SizedBox(height: 6),
+              Text(
+                profit >= 0
+                    ? "📈 You're on track! Great $_periodWord."
+                    : '⚠ Spending more than you earn.',
+                style: AppText.style(
+                    FontWeight.w600, 12, Colors.white.withValues(alpha: 0.85)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppShape.cardGap),
+        Row(
+          children: [
+            Expanded(
+              child: _TotalsCard(
+                label: 'SALES',
+                labelColor: AppColors.primary,
+                amount: report.salesTotal,
+                caption: '${report.salesCount} transactions',
+              ),
+            ),
+            const SizedBox(width: AppShape.gridGap),
+            Expanded(
+              child: _TotalsCard(
+                label: 'EXPENSES',
+                labelColor: AppColors.accentRed,
+                amount: report.expensesTotal,
+                caption: '${report.expensesCount} items',
+              ),
+            ),
+          ],
+        ),
+        if (report.topProducts.isNotEmpty) ...[
+          const SizedBox(height: AppShape.cardGap),
+          Text(
+            'Top Products',
+            style: AppText.style(FontWeight.w800, 13, AppColors.textPrimary),
+          ),
+          const SizedBox(height: 10),
+          for (final (index, top) in report.topProducts.indexed) ...[
+            if (index > 0) const SizedBox(height: 8),
+            _TopProductCard(name: top.name, fraction: top.share),
+          ],
+        ],
+        const SizedBox(height: AppShape.cardGap),
+        Text(
+          'Payment Breakdown',
+          style: AppText.style(FontWeight.w800, 13, AppColors.textPrimary),
+        ),
+        const SizedBox(height: 10),
+        for (final (index, bucket) in report.paymentBuckets.indexed) ...[
+          if (index > 0) const SizedBox(height: 8),
+          Builder(builder: (context) {
+            final (icon, label, color, tint) = _paymentSpecs[bucket.method]!;
+            return _PaymentRowCard(
+              icon: icon,
+              label: label,
+              color: color,
+              tint: tint,
+              amount: bucket.amount,
+              fraction: paymentTotal == 0 ? 0 : bucket.amount / paymentTotal,
+            );
+          }),
+        ],
+      ],
     );
   }
 }

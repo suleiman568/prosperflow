@@ -49,6 +49,10 @@ abstract final class AppColors {
 
   /// Tab bar top border, app bar bottom border.
   static const divider = Color(0xFFECECEC);
+
+  /// Offline pill / pending-sync row — calm gray, never red (handoff §6).
+  static const offlineBg = Color(0xFFECEAE6);
+  static const offlineFg = Color(0xFF555555);
 }
 
 /// Inter text styles per the handoff's typography table.

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../data/demo_data.dart';
+import '../../data/app_scope.dart';
+import '../../data/models.dart';
 import '../../theme/tokens.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/deletable_card.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
 
@@ -24,9 +26,8 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  final List<DemoProduct> _products = List.of(demoProducts);
-
   void _openAddProduct() {
+    final store = AppScope.of(context);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -35,16 +36,30 @@ class _ProductsScreenState extends State<ProductsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) => _AddProductSheet(
-        onAdd: (product) {
-          setState(() => _products.add(product));
-          showAppToast(context, '✅ ${product.name} added');
+        onAdd: (name, unit, stock, buyPrice, sellPrice) async {
+          await store.addProduct(
+            name: name,
+            unit: unit,
+            stock: stock,
+            buyPrice: buyPrice,
+            sellPrice: sellPrice,
+          );
+          if (!mounted) return;
+          showAppToast(context, '✅ $name added');
         },
       ),
     );
   }
 
+  Future<void> _deleteProduct(Product product) async {
+    await AppScope.of(context).deleteProduct(product.id);
+    if (!mounted) return;
+    showAppToast(context, '✅ ${product.name} deleted');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final store = AppScope.of(context);
     return Scaffold(
       backgroundColor: AppColors.appBg,
       body: SafeArea(
@@ -52,13 +67,33 @@ class _ProductsScreenState extends State<ProductsScreen> {
           children: [
             _Header(),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
-                itemCount: _products.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: AppShape.cardGap),
-                itemBuilder: (_, index) =>
-                    _ProductCard(product: _products[index]),
+              child: StreamBuilder<List<Product>>(
+                stream: store.watchProducts(),
+                builder: (context, snapshot) {
+                  final products = snapshot.data ?? const <Product>[];
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
+                    itemCount: products.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppShape.cardGap),
+                    itemBuilder: (_, index) => DeletableCard(
+                      itemKey: products[index].id,
+                      title: 'Delete ${products[index].name}?',
+                      message: 'It will be removed from your products. '
+                          'Past sales are not affected.',
+                      onDelete: () => _deleteProduct(products[index]),
+                      child: _ProductCard(
+                        product: products[index],
+                        menu: CardOverflowMenu(
+                          title: 'Delete ${products[index].name}?',
+                          message: 'It will be removed from your products. '
+                              'Past sales are not affected.',
+                          onDelete: () => _deleteProduct(products[index]),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -102,9 +137,10 @@ class _Header extends StatelessWidget {
 }
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product});
+  const _ProductCard({required this.product, this.menu});
 
-  final DemoProduct product;
+  final Product product;
+  final Widget? menu;
 
   @override
   Widget build(BuildContext context) {
@@ -137,26 +173,38 @@ class _ProductCard extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-            decoration: BoxDecoration(
-              color: product.isLow ? AppColors.orangeTint : AppColors.mintTint,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Text(
-              product.isLow ? 'LOW' : '${product.stock}',
-              style: AppText.style(
-                FontWeight.w800,
-                10,
-                product.isLow ? AppColors.accentOrange : AppColors.primary,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color:
+                      product.isLow ? AppColors.orangeTint : AppColors.mintTint,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  product.isLow ? 'LOW' : '${product.stock}',
+                  style: AppText.style(
+                    FontWeight.w800,
+                    10,
+                    product.isLow ? AppColors.accentOrange : AppColors.primary,
+                  ),
+                ),
               ),
-            ),
+              if (menu != null) ...[
+                const SizedBox(height: 6),
+                menu!,
+              ],
+            ],
           ),
         ],
       ),
     );
   }
 }
+
 
 class _Fab extends StatelessWidget {
   const _Fab({required this.onTap});
@@ -187,10 +235,13 @@ class _Fab extends StatelessWidget {
   }
 }
 
+typedef _AddProduct = Future<void> Function(
+    String name, String unit, int stock, int buyPrice, int sellPrice);
+
 class _AddProductSheet extends StatefulWidget {
   const _AddProductSheet({required this.onAdd});
 
-  final ValueChanged<DemoProduct> onAdd;
+  final _AddProduct onAdd;
 
   @override
   State<_AddProductSheet> createState() => _AddProductSheetState();
@@ -227,13 +278,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
       showAppToast(context, '⚠ Fill in every field to add a product');
       return;
     }
-    widget.onAdd(DemoProduct(
-      name: name,
-      unit: unit,
-      stock: stock,
-      buyPrice: buy,
-      sellPrice: sell,
-    ));
+    widget.onAdd(name, unit, stock, buy, sell);
     Navigator.of(context).pop();
   }
 

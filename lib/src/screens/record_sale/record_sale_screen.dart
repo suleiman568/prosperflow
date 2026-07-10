@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../data/demo_data.dart';
+import '../../data/app_scope.dart';
+import '../../data/models.dart';
+import '../../sync/sync_engine.dart';
 import '../../theme/tokens.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
@@ -8,18 +10,16 @@ import '../../widgets/app_tab_bar.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
-
-enum PaymentMethod { cash, transfer, pos, credit }
-
-enum Fulfilment { walkIn, delivery }
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 3 — Record Sale.
 ///
 /// Product picker showing live stock count; qty stepper (min 1, max stock)
 /// + unit price; green-gradient Total card that recomputes live; 2×2 payment
 /// pills; credit selection shows the "customer name required" banner;
-/// Walk-in/Delivery toggle (location field only for Delivery); primary
-/// Record Sale button that toasts and returns to the Dashboard.
+/// Walk-in/Delivery toggle (location field only for Delivery). Saving writes
+/// the sale to the local store: stock decrements and, for credit sales, a
+/// credit record opens.
 class RecordSaleScreen extends StatefulWidget {
   const RecordSaleScreen({super.key});
 
@@ -30,16 +30,13 @@ class RecordSaleScreen extends StatefulWidget {
 }
 
 class _RecordSaleScreenState extends State<RecordSaleScreen> {
-  int _productIndex = 0;
+  String? _productId;
   int _qty = 1;
   PaymentMethod _method = PaymentMethod.cash;
   Fulfilment _fulfilment = Fulfilment.walkIn;
+  bool _saving = false;
   final _customerController = TextEditingController();
   final _locationController = TextEditingController();
-
-  DemoProduct get _product => demoProducts[_productIndex];
-
-  int get _total => _qty * _product.sellPrice;
 
   @override
   void dispose() {
@@ -48,7 +45,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
     super.dispose();
   }
 
-  void _pickProduct() {
+  void _pickProduct(List<Product> products) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -64,25 +61,25 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
               child: Text('Choose product', style: AppText.screenTitle),
             ),
-            for (var i = 0; i < demoProducts.length; i++)
+            for (final product in products)
               ListTile(
                 onTap: () {
                   setState(() {
-                    _productIndex = i;
-                    _qty = _qty.clamp(1, demoProducts[i].stock);
+                    _productId = product.id;
+                    _qty = _qty.clamp(1, product.stock.clamp(1, 1 << 31));
                   });
                   Navigator.of(sheetContext).pop();
                 },
                 title: Text(
-                  demoProducts[i].name,
+                  product.name,
                   style: AppText.style(
                       FontWeight.w700, 14, AppColors.textPrimary),
                 ),
                 trailing: Text(
-                  '${demoProducts[i].stock} in stock',
+                  '${product.stock} in stock',
                   style: AppText.style(FontWeight.w600, 12, AppColors.primary),
                 ),
-                selected: i == _productIndex,
+                selected: product.id == _productId,
                 selectedTileColor: AppColors.mintTint,
               ),
             const SizedBox(height: 8),
@@ -92,14 +89,38 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
     );
   }
 
-  void _submit() {
+  Future<void> _submit(Product product) async {
+    if (_saving) return;
     if (_method == PaymentMethod.credit &&
         _customerController.text.trim().isEmpty) {
       showAppToast(context, '⚠ Customer name is required for credit sales');
       return;
     }
+    if (product.stock < 1) {
+      showAppToast(context, '⚠ ${product.name} is out of stock');
+      return;
+    }
+    setState(() => _saving = true);
     final navigator = Navigator.of(context);
-    showAppToast(context, '✅ Sale saved and backed up');
+    final customer = _customerController.text.trim();
+    final location = _locationController.text.trim();
+    await AppScope.of(context).recordSale(
+      productId: product.id,
+      qty: _qty,
+      method: _method,
+      fulfilment: _fulfilment,
+      customerName: customer.isEmpty ? null : customer,
+      location: _fulfilment == Fulfilment.delivery && location.isNotEmpty
+          ? location
+          : null,
+    );
+    if (!mounted) return;
+    showAppToast(
+      context,
+      AppScope.syncOf(context).state.online
+          ? '✅ Sale saved and backed up'
+          : '✅ Saved on phone! Will back up when online',
+    );
     if (navigator.canPop()) {
       navigator.pop();
     } else {
@@ -109,235 +130,252 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final store = AppScope.of(context);
+    final sync = AppScope.syncOf(context);
     return Scaffold(
       backgroundColor: AppColors.appBg,
       body: SafeArea(
         child: Column(
           children: [
             _Header(),
+            StreamBuilder<SyncState>(
+              stream: sync.watchState(),
+              builder: (_, snapshot) =>
+                  OfflinePill(state: snapshot.data ?? sync.state),
+            ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-                children: [
-                  const _FieldLabel('PRODUCT — TAP TO CHANGE'),
-                  GestureDetector(
-                    onTap: _pickProduct,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.inputBg,
-                        borderRadius:
-                            BorderRadius.circular(AppShape.controlRadius),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _product.name,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppText.style(
-                                  FontWeight.w700, 14, AppColors.textPrimary),
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Text(
-                                '${_product.stock} in stock',
-                                style: AppText.style(
-                                    FontWeight.w600, 12, AppColors.primary),
-                              ),
-                              const Icon(Icons.arrow_drop_down,
-                                  size: 18, color: AppColors.primary),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const _FieldLabel('QTY'),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.inputBg,
-                                borderRadius: BorderRadius.circular(
-                                    AppShape.controlRadius),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  _StepperButton(
-                                    icon: Icons.remove,
-                                    onTap: _qty > 1
-                                        ? () => setState(() => _qty--)
-                                        : null,
-                                  ),
-                                  Text(
-                                    '$_qty',
-                                    style: AppText.style(FontWeight.w700, 16,
-                                        AppColors.textPrimary),
-                                  ),
-                                  _StepperButton(
-                                    icon: Icons.add,
-                                    onTap: _qty < _product.stock
-                                        ? () => setState(() => _qty++)
-                                        : null,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: AppShape.gridGap),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const _FieldLabel('PRICE/UNIT'),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: AppColors.inputBg,
-                                borderRadius: BorderRadius.circular(
-                                    AppShape.controlRadius),
-                              ),
-                              child: Text(
-                                formatNaira(_product.sellPrice),
-                                style: AppText.style(FontWeight.w700, 16,
-                                    AppColors.textPrimary),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 18),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppShape.cardRadius),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppColors.primary, AppColors.primaryDark],
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'TOTAL',
-                              style: AppText.style(FontWeight.w700, 11,
-                                  Colors.white.withValues(alpha: 0.9)),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(formatNaira(_total), style: AppText.moneyHero),
-                          ],
-                        ),
-                        const Icon(Icons.account_balance_wallet_rounded,
-                            size: 32, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  const _FieldLabel('PAYMENT METHOD'),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 170 / 44,
-                    children: [
-                      for (final method in PaymentMethod.values)
-                        _PaymentPill(
-                          method: method,
-                          selected: _method == method,
-                          onTap: () => setState(() => _method = method),
-                        ),
-                    ],
-                  ),
-                  if (_method == PaymentMethod.credit) ...[
-                    const SizedBox(height: AppShape.cardGap),
-                    AppCard.tinted(
-                      color: AppColors.orangeTint,
-                      borderColor: AppColors.orangeBorder,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
-                      child: Text(
-                        '⚠ Customer name is required for credit sales',
-                        style: AppText.style(
-                            FontWeight.w700, 12, AppColors.accentOrange),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AppShape.cardGap),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _FulfilmentPill(
-                          icon: Icons.directions_walk_rounded,
-                          label: 'Walk-in',
-                          selected: _fulfilment == Fulfilment.walkIn,
-                          onTap: () =>
-                              setState(() => _fulfilment = Fulfilment.walkIn),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _FulfilmentPill(
-                          icon: Icons.directions_car_rounded,
-                          label: 'Delivery',
-                          selected: _fulfilment == Fulfilment.delivery,
-                          onTap: () =>
-                              setState(() => _fulfilment = Fulfilment.delivery),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  const _FieldLabel('CUSTOMER NAME'),
-                  FilledInput(
-                    hint: 'Chioma Ojo',
-                    controller: _customerController,
-                    textInputAction: TextInputAction.next,
-                  ),
-                  if (_fulfilment == Fulfilment.delivery) ...[
-                    const SizedBox(height: AppShape.cardGap),
-                    const _FieldLabel('DELIVERY LOCATION'),
-                    FilledInput(
-                      hint: 'Lekki Phase 1',
-                      controller: _locationController,
-                      textInputAction: TextInputAction.done,
-                    ),
-                  ],
-                  const SizedBox(height: 22),
-                  PrimaryButton(label: 'Record Sale', onPressed: _submit),
-                ],
+              child: StreamBuilder<List<Product>>(
+                stream: store.watchProducts(),
+                builder: (context, snapshot) {
+                  final products = snapshot.data;
+                  if (products == null || products.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final product = products.firstWhere(
+                    (p) => p.id == _productId,
+                    orElse: () => products.first,
+                  );
+                  final qty = _qty.clamp(1, product.stock.clamp(1, 1 << 31));
+                  return _buildForm(products, product, qty);
+                },
               ),
             ),
           ],
         ),
       ),
       bottomNavigationBar: const AppTabBar(),
+    );
+  }
+
+  Widget _buildForm(List<Product> products, Product product, int qty) {
+    final total = qty * product.sellPrice;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      children: [
+        const _FieldLabel('PRODUCT — TAP TO CHANGE'),
+        GestureDetector(
+          onTap: () => _pickProduct(products),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.inputBg,
+              borderRadius: BorderRadius.circular(AppShape.controlRadius),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    product.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.style(
+                        FontWeight.w700, 14, AppColors.textPrimary),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      '${product.stock} in stock',
+                      style: AppText.style(
+                          FontWeight.w600, 12, AppColors.primary),
+                    ),
+                    const Icon(Icons.arrow_drop_down,
+                        size: 18, color: AppColors.primary),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppShape.cardGap),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _FieldLabel('QTY'),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.inputBg,
+                      borderRadius:
+                          BorderRadius.circular(AppShape.controlRadius),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _StepperButton(
+                          icon: Icons.remove,
+                          onTap:
+                              qty > 1 ? () => setState(() => _qty = qty - 1) : null,
+                        ),
+                        Text(
+                          '$qty',
+                          style: AppText.style(
+                              FontWeight.w700, 16, AppColors.textPrimary),
+                        ),
+                        _StepperButton(
+                          icon: Icons.add,
+                          onTap: qty < product.stock
+                              ? () => setState(() => _qty = qty + 1)
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppShape.gridGap),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _FieldLabel('PRICE/UNIT'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.inputBg,
+                      borderRadius:
+                          BorderRadius.circular(AppShape.controlRadius),
+                    ),
+                    child: Text(
+                      formatNaira(product.sellPrice),
+                      style: AppText.style(
+                          FontWeight.w700, 16, AppColors.textPrimary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppShape.cardGap),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppShape.cardRadius),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primary, AppColors.primaryDark],
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TOTAL',
+                    style: AppText.style(
+                        FontWeight.w700, 11, Colors.white.withValues(alpha: 0.9)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(formatNaira(total), style: AppText.moneyHero),
+                ],
+              ),
+              const Icon(Icons.account_balance_wallet_rounded,
+                  size: 32, color: Colors.white),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppShape.cardGap),
+        const _FieldLabel('PAYMENT METHOD'),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 170 / 44,
+          children: [
+            for (final method in PaymentMethod.values)
+              _PaymentPill(
+                method: method,
+                selected: _method == method,
+                onTap: () => setState(() => _method = method),
+              ),
+          ],
+        ),
+        if (_method == PaymentMethod.credit) ...[
+          const SizedBox(height: AppShape.cardGap),
+          AppCard.tinted(
+            color: AppColors.orangeTint,
+            borderColor: AppColors.orangeBorder,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Text(
+              '⚠ Customer name is required for credit sales',
+              style: AppText.style(FontWeight.w700, 12, AppColors.accentOrange),
+            ),
+          ),
+        ],
+        const SizedBox(height: AppShape.cardGap),
+        Row(
+          children: [
+            Expanded(
+              child: _FulfilmentPill(
+                icon: Icons.directions_walk_rounded,
+                label: 'Walk-in',
+                selected: _fulfilment == Fulfilment.walkIn,
+                onTap: () => setState(() => _fulfilment = Fulfilment.walkIn),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _FulfilmentPill(
+                icon: Icons.directions_car_rounded,
+                label: 'Delivery',
+                selected: _fulfilment == Fulfilment.delivery,
+                onTap: () => setState(() => _fulfilment = Fulfilment.delivery),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppShape.cardGap),
+        const _FieldLabel('CUSTOMER NAME'),
+        FilledInput(
+          hint: 'Chioma Ojo',
+          controller: _customerController,
+          textInputAction: TextInputAction.next,
+        ),
+        if (_fulfilment == Fulfilment.delivery) ...[
+          const SizedBox(height: AppShape.cardGap),
+          const _FieldLabel('DELIVERY LOCATION'),
+          FilledInput(
+            hint: 'Lekki Phase 1',
+            controller: _locationController,
+            textInputAction: TextInputAction.done,
+          ),
+        ],
+        const SizedBox(height: 22),
+        PrimaryButton(label: 'Record Sale', onPressed: () => _submit(product)),
+      ],
     );
   }
 }
