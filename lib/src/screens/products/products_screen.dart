@@ -82,7 +82,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       message: 'It will be removed from your products. '
                           'Past sales are not affected.',
                       onDelete: () => _deleteProduct(products[index]),
-                      child: _ProductCard(product: products[index]),
+                      child: _ProductCard(
+                        product: products[index],
+                        menu: CardOverflowMenu(
+                          title: 'Delete ${products[index].name}?',
+                          message: 'It will be removed from your products. '
+                              'Past sales are not affected.',
+                          onDelete: () => _deleteProduct(products[index]),
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -129,9 +137,10 @@ class _Header extends StatelessWidget {
 }
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product});
+  const _ProductCard({required this.product, this.menu});
 
   final Product product;
+  final Widget? menu;
 
   @override
   Widget build(BuildContext context) {
@@ -164,20 +173,31 @@ class _ProductCard extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-            decoration: BoxDecoration(
-              color: product.isLow ? AppColors.orangeTint : AppColors.mintTint,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Text(
-              product.isLow ? 'LOW' : '${product.stock}',
-              style: AppText.style(
-                FontWeight.w800,
-                10,
-                product.isLow ? AppColors.accentOrange : AppColors.primary,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color:
+                      product.isLow ? AppColors.orangeTint : AppColors.mintTint,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  product.isLow ? 'LOW' : '${product.stock}',
+                  style: AppText.style(
+                    FontWeight.w800,
+                    10,
+                    product.isLow ? AppColors.accentOrange : AppColors.primary,
+                  ),
+                ),
               ),
-            ),
+              if (menu != null) ...[
+                const SizedBox(height: 6),
+                menu!,
+              ],
+            ],
           ),
         ],
       ),

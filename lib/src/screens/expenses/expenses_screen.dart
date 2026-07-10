@@ -107,7 +107,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           message: 'The -${formatNaira(expense.amount)} '
                               'expense will leave your totals and reports.',
                           onDelete: () => _deleteExpense(expense),
-                          child: _ExpenseCard(expense: expense),
+                          child: _ExpenseCard(
+                            expense: expense,
+                            menu: CardOverflowMenu(
+                              title: 'Delete ${expense.description}?',
+                              message: 'The -${formatNaira(expense.amount)} '
+                                  'expense will leave your totals and '
+                                  'reports.',
+                              onDelete: () => _deleteExpense(expense),
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -166,9 +175,10 @@ class _Header extends StatelessWidget {
 /// List card per the component inventory: white card with a 4px red left
 /// border, leading 42px tinted icon circle, trailing red amount.
 class _ExpenseCard extends StatelessWidget {
-  const _ExpenseCard({required this.expense});
+  const _ExpenseCard({required this.expense, this.menu});
 
   final Expense expense;
+  final Widget? menu;
 
   @override
   Widget build(BuildContext context) {
@@ -224,6 +234,10 @@ class _ExpenseCard extends StatelessWidget {
                     style:
                         AppText.style(FontWeight.w700, 13, AppColors.accentRed),
                   ),
+                  if (menu != null) ...[
+                    const SizedBox(width: 2),
+                    menu!,
+                  ],
                 ],
               ),
             ),

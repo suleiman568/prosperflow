@@ -2,6 +2,116 @@ import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 
+/// The app's delete confirmation dialog, shared by the swipe, long-press,
+/// and overflow-menu paths.
+Future<bool?> showDeleteConfirmDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppShape.cardRadius),
+      ),
+      title: Text(
+        title,
+        style: AppText.style(FontWeight.w800, 17, AppColors.textPrimary),
+      ),
+      content: Text(
+        message,
+        style: AppText.style(FontWeight.w500, 13, AppColors.textSecondary),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text(
+            'Cancel',
+            style: AppText.style(FontWeight.w700, 13, AppColors.textSecondary),
+          ),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.accentRed,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppShape.controlRadius),
+            ),
+          ),
+          child: Text(
+            'Delete',
+            style: AppText.style(FontWeight.w700, 13, Colors.white),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Visible three-dot menu on a card offering Delete — the discoverable,
+/// mouse-friendly path (web/desktop) alongside swipe and long-press.
+class CardOverflowMenu extends StatelessWidget {
+  const CardOverflowMenu({
+    super.key,
+    required this.title,
+    required this.message,
+    required this.onDelete,
+  });
+
+  /// Confirm-dialog title, e.g. 'Delete Palm Oil (25L)?'.
+  final String title;
+
+  /// Confirm-dialog body explaining the consequence.
+  final String message;
+
+  final Future<void> Function() onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: 'More',
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppShape.controlRadius),
+      ),
+      onSelected: (_) async {
+        final confirmed = await showDeleteConfirmDialog(
+          context,
+          title: title,
+          message: message,
+        );
+        if (confirmed == true) await onDelete();
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'delete',
+          height: 40,
+          child: Row(
+            children: [
+              const Icon(Icons.delete_rounded,
+                  size: 16, color: AppColors.accentRed),
+              const SizedBox(width: 8),
+              Text(
+                'Delete',
+                style: AppText.style(FontWeight.w700, 13, AppColors.accentRed),
+              ),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        child: const Icon(Icons.more_vert,
+            size: 18, color: AppColors.placeholder),
+      ),
+    );
+  }
+}
+
 /// Swipe a card left — or long-press it — to delete it, with a confirmation
 /// dialog in the app's design language. Long-press covers mouse-driven
 /// platforms (web/desktop) where a swipe is awkward; on Android both work.
@@ -29,51 +139,9 @@ class DeletableCard extends StatelessWidget {
   final Future<void> Function() onDelete;
   final Widget child;
 
-  Future<bool?> _confirm(BuildContext context) {
-    return showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppShape.cardRadius),
-        ),
-        title: Text(
-          title,
-          style: AppText.style(FontWeight.w800, 17, AppColors.textPrimary),
-        ),
-        content: Text(
-          message,
-          style: AppText.style(FontWeight.w500, 13, AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(
-              'Cancel',
-              style:
-                  AppText.style(FontWeight.w700, 13, AppColors.textSecondary),
-            ),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accentRed,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppShape.controlRadius),
-              ),
-            ),
-            child: Text(
-              'Delete',
-              style: AppText.style(FontWeight.w700, 13, Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _longPressDelete(BuildContext context) async {
-    final confirmed = await _confirm(context);
+    final confirmed =
+        await showDeleteConfirmDialog(context, title: title, message: message);
     if (confirmed == true) await onDelete();
   }
 
@@ -82,7 +150,8 @@ class DeletableCard extends StatelessWidget {
     return Dismissible(
       key: ValueKey(itemKey),
       direction: DismissDirection.endToStart,
-      confirmDismiss: (_) => _confirm(context),
+      confirmDismiss: (_) =>
+          showDeleteConfirmDialog(context, title: title, message: message),
       onDismissed: (_) => onDelete(),
       background: Container(
         alignment: Alignment.centerRight,

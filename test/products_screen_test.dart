@@ -106,4 +106,24 @@ void main() {
     final products = await store.watchProducts().first;
     expect(products.any((p) => p.name == 'Yam (per tuber)'), isFalse);
   });
+
+  testWidgets('three-dot menu offers delete', (tester) async {
+    usePhoneSurface(tester);
+    final store = fixtureStore();
+    await pumpWithStore(tester, const ProductsScreen(), store: store);
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.more_vert).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete')); // menu item
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Palm Oil (25L)?'), findsOneWidget);
+
+    await tester.tap(find.text('Delete')); // dialog button
+    await tester.pumpAndSettle();
+
+    expect(find.text('Palm Oil (25L)'), findsNothing);
+    final products = await store.watchProducts().first;
+    expect(products.any((p) => p.name == 'Palm Oil (25L)'), isFalse);
+  });
 }

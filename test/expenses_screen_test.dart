@@ -96,4 +96,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Fuel/Transport'), findsNothing);
   });
+
+  testWidgets('three-dot menu offers delete', (tester) async {
+    usePhoneSurface(tester);
+    await pumpWithStore(tester, const ExpensesScreen());
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.more_vert).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete')); // menu item
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Delivery Cost?'), findsOneWidget);
+
+    await tester.tap(find.text('Delete')); // dialog button
+    await tester.pumpAndSettle();
+    expect(find.text('₦33,800'), findsOneWidget); // 42,300 − 8,500
+  });
 }
