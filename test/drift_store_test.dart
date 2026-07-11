@@ -146,8 +146,8 @@ void main() {
 
     // Insert a sale far outside the week/month windows.
     await db.into(db.sales).insert(SalesCompanion.insert(
-          id: 'old-sale',
-          productId: 'seed-palm-oil',
+          id: '00000000-0000-4000-8000-000000009999',
+          productId: '00000000-0000-4000-8000-000000000001',
           qty: 1,
           unitPrice: 9200,
           total: 9200,
