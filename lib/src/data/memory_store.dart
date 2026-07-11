@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
+import '../utils/streams.dart';
 import 'data_store.dart';
 import 'models.dart';
 import 'seed.dart';
@@ -31,9 +32,15 @@ class MemoryStore implements DataStore {
   void _notify() => _changes.add(null);
 
   /// Emits the current value immediately, then again on every change.
-  Stream<T> _watch<T>(T Function() compute) async* {
-    yield compute();
-    yield* _changes.stream.map((_) => compute());
+  /// Multi-listen safe: each listener runs its own generator, so re-listening
+  /// never throws "Stream has already been listened to".
+  Stream<T> _watch<T>(T Function() compute) {
+    Stream<T> snapshotThenUpdates() async* {
+      yield compute();
+      yield* _changes.stream.map((_) => compute());
+    }
+
+    return MultiListenStream(snapshotThenUpdates);
   }
 
   @override
