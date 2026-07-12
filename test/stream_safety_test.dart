@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:prosperflow/src/data/data_store.dart';
@@ -71,6 +72,35 @@ void main() {
     final first = await stream.first;
     final second = await stream.first; // second listen on the same instance
     expect(second.expensesTotal, first.expensesTotal);
+  });
+
+  testWidgets(
+      're-inflated StreamBuilder re-listens to the same stream instance '
+      'without crashing (the _SelectionKeepAlive / reparent scenario)',
+      (tester) async {
+    final store = fixtureStore();
+
+    // Built once — like a ListView child from an earlier frame that
+    // _SelectionKeepAlive (or a GlobalKey move) later re-inflates.
+    final child = StreamBuilder<List<Product>>(
+      stream: store.watchProducts(),
+      builder: (_, snapshot) => Text('${snapshot.data?.length ?? '-'}',
+          textDirection: TextDirection.ltr),
+    );
+
+    await tester.pumpWidget(Center(child: child));
+    await tester.pump();
+    expect(find.text('4'), findsOneWidget);
+
+    // Swapping the parent type destroys the old element and inflates the
+    // SAME widget again: a fresh StreamBuilder state calls initState and
+    // listens to the already-listened stream instance. Before
+    // MultiListenStream this threw "Stream has already been listened to".
+    await tester.pumpWidget(
+        Padding(padding: EdgeInsets.zero, child: child));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.text('4'), findsOneWidget);
   });
 
   test('NoopSyncEngine.watchState accepts multiple listeners', () async {
