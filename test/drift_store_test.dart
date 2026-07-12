@@ -7,6 +7,8 @@ import 'package:prosperflow/src/data/db/app_database.dart';
 import 'package:prosperflow/src/data/drift_store.dart';
 import 'package:prosperflow/src/data/models.dart';
 
+import 'seed_data.dart';
+
 void main() {
   late AppDatabase db;
   late DriftStore store;
@@ -18,9 +20,23 @@ void main() {
 
   tearDown(() => db.close());
 
-  test('seedIfEmpty populates demo data exactly once', () async {
-    await store.seedIfEmpty();
-    await store.seedIfEmpty();
+  test('a fresh install starts with an empty database — no demo data',
+      () async {
+    expect(await store.watchProducts().first, isEmpty);
+    expect(await store.watchExpenses().first, isEmpty);
+    expect(await store.watchOwedCredits().first, isEmpty);
+
+    final today = await store.watchTodayStats().first;
+    expect(today.total, 0);
+    expect(today.count, 0);
+
+    final outbox = await db.select(db.outbox).get();
+    expect(outbox, isEmpty);
+  });
+
+  test('the test seed fixture populates demo data without touching the outbox',
+      () async {
+    await seedDatabase(db);
 
     final products = await store.watchProducts().first;
     expect(products, hasLength(4));
@@ -35,7 +51,7 @@ void main() {
 
   test('deleteProduct soft-deletes, hides the product, and fills the outbox',
       () async {
-    await store.seedIfEmpty();
+    await seedDatabase(db);
     final palm = (await store.watchProducts().first)
         .firstWhere((p) => p.name == 'Palm Oil (25L)');
 
@@ -60,7 +76,7 @@ void main() {
 
   test('deleteExpense soft-deletes, updates reports, and fills the outbox',
       () async {
-    await store.seedIfEmpty();
+    await seedDatabase(db);
     final rent = (await store.watchExpenses().first)
         .firstWhere((e) => e.description == 'Stall Rent');
     final before = await store.watchReport(ReportPeriod.week).first;
@@ -82,7 +98,7 @@ void main() {
 
   test('recordSale inserts the sale, decrements stock, and fills the outbox',
       () async {
-    await store.seedIfEmpty();
+    await seedDatabase(db);
     final palm = (await store.watchProducts().first)
         .firstWhere((p) => p.name == 'Palm Oil (25L)');
 
@@ -107,7 +123,7 @@ void main() {
   });
 
   test('credit sale opens a credit; marking paid moves it to cash', () async {
-    await store.seedIfEmpty();
+    await seedDatabase(db);
     final yam = (await store.watchProducts().first)
         .firstWhere((p) => p.name == 'Yam (per tuber)');
 
@@ -142,7 +158,7 @@ void main() {
   });
 
   test('report periods filter by date window', () async {
-    await store.seedIfEmpty();
+    await seedDatabase(db);
 
     // Insert a sale far outside the week/month windows.
     await db.into(db.sales).insert(SalesCompanion.insert(

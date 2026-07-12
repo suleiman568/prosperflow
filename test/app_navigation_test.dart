@@ -17,7 +17,6 @@ void main() {
       (tester) async {
     usePhoneSurface(tester);
     final store = fixtureStore();
-    await store.seedIfEmpty();
 
     await tester.pumpWidget(AppScope(
       store: store,

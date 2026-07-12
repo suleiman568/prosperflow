@@ -1,12 +1,17 @@
-import 'models.dart';
+import 'package:drift/drift.dart';
+
+import 'package:prosperflow/src/data/db/app_database.dart';
+import 'package:prosperflow/src/data/models.dart';
 
 /// Deterministic, valid UUID-format id for seed rows — the server's uuid
 /// columns reject arbitrary strings, so seed ids must parse as UUIDs.
 String _seedUuid(int n) =>
     '00000000-0000-4000-8000-${n.toString().padLeft(12, '0')}';
 
-/// Demo dataset installed on first launch so a new install is explorable.
-/// Deterministic apart from being anchored to the install date.
+/// Test fixture: the demo dataset the app used to seed on first launch.
+/// Production no longer seeds anything — fresh installs start empty — but
+/// the Drift and sync tests still build their scenarios on this data.
+/// Deterministic apart from being anchored to the current date.
 class SeedData {
   SeedData._({
     required this.products,
@@ -207,4 +212,68 @@ class SeedData {
       expenses: expenses,
     );
   }
+}
+
+/// Inserts [SeedData] straight into [db] the way the old first-launch seed
+/// did: rows marked synced, nothing written to the outbox.
+Future<void> seedDatabase(AppDatabase db) async {
+  final seed = SeedData.build(DateTime.now());
+  final now = DateTime.now();
+  await db.batch((batch) {
+    batch.insertAll(db.products, [
+      for (final p in seed.products)
+        ProductsCompanion.insert(
+          id: p.id,
+          name: p.name,
+          unit: p.unit,
+          stock: p.stock,
+          buyPrice: p.buyPrice,
+          sellPrice: p.sellPrice,
+          lowStockThreshold: Value(p.lowStockThreshold),
+          updatedAt: now,
+          synced: const Value(true),
+        ),
+    ]);
+    batch.insertAll(db.sales, [
+      for (final s in seed.sales)
+        SalesCompanion.insert(
+          id: s.id,
+          productId: s.productId,
+          qty: s.qty,
+          unitPrice: s.unitPrice,
+          total: s.total,
+          method: s.method,
+          fulfilment: s.fulfilment,
+          customerName: Value(s.customerName),
+          location: Value(s.location),
+          soldAt: s.soldAt,
+          synced: const Value(true),
+        ),
+    ]);
+    batch.insertAll(db.credits, [
+      for (final c in seed.credits)
+        CreditsCompanion.insert(
+          saleId: c.saleId,
+          customerName: c.customerName,
+          amount: c.amount,
+          product: c.product,
+          status: c.status,
+          soldAt: c.soldAt,
+          updatedAt: now,
+          synced: const Value(true),
+        ),
+    ]);
+    batch.insertAll(db.expenses, [
+      for (final e in seed.expenses)
+        ExpensesCompanion.insert(
+          id: e.id,
+          description: e.description,
+          amount: e.amount,
+          category: e.category,
+          spentOn: e.spentOn,
+          updatedAt: now,
+          synced: const Value(true),
+        ),
+    ]);
+  });
 }

@@ -29,9 +29,6 @@ class ReportData {
 /// each mutation to the outbox, which the sync engine (Stage 3) flushes
 /// to Supabase when connectivity allows.
 abstract class DataStore {
-  /// Populates demo data on a fresh install so the app is explorable.
-  Future<void> seedIfEmpty();
-
   Stream<List<Product>> watchProducts();
 
   Future<void> addProduct({
