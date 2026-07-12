@@ -5,7 +5,6 @@ import 'package:uuid/uuid.dart';
 import '../utils/streams.dart';
 import 'data_store.dart';
 import 'models.dart';
-import 'seed.dart';
 
 /// In-memory [DataStore] used on the web (where SQLite isn't bundled) and
 /// as a fixture-friendly double in widget tests. Behavior matches
@@ -41,17 +40,6 @@ class MemoryStore implements DataStore {
     }
 
     return MultiListenStream(snapshotThenUpdates);
-  }
-
-  @override
-  Future<void> seedIfEmpty() async {
-    if (_products.isNotEmpty) return;
-    final seed = SeedData.build(DateTime.now());
-    _products.addAll(seed.products);
-    _sales.addAll(seed.sales);
-    _credits.addAll(seed.credits);
-    _expenses.addAll(seed.expenses);
-    _notify();
   }
 
   @override

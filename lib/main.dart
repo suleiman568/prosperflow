@@ -22,10 +22,10 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Local-first storage (Backend Plan §6): SQLite on device. The web build
-  // (used for design previews) keeps data in memory only.
+  // (used for design previews) keeps data in memory only. Fresh installs
+  // start empty — no demo data is seeded.
   final AppDatabase? db = kIsWeb ? null : AppDatabase(openConnection());
   final DataStore store = db == null ? MemoryStore() : DriftStore(db);
-  await store.seedIfEmpty();
 
   // Auth: Supabase on device (sessions persist locally, so a trader who
   // signed in once stays signed in offline). The web preview uses the fake.

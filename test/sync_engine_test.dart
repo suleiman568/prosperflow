@@ -9,6 +9,8 @@ import 'package:prosperflow/src/data/models.dart';
 import 'package:prosperflow/src/sync/sync_backend.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 
+import 'seed_data.dart';
+
 class RecordingBackend implements SyncBackend {
   final applied = <(String, String, Map<String, dynamic>)>[];
   bool failNext = false;
@@ -39,7 +41,7 @@ void main() {
     store = DriftStore(db);
     backend = RecordingBackend();
     connectivity = StreamController<bool>.broadcast();
-    await store.seedIfEmpty();
+    await seedDatabase(db);
   });
 
   tearDown(() async {

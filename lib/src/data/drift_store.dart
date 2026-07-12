@@ -6,7 +6,6 @@ import 'package:uuid/uuid.dart';
 import 'data_store.dart';
 import 'db/app_database.dart';
 import 'models.dart';
-import 'seed.dart';
 
 /// Drift/SQLite-backed [DataStore] — the production implementation.
 /// Every mutation runs in a transaction and appends to the outbox so the
@@ -70,73 +69,6 @@ class DriftStore implements DataStore {
           payloadJson: jsonEncode(payload),
           createdAt: DateTime.now(),
         ));
-  }
-
-  // ------------------------------------------------------------------ seed
-
-  @override
-  Future<void> seedIfEmpty() async {
-    final existing = await db.select(db.products).get();
-    if (existing.isNotEmpty) return;
-    final seed = SeedData.build(DateTime.now());
-    final now = DateTime.now();
-    await db.batch((batch) {
-      batch.insertAll(db.products, [
-        for (final p in seed.products)
-          ProductsCompanion.insert(
-            id: p.id,
-            name: p.name,
-            unit: p.unit,
-            stock: p.stock,
-            buyPrice: p.buyPrice,
-            sellPrice: p.sellPrice,
-            lowStockThreshold: Value(p.lowStockThreshold),
-            updatedAt: now,
-            synced: const Value(true),
-          ),
-      ]);
-      batch.insertAll(db.sales, [
-        for (final s in seed.sales)
-          SalesCompanion.insert(
-            id: s.id,
-            productId: s.productId,
-            qty: s.qty,
-            unitPrice: s.unitPrice,
-            total: s.total,
-            method: s.method,
-            fulfilment: s.fulfilment,
-            customerName: Value(s.customerName),
-            location: Value(s.location),
-            soldAt: s.soldAt,
-            synced: const Value(true),
-          ),
-      ]);
-      batch.insertAll(db.credits, [
-        for (final c in seed.credits)
-          CreditsCompanion.insert(
-            saleId: c.saleId,
-            customerName: c.customerName,
-            amount: c.amount,
-            product: c.product,
-            status: c.status,
-            soldAt: c.soldAt,
-            updatedAt: now,
-            synced: const Value(true),
-          ),
-      ]);
-      batch.insertAll(db.expenses, [
-        for (final e in seed.expenses)
-          ExpensesCompanion.insert(
-            id: e.id,
-            description: e.description,
-            amount: e.amount,
-            category: e.category,
-            spentOn: e.spentOn,
-            updatedAt: now,
-            synced: const Value(true),
-          ),
-      ]);
-    });
   }
 
   // -------------------------------------------------------------- products
