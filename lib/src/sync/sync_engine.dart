@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../data/db/app_database.dart';
+import '../utils/streams.dart';
 import 'sync_backend.dart';
 
 /// What the sync UI needs to render the design's offline states (§6):
@@ -95,9 +96,14 @@ class DriftSyncEngine implements SyncEngine {
       );
 
   @override
-  Stream<SyncState> watchState() async* {
-    yield state;
-    yield* _states.stream;
+  Stream<SyncState> watchState() {
+    Stream<SyncState> currentThenUpdates() async* {
+      yield state;
+      yield* _states.stream;
+    }
+
+    // Multi-listen safe (several widgets watch sync state at once).
+    return MultiListenStream(currentThenUpdates);
   }
 
   void _emit() {
@@ -225,7 +231,8 @@ class NoopSyncEngine implements SyncEngine {
       );
 
   @override
-  Stream<SyncState> watchState() => Stream.value(state);
+  Stream<SyncState> watchState() =>
+      MultiListenStream(() => Stream.value(state));
 
   @override
   Future<SyncResult> syncNow() async => const SyncResult(pushedSales: 0);
