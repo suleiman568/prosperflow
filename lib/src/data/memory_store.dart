@@ -111,6 +111,7 @@ class MemoryStore implements DataStore {
       productName: product.name,
       qty: qty,
       unitPrice: product.sellPrice,
+      unitCost: product.buyPrice,
       total: total,
       method: method,
       fulfilment: fulfilment,
@@ -195,6 +196,16 @@ class MemoryStore implements DataStore {
     );
     _notify();
   }
+
+  @override
+  Stream<TodayHistory> watchTodayHistory() => _watch(() => buildTodayHistory(
+        sales: List.of(_sales),
+        paidCreditSaleIds: {
+          for (final c in _credits)
+            if (c.status == CreditStatus.paid) c.saleId,
+        },
+        now: DateTime.now(),
+      ));
 
   @override
   Stream<ReportData> watchReport(ReportPeriod period) => _watch(() {

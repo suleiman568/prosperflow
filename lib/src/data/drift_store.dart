@@ -34,6 +34,7 @@ class DriftStore implements DataStore {
         productName: productNames[row.productId] ?? 'Unknown product',
         qty: row.qty,
         unitPrice: row.unitPrice,
+        unitCost: row.unitCost,
         total: row.total,
         method: row.method,
         fulfilment: row.fulfilment,
@@ -178,6 +179,7 @@ class DriftStore implements DataStore {
             productId: productId,
             qty: qty,
             unitPrice: product.sellPrice,
+            unitCost: Value(product.buyPrice),
             total: total,
             method: method,
             fulfilment: fulfilment,
@@ -190,6 +192,7 @@ class DriftStore implements DataStore {
         'product_id': productId,
         'qty': qty,
         'unit_price': product.sellPrice,
+        'unit_cost': product.buyPrice,
         'total': total,
         'method': method.name,
         'fulfilment': fulfilment.name,
@@ -332,6 +335,40 @@ class DriftStore implements DataStore {
       readsFrom: {db.sales, db.expenses, db.credits, db.products},
     );
     return tick.watch().asyncMap((_) => _computeReport(period));
+  }
+
+  @override
+  Stream<TodayHistory> watchTodayHistory() {
+    final tick = db.customSelect(
+      'SELECT 1',
+      readsFrom: {db.sales, db.products, db.credits},
+    );
+    return tick.watch().asyncMap((_) => _computeTodayHistory());
+  }
+
+  Future<TodayHistory> _computeTodayHistory() async {
+    // One clock read for both the query window and the aggregation, so a
+    // midnight rollover mid-computation can't split "today" in two.
+    final now = DateTime.now();
+
+    // Unfiltered product read (like _computeReport): sales of soft-deleted
+    // products must still resolve their names.
+    final productRows = await db.select(db.products).get();
+    final names = {for (final p in productRows) p.id: p.name};
+
+    final saleRows = await (db.select(db.sales)
+          ..where((s) => s.soldAt.isBiggerOrEqualValue(startOfToday(now))))
+        .get();
+
+    final paidRows = await (db.select(db.credits)
+          ..where((c) => c.status.equalsValue(CreditStatus.paid)))
+        .get();
+
+    return buildTodayHistory(
+      sales: saleRows.map((row) => _sale(row, names)).toList(),
+      paidCreditSaleIds: {for (final c in paidRows) c.saleId},
+      now: now,
+    );
   }
 
   Future<ReportData> _computeReport(ReportPeriod period) async {

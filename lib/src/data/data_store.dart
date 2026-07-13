@@ -80,6 +80,11 @@ abstract class DataStore {
   Future<void> markCreditPaid(String saleId);
 
   Stream<ReportData> watchReport(ReportPeriod period);
+
+  /// Today's sales grouped per product for the Reports history section.
+  /// Implemented reactively by both stores so device and web behave
+  /// identically.
+  Stream<TodayHistory> watchTodayHistory();
 }
 
 DateTime startOfToday(DateTime now) => DateTime(now.year, now.month, now.day);
@@ -95,6 +100,70 @@ DateTime? periodStart(ReportPeriod period, DateTime now) => switch (period) {
 ///
 /// Credit sales whose credit has been collected count as cash — collecting
 /// a credit "moves the amount from credit to cash" (handoff §4).
+/// Shared "Sales History for Today" aggregation — one implementation so
+/// DriftStore and MemoryStore can't drift apart.
+///
+/// [sales] may span any range; only rows on or after `startOfToday(now)`
+/// count. Groups are keyed by product **id** (names aren't unique) and use
+/// the sale's resolved product name (an unfiltered lookup, so soft-deleted
+/// products still show correctly), ordered by revenue descending; entries
+/// are newest first.
+/// Profit sums skip sales without a recorded cost instead of dropping them.
+TodayHistory buildTodayHistory({
+  required List<Sale> sales,
+  required Set<String> paidCreditSaleIds,
+  required DateTime now,
+}) {
+  final since = startOfToday(now);
+  final today = sales.where((s) => !s.soldAt.isBefore(since)).toList()
+    ..sort((a, b) => b.soldAt.compareTo(a.soldAt));
+
+  final byProduct = <String, List<Sale>>{};
+  for (final sale in today) {
+    byProduct.putIfAbsent(sale.productId, () => []).add(sale);
+  }
+
+  int? sumProfit(Iterable<Sale> group) {
+    int? sum;
+    for (final sale in group) {
+      final profit = sale.profit;
+      if (profit != null) sum = (sum ?? 0) + profit;
+    }
+    return sum;
+  }
+
+  final groups = [
+    for (final MapEntry(key: productId, value: group) in byProduct.entries)
+      ProductSalesGroup(
+        productId: productId,
+        productName: group.first.productName,
+        qty: group.fold(0, (sum, s) => sum + s.qty),
+        revenue: group.fold(0, (sum, s) => sum + s.total),
+        profit: sumProfit(group),
+        missingCostCount: group.where((s) => s.unitCost == null).length,
+        entries: [
+          for (final sale in group)
+            SaleHistoryEntry(
+              qty: sale.qty,
+              unitPrice: sale.unitPrice,
+              profit: sale.profit,
+              soldAt: sale.soldAt,
+              method: sale.method,
+              collected: sale.method == PaymentMethod.credit &&
+                  paidCreditSaleIds.contains(sale.id),
+            ),
+        ],
+      ),
+  ]..sort((a, b) => b.revenue.compareTo(a.revenue));
+
+  return TodayHistory(
+    revenue: today.fold(0, (sum, s) => sum + s.total),
+    profit: sumProfit(today),
+    missingCostCount: today.where((s) => s.unitCost == null).length,
+    groups: groups,
+  );
+}
+
 ReportData buildReport({
   required List<Sale> sales,
   required List<Expense> expenses,

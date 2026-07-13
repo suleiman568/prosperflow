@@ -30,6 +30,11 @@ class Sales extends Table {
   TextColumn get productId => text()();
   IntColumn get qty => integer()();
   IntColumn get unitPrice => integer()();
+
+  /// Buy price snapshot at sale time (v3). Null on pre-v3 sales, where
+  /// profit is unknowable and shown as "—".
+  IntColumn get unitCost => integer().nullable()();
+
   IntColumn get total => integer()();
   TextColumn get method => textEnum<PaymentMethod>()();
   TextColumn get fulfilment => textEnum<Fulfilment>()();
@@ -90,7 +95,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -98,6 +103,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             // v2: expenses become soft-deletable, like products.
             await m.addColumn(expenses, expenses.deleted);
+          }
+          if (from < 3) {
+            // v3: sales snapshot the buy price for profit reporting.
+            await m.addColumn(sales, sales.unitCost);
           }
         },
       );

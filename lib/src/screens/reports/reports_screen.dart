@@ -4,6 +4,7 @@ import '../../data/app_scope.dart';
 import '../../data/data_store.dart';
 import '../../data/models.dart';
 import '../../theme/tokens.dart';
+import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -199,7 +200,294 @@ class _ReportsScreenState extends State<ReportsScreen> {
             );
           }),
         ],
+        const SizedBox(height: AppShape.cardGap),
+        Text(
+          'Sales History for Today',
+          style: AppText.style(FontWeight.w800, 13, AppColors.textPrimary),
+        ),
+        const SizedBox(height: 10),
+        const _SalesHistorySection(),
       ],
+    );
+  }
+}
+
+String _methodLabel(SaleHistoryEntry entry) {
+  if (entry.method == PaymentMethod.credit) {
+    return entry.collected ? 'Credit → Collected' : 'Credit';
+  }
+  return switch (entry.method) {
+    PaymentMethod.cash => 'Cash',
+    PaymentMethod.transfer => 'Transfer',
+    PaymentMethod.pos => 'POS',
+    PaymentMethod.credit => 'Credit',
+  };
+}
+
+/// "+₦4,800" / "-₦300" / "—" (no recorded cost).
+String _profitText(int? profit) {
+  if (profit == null) return '—';
+  final sign = profit < 0 ? '-' : '+';
+  return '$sign${formatNaira(profit.abs())}';
+}
+
+/// Today's sales grouped per product, expandable into individual sales.
+/// Fed by its own stream so it updates live and independently of the
+/// Week/Month/All period selector — "today" is always today.
+class _SalesHistorySection extends StatefulWidget {
+  const _SalesHistorySection();
+
+  @override
+  State<_SalesHistorySection> createState() => _SalesHistorySectionState();
+}
+
+class _SalesHistorySectionState extends State<_SalesHistorySection> {
+  final _expanded = <String>{};
+
+  DataStore? _store;
+  Stream<TodayHistory>? _history;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Cache the stream: recreating it on every setState (expand/collapse)
+    // would make the StreamBuilder resubscribe and blank the section for a
+    // frame while it waits for the first emission.
+    final store = AppScope.of(context);
+    if (!identical(store, _store)) {
+      _store = store;
+      _history = store.watchTodayHistory();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<TodayHistory>(
+      stream: _history,
+      builder: (context, snapshot) {
+        final history = snapshot.data;
+        if (history == null) return const SizedBox.shrink();
+        if (history.isEmpty) {
+          return AppCard(
+            padding: const EdgeInsets.all(20),
+            child: Center(
+              child: Text(
+                '🌅 No sales recorded yet today',
+                style: AppText.style(
+                    FontWeight.w600, 13, AppColors.textSecondary),
+              ),
+            ),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _DaySummaryCard(history: history),
+            for (final group in history.groups) ...[
+              const SizedBox(height: 8),
+              _ProductGroupCard(
+                group: group,
+                expanded: _expanded.contains(group.productId),
+                onTap: () => setState(() {
+                  _expanded.contains(group.productId)
+                      ? _expanded.remove(group.productId)
+                      : _expanded.add(group.productId);
+                }),
+              ),
+            ],
+            if (history.missingCostCount > 0) ...[
+              const SizedBox(height: 6),
+              Text(
+                '* profit excludes ${history.missingCostCount} '
+                'sale${history.missingCostCount == 1 ? '' : 's'} recorded '
+                'before cost tracking',
+                style: AppText.style(
+                    FontWeight.w600, 10, AppColors.textSecondary),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DaySummaryCard extends StatelessWidget {
+  const _DaySummaryCard({required this.history});
+
+  final TodayHistory history;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard.tinted(
+      color: AppColors.mintTint,
+      borderColor: AppColors.primary,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("TODAY'S REVENUE",
+                    style:
+                        AppText.style(FontWeight.w700, 11, AppColors.primary)),
+                const SizedBox(height: 4),
+                Text(
+                  formatNaira(history.revenue),
+                  style:
+                      AppText.style(FontWeight.w900, 20, AppColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('PROFIT',
+                    style:
+                        AppText.style(FontWeight.w700, 11, AppColors.primary)),
+                const SizedBox(height: 4),
+                Text(
+                  history.profit == null
+                      ? '—'
+                      : '${_profitText(history.profit)}'
+                          '${history.missingCostCount > 0 ? '*' : ''}',
+                  style:
+                      AppText.style(FontWeight.w900, 20, AppColors.primaryDark),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductGroupCard extends StatelessWidget {
+  const _ProductGroupCard({
+    required this.group,
+    required this.expanded,
+    required this.onTap,
+  });
+
+  final ProductSalesGroup group;
+  final bool expanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.productName,
+                          style: AppText.style(
+                              FontWeight.w700, 13, AppColors.textPrimary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${group.qty} sold · '
+                          '${group.entries.length} '
+                          'sale${group.entries.length == 1 ? '' : 's'}',
+                          style: AppText.style(
+                              FontWeight.w600, 11, AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        formatNaira(group.revenue),
+                        style: AppText.style(
+                            FontWeight.w800, 13, AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        group.profit == null
+                            ? '— profit'
+                            : '${_profitText(group.profit)}'
+                                '${group.profitIsPartial ? '*' : ''} profit',
+                        style: AppText.style(
+                          FontWeight.w700,
+                          11,
+                          group.profit == null
+                              ? AppColors.textSecondary
+                              : AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded) ...[
+            const Divider(height: 1, color: AppColors.divider),
+            for (final entry in group.entries)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${entry.qty} × ${formatNaira(entry.unitPrice)}',
+                            style: AppText.style(
+                                FontWeight.w700, 12, AppColors.textPrimary),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${formatTime(entry.soldAt)} · '
+                            '${_methodLabel(entry)}',
+                            style: AppText.style(
+                                FontWeight.w600, 11, AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      _profitText(entry.profit),
+                      style: AppText.style(
+                        FontWeight.w700,
+                        12,
+                        entry.profit == null
+                            ? AppColors.textSecondary
+                            : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
     );
   }
 }

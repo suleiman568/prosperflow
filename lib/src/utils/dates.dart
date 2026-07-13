@@ -19,6 +19,13 @@ String formatWeekdayDayMonth(DateTime d) =>
 String formatDayMonthYear(DateTime d) =>
     '${d.day} ${_months[d.month - 1]} ${d.year}';
 
+/// "9:05 AM" — sale time in the Reports history detail rows.
+String formatTime(DateTime d) {
+  final hour12 = d.hour % 12 == 0 ? 12 : d.hour % 12;
+  final minute = d.minute.toString().padLeft(2, '0');
+  return '$hour12:$minute ${d.hour < 12 ? 'AM' : 'PM'}';
+}
+
 /// "just now" / "5 min ago" / "3 h ago" — sync row timestamp.
 String formatAgo(DateTime time, {DateTime? now}) {
   final elapsed = (now ?? DateTime.now()).difference(time);
