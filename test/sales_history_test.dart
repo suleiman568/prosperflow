@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:prosperflow/src/data/data_store.dart';
@@ -296,6 +297,32 @@ void main() {
       await tester.tap(find.text('+₦4,800 profit'));
       await tester.pump();
       expect(find.text('2 × ₦9,200'), findsNothing);
+    });
+
+    testWidgets(
+        'expand/collapse reuses the same stream — no resubscribe, no blank '
+        'frame', (tester) async {
+      usePhoneSurface(tester, height: 3200);
+      await pumpWithStore(tester, const ReportsScreen());
+      await tester.pump();
+      await tester.pump();
+
+      Stream<TodayHistory> currentStream() => tester
+          .widget<StreamBuilder<TodayHistory>>(
+              find.byWidgetPredicate((w) => w is StreamBuilder<TodayHistory>))
+          .stream!;
+      final before = currentStream();
+
+      // Expand: pump exactly one frame. With a recreated stream the
+      // builder's snapshot would reset and the section would blank out.
+      await tester.tap(find.text('+₦4,800 profit'));
+      await tester.pump();
+
+      expect(identical(currentStream(), before), isTrue,
+          reason: 'watchTodayHistory() must not be re-called on setState');
+      expect(find.text("TODAY'S REVENUE"), findsOneWidget);
+      expect(find.text('₦28,400'), findsOneWidget);
+      expect(find.text('2 × ₦9,200'), findsOneWidget); // expansion applied
     });
 
     testWidgets('collected credit sales read "Credit → Collected"',

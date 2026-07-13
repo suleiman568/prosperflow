@@ -347,14 +347,17 @@ class DriftStore implements DataStore {
   }
 
   Future<TodayHistory> _computeTodayHistory() async {
+    // One clock read for both the query window and the aggregation, so a
+    // midnight rollover mid-computation can't split "today" in two.
+    final now = DateTime.now();
+
     // Unfiltered product read (like _computeReport): sales of soft-deleted
     // products must still resolve their names.
     final productRows = await db.select(db.products).get();
     final names = {for (final p in productRows) p.id: p.name};
 
-    final since = startOfToday(DateTime.now());
     final saleRows = await (db.select(db.sales)
-          ..where((s) => s.soldAt.isBiggerOrEqualValue(since)))
+          ..where((s) => s.soldAt.isBiggerOrEqualValue(startOfToday(now))))
         .get();
 
     final paidRows = await (db.select(db.credits)
@@ -364,7 +367,7 @@ class DriftStore implements DataStore {
     return buildTodayHistory(
       sales: saleRows.map((row) => _sale(row, names)).toList(),
       paidCreditSaleIds: {for (final c in paidRows) c.saleId},
-      now: DateTime.now(),
+      now: now,
     );
   }
 

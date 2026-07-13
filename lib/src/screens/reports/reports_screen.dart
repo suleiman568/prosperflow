@@ -244,11 +244,26 @@ class _SalesHistorySection extends StatefulWidget {
 class _SalesHistorySectionState extends State<_SalesHistorySection> {
   final _expanded = <String>{};
 
+  DataStore? _store;
+  Stream<TodayHistory>? _history;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Cache the stream: recreating it on every setState (expand/collapse)
+    // would make the StreamBuilder resubscribe and blank the section for a
+    // frame while it waits for the first emission.
+    final store = AppScope.of(context);
+    if (!identical(store, _store)) {
+      _store = store;
+      _history = store.watchTodayHistory();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final store = AppScope.of(context);
     return StreamBuilder<TodayHistory>(
-      stream: store.watchTodayHistory(),
+      stream: _history,
       builder: (context, snapshot) {
         final history = snapshot.data;
         if (history == null) return const SizedBox.shrink();
