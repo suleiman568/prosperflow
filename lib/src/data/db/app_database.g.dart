@@ -653,6 +653,17 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, SaleRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _unitCostMeta = const VerificationMeta(
+    'unitCost',
+  );
+  @override
+  late final GeneratedColumn<int> unitCost = GeneratedColumn<int>(
+    'unit_cost',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _totalMeta = const VerificationMeta('total');
   @override
   late final GeneratedColumn<int> total = GeneratedColumn<int>(
@@ -730,6 +741,7 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, SaleRow> {
     productId,
     qty,
     unitPrice,
+    unitCost,
     total,
     method,
     fulfilment,
@@ -778,6 +790,12 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, SaleRow> {
       );
     } else if (isInserting) {
       context.missing(_unitPriceMeta);
+    }
+    if (data.containsKey('unit_cost')) {
+      context.handle(
+        _unitCostMeta,
+        unitCost.isAcceptableOrUnknown(data['unit_cost']!, _unitCostMeta),
+      );
     }
     if (data.containsKey('total')) {
       context.handle(
@@ -841,6 +859,10 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, SaleRow> {
         DriftSqlType.int,
         data['${effectivePrefix}unit_price'],
       )!,
+      unitCost: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unit_cost'],
+      ),
       total: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}total'],
@@ -892,6 +914,10 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
   final String productId;
   final int qty;
   final int unitPrice;
+
+  /// Buy price snapshot at sale time (v3). Null on pre-v3 sales, where
+  /// profit is unknowable and shown as "—".
+  final int? unitCost;
   final int total;
   final PaymentMethod method;
   final Fulfilment fulfilment;
@@ -904,6 +930,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     required this.productId,
     required this.qty,
     required this.unitPrice,
+    this.unitCost,
     required this.total,
     required this.method,
     required this.fulfilment,
@@ -919,6 +946,9 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     map['product_id'] = Variable<String>(productId);
     map['qty'] = Variable<int>(qty);
     map['unit_price'] = Variable<int>(unitPrice);
+    if (!nullToAbsent || unitCost != null) {
+      map['unit_cost'] = Variable<int>(unitCost);
+    }
     map['total'] = Variable<int>(total);
     {
       map['method'] = Variable<String>(
@@ -947,6 +977,9 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
       productId: Value(productId),
       qty: Value(qty),
       unitPrice: Value(unitPrice),
+      unitCost: unitCost == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitCost),
       total: Value(total),
       method: Value(method),
       fulfilment: Value(fulfilment),
@@ -971,6 +1004,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
       productId: serializer.fromJson<String>(json['productId']),
       qty: serializer.fromJson<int>(json['qty']),
       unitPrice: serializer.fromJson<int>(json['unitPrice']),
+      unitCost: serializer.fromJson<int?>(json['unitCost']),
       total: serializer.fromJson<int>(json['total']),
       method: $SalesTable.$convertermethod.fromJson(
         serializer.fromJson<String>(json['method']),
@@ -992,6 +1026,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
       'productId': serializer.toJson<String>(productId),
       'qty': serializer.toJson<int>(qty),
       'unitPrice': serializer.toJson<int>(unitPrice),
+      'unitCost': serializer.toJson<int?>(unitCost),
       'total': serializer.toJson<int>(total),
       'method': serializer.toJson<String>(
         $SalesTable.$convertermethod.toJson(method),
@@ -1011,6 +1046,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     String? productId,
     int? qty,
     int? unitPrice,
+    Value<int?> unitCost = const Value.absent(),
     int? total,
     PaymentMethod? method,
     Fulfilment? fulfilment,
@@ -1023,6 +1059,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     productId: productId ?? this.productId,
     qty: qty ?? this.qty,
     unitPrice: unitPrice ?? this.unitPrice,
+    unitCost: unitCost.present ? unitCost.value : this.unitCost,
     total: total ?? this.total,
     method: method ?? this.method,
     fulfilment: fulfilment ?? this.fulfilment,
@@ -1037,6 +1074,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
       productId: data.productId.present ? data.productId.value : this.productId,
       qty: data.qty.present ? data.qty.value : this.qty,
       unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      unitCost: data.unitCost.present ? data.unitCost.value : this.unitCost,
       total: data.total.present ? data.total.value : this.total,
       method: data.method.present ? data.method.value : this.method,
       fulfilment: data.fulfilment.present
@@ -1058,6 +1096,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
           ..write('productId: $productId, ')
           ..write('qty: $qty, ')
           ..write('unitPrice: $unitPrice, ')
+          ..write('unitCost: $unitCost, ')
           ..write('total: $total, ')
           ..write('method: $method, ')
           ..write('fulfilment: $fulfilment, ')
@@ -1075,6 +1114,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     productId,
     qty,
     unitPrice,
+    unitCost,
     total,
     method,
     fulfilment,
@@ -1091,6 +1131,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
           other.productId == this.productId &&
           other.qty == this.qty &&
           other.unitPrice == this.unitPrice &&
+          other.unitCost == this.unitCost &&
           other.total == this.total &&
           other.method == this.method &&
           other.fulfilment == this.fulfilment &&
@@ -1105,6 +1146,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
   final Value<String> productId;
   final Value<int> qty;
   final Value<int> unitPrice;
+  final Value<int?> unitCost;
   final Value<int> total;
   final Value<PaymentMethod> method;
   final Value<Fulfilment> fulfilment;
@@ -1118,6 +1160,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     this.productId = const Value.absent(),
     this.qty = const Value.absent(),
     this.unitPrice = const Value.absent(),
+    this.unitCost = const Value.absent(),
     this.total = const Value.absent(),
     this.method = const Value.absent(),
     this.fulfilment = const Value.absent(),
@@ -1132,6 +1175,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     required String productId,
     required int qty,
     required int unitPrice,
+    this.unitCost = const Value.absent(),
     required int total,
     required PaymentMethod method,
     required Fulfilment fulfilment,
@@ -1153,6 +1197,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     Expression<String>? productId,
     Expression<int>? qty,
     Expression<int>? unitPrice,
+    Expression<int>? unitCost,
     Expression<int>? total,
     Expression<String>? method,
     Expression<String>? fulfilment,
@@ -1167,6 +1212,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
       if (productId != null) 'product_id': productId,
       if (qty != null) 'qty': qty,
       if (unitPrice != null) 'unit_price': unitPrice,
+      if (unitCost != null) 'unit_cost': unitCost,
       if (total != null) 'total': total,
       if (method != null) 'method': method,
       if (fulfilment != null) 'fulfilment': fulfilment,
@@ -1183,6 +1229,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     Value<String>? productId,
     Value<int>? qty,
     Value<int>? unitPrice,
+    Value<int?>? unitCost,
     Value<int>? total,
     Value<PaymentMethod>? method,
     Value<Fulfilment>? fulfilment,
@@ -1197,6 +1244,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
       productId: productId ?? this.productId,
       qty: qty ?? this.qty,
       unitPrice: unitPrice ?? this.unitPrice,
+      unitCost: unitCost ?? this.unitCost,
       total: total ?? this.total,
       method: method ?? this.method,
       fulfilment: fulfilment ?? this.fulfilment,
@@ -1222,6 +1270,9 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     }
     if (unitPrice.present) {
       map['unit_price'] = Variable<int>(unitPrice.value);
+    }
+    if (unitCost.present) {
+      map['unit_cost'] = Variable<int>(unitCost.value);
     }
     if (total.present) {
       map['total'] = Variable<int>(total.value);
@@ -1261,6 +1312,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
           ..write('productId: $productId, ')
           ..write('qty: $qty, ')
           ..write('unitPrice: $unitPrice, ')
+          ..write('unitCost: $unitCost, ')
           ..write('total: $total, ')
           ..write('method: $method, ')
           ..write('fulfilment: $fulfilment, ')
@@ -3083,6 +3135,7 @@ typedef $$SalesTableCreateCompanionBuilder =
       required String productId,
       required int qty,
       required int unitPrice,
+      Value<int?> unitCost,
       required int total,
       required PaymentMethod method,
       required Fulfilment fulfilment,
@@ -3098,6 +3151,7 @@ typedef $$SalesTableUpdateCompanionBuilder =
       Value<String> productId,
       Value<int> qty,
       Value<int> unitPrice,
+      Value<int?> unitCost,
       Value<int> total,
       Value<PaymentMethod> method,
       Value<Fulfilment> fulfilment,
@@ -3133,6 +3187,11 @@ class $$SalesTableFilterComposer extends Composer<_$AppDatabase, $SalesTable> {
 
   ColumnFilters<int> get unitPrice => $composableBuilder(
     column: $table.unitPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unitCost => $composableBuilder(
+    column: $table.unitCost,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3203,6 +3262,11 @@ class $$SalesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get unitCost => $composableBuilder(
+    column: $table.unitCost,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get total => $composableBuilder(
     column: $table.total,
     builder: (column) => ColumnOrderings(column),
@@ -3259,6 +3323,9 @@ class $$SalesTableAnnotationComposer
 
   GeneratedColumn<int> get unitPrice =>
       $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<int> get unitCost =>
+      $composableBuilder(column: $table.unitCost, builder: (column) => column);
 
   GeneratedColumn<int> get total =>
       $composableBuilder(column: $table.total, builder: (column) => column);
@@ -3319,6 +3386,7 @@ class $$SalesTableTableManager
                 Value<String> productId = const Value.absent(),
                 Value<int> qty = const Value.absent(),
                 Value<int> unitPrice = const Value.absent(),
+                Value<int?> unitCost = const Value.absent(),
                 Value<int> total = const Value.absent(),
                 Value<PaymentMethod> method = const Value.absent(),
                 Value<Fulfilment> fulfilment = const Value.absent(),
@@ -3332,6 +3400,7 @@ class $$SalesTableTableManager
                 productId: productId,
                 qty: qty,
                 unitPrice: unitPrice,
+                unitCost: unitCost,
                 total: total,
                 method: method,
                 fulfilment: fulfilment,
@@ -3347,6 +3416,7 @@ class $$SalesTableTableManager
                 required String productId,
                 required int qty,
                 required int unitPrice,
+                Value<int?> unitCost = const Value.absent(),
                 required int total,
                 required PaymentMethod method,
                 required Fulfilment fulfilment,
@@ -3360,6 +3430,7 @@ class $$SalesTableTableManager
                 productId: productId,
                 qty: qty,
                 unitPrice: unitPrice,
+                unitCost: unitCost,
                 total: total,
                 method: method,
                 fulfilment: fulfilment,

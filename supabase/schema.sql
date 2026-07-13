@@ -81,6 +81,13 @@ create table if not exists public.expenses (
 alter table public.expenses
   add column if not exists deleted boolean not null default false;
 
+-- v3 addition: sales snapshot the buy price for profit reporting. Nullable —
+-- sales recorded before v3 have no cost and their profit renders as "—".
+-- Run this BEFORE shipping v3 clients, or their outbox pushes will retry
+-- until the column exists.
+alter table public.sales
+  add column if not exists unit_cost integer;
+
 create table if not exists public.credits (
   sale_id uuid primary key,
   trader_id uuid not null references auth.users (id) on delete cascade,
