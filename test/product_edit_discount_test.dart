@@ -43,6 +43,23 @@ Future<void> pumpRecordSale(WidgetTester tester, MemoryStore store) async {
   await tester.pump();
 }
 
+/// Store double whose updateProduct always fails, for the error-path test.
+class _FailingUpdateStore extends MemoryStore {
+  _FailingUpdateStore({super.products});
+
+  @override
+  Future<void> updateProduct({
+    required String id,
+    required String name,
+    required String unit,
+    required int buyPrice,
+    required int sellPrice,
+    required int lowStockThreshold,
+  }) async {
+    throw StateError('simulated storage failure');
+  }
+}
+
 class _RecordingBackend implements SyncBackend {
   final applied = <(String entity, String op, Map<String, dynamic> payload)>[];
 
@@ -240,6 +257,33 @@ void main() {
       expect(entry.profit, isNegative);
     });
 
+    test('updateProduct with a nonexistent id is a silent no-op (parity)',
+        () async {
+      final seed = SeedData.build(DateTime.now());
+      final memory = MemoryStore(products: seed.products);
+
+      Future<void> ghostEdit(dynamic s) => s.updateProduct(
+            id: '00000000-0000-4000-8000-000000009999', // no such product
+            name: 'Ghost',
+            unit: 'units',
+            buyPrice: 1,
+            sellPrice: 2,
+            lowStockThreshold: 3,
+          );
+
+      // Neither store throws, and neither product list changes.
+      await expectLater(ghostEdit(store), completes);
+      await expectLater(ghostEdit(memory), completes);
+
+      final driftNames =
+          (await store.watchProducts().first).map((p) => p.name).toSet();
+      final memoryNames =
+          (await memory.watchProducts().first).map((p) => p.name).toSet();
+      expect(driftNames, isNot(contains('Ghost')));
+      expect(memoryNames, isNot(contains('Ghost')));
+      expect(memoryNames, driftNames);
+    });
+
     test('DriftStore and MemoryStore agree after the same edit + discount',
         () async {
       final seed = SeedData.build(DateTime.now());
@@ -331,6 +375,26 @@ void main() {
       final edited = products.firstWhere((p) => p.id == palm.id);
       expect(edited.name, 'Red Oil (25L)');
       expect(edited.sellPrice, 9500);
+    });
+
+    testWidgets('a failing save keeps the edit sheet open with an error toast',
+        (tester) async {
+      usePhoneSurface(tester);
+      final store = _FailingUpdateStore(products: fixtureProducts);
+      await pumpWithStore(tester, const ProductsScreen(), store: store);
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.more_vert).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(PrimaryButton));
+      await tester.pumpAndSettle();
+
+      // The failure surfaces and nothing typed is lost.
+      expect(find.textContaining('Could not save changes'), findsOneWidget);
+      expect(find.text('Edit Product'), findsOneWidget); // sheet stays open
     });
   });
 

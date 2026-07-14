@@ -106,6 +106,7 @@ class MemoryStore implements DataStore {
     required int lowStockThreshold,
   }) async {
     final index = _products.indexWhere((p) => p.id == id);
+    if (index == -1) return; // unknown id: no-op, like DriftStore's UPDATE
     final current = _products[index];
     _products[index] = Product(
       id: id,

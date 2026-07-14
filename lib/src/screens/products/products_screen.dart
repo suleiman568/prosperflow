@@ -416,7 +416,7 @@ class _EditProductSheetState extends State<_EditProductSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final name = _name.text.trim();
     final unit = _unit.text.trim();
     final buy = int.tryParse(_buyPrice.text.trim());
@@ -430,8 +430,17 @@ class _EditProductSheetState extends State<_EditProductSheet> {
       showAppToast(context, '⚠ Fill in every field to save changes');
       return;
     }
-    widget.onSave(name, unit, buy, sell, threshold);
-    Navigator.of(context).pop();
+    final navigator = Navigator.of(context);
+    try {
+      await widget.onSave(name, unit, buy, sell, threshold);
+    } catch (_) {
+      // Keep the sheet open so nothing typed is lost.
+      if (mounted) {
+        showAppToast(context, '⚠ Could not save changes — please try again');
+      }
+      return;
+    }
+    navigator.pop();
   }
 
   Widget _label(String text) => Padding(
