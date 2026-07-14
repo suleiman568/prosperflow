@@ -126,4 +126,65 @@ void main() {
         .get();
     expect(rows.single.unitCost, 6800);
   });
+
+  test('v3 → v4 migration adds sales.list_price and keeps old rows readable',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('prosperflow_v4');
+    final file = File('${dir.path}/app.db');
+    addTearDown(() => dir.delete(recursive: true));
+
+    // A v3 database: the v2 schema plus unit_cost, at user_version 3.
+    final v3Schema = _v2Schema.replaceFirst(
+        'unit_price INTEGER NOT NULL,',
+        'unit_price INTEGER NOT NULL,\n  unit_cost INTEGER,');
+    final raw = sqlite.sqlite3.open(file.path);
+    raw.execute(v3Schema);
+    final soldAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    raw.execute('''
+      INSERT INTO products
+        (id, name, unit, stock, buy_price, sell_price, updated_at, synced)
+      VALUES ('p-v3', 'Palm Oil (25L)', 'bottles', 10, 6800, 9200,
+              $soldAt, 1);
+    ''');
+    raw.execute('''
+      INSERT INTO sales
+        (id, product_id, qty, unit_price, unit_cost, total, method,
+         fulfilment, sold_at, synced)
+      VALUES ('s-v3', 'p-v3', 1, 9200, 6800, 9200, 'cash', 'walkIn',
+              $soldAt, 1);
+    ''');
+    raw.execute('PRAGMA user_version = 3;');
+    raw.dispose();
+
+    final db = AppDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final columns = await db
+        .customSelect('PRAGMA table_info(sales)')
+        .get()
+        .then((rows) => rows.map((r) => r.data['name']).toList());
+    expect(columns, contains('list_price'));
+
+    // Pre-v4 sales read back with no list price (sold at normal price).
+    final legacy = await (db.select(db.sales)
+          ..where((s) => s.id.equals('s-v3')))
+        .getSingle();
+    expect(legacy.listPrice, isNull);
+    expect(legacy.unitCost, 6800);
+
+    // Discounted sales recorded after the upgrade keep the normal price.
+    final store = DriftStore(db);
+    await store.recordSale(
+      productId: 'p-v3',
+      qty: 1,
+      method: PaymentMethod.cash,
+      fulfilment: Fulfilment.walkIn,
+      unitPrice: 8700,
+    );
+    final discounted = await (db.select(db.sales)
+          ..where((s) => s.id.equals('s-v3').not()))
+        .get();
+    expect(discounted.single.listPrice, 9200);
+    expect(discounted.single.unitPrice, 8700);
+  });
 }

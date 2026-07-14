@@ -244,6 +244,7 @@ Future<void> seedDatabase(AppDatabase db) async {
           qty: s.qty,
           unitPrice: s.unitPrice,
           unitCost: Value(s.unitCost),
+          listPrice: Value(s.listPrice),
           total: s.total,
           method: s.method,
           fulfilment: s.fulfilment,

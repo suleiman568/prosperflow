@@ -35,6 +35,7 @@ class DriftStore implements DataStore {
         qty: row.qty,
         unitPrice: row.unitPrice,
         unitCost: row.unitCost,
+        listPrice: row.listPrice,
         total: row.total,
         method: row.method,
         fulfilment: row.fulfilment,
@@ -114,6 +115,39 @@ class DriftStore implements DataStore {
   }
 
   @override
+  Future<void> updateProduct({
+    required String id,
+    required String name,
+    required String unit,
+    required int buyPrice,
+    required int sellPrice,
+    required int lowStockThreshold,
+  }) async {
+    final now = DateTime.now();
+    await db.transaction(() async {
+      await (db.update(db.products)..where((p) => p.id.equals(id)))
+          .write(ProductsCompanion(
+        name: Value(name),
+        unit: Value(unit),
+        buyPrice: Value(buyPrice),
+        sellPrice: Value(sellPrice),
+        lowStockThreshold: Value(lowStockThreshold),
+        updatedAt: Value(now),
+        synced: const Value(false),
+      ));
+      await _appendOutbox('product', id, 'update', {
+        'id': id,
+        'name': name,
+        'unit': unit,
+        'buy_price': buyPrice,
+        'sell_price': sellPrice,
+        'low_stock_threshold': lowStockThreshold,
+        'updated_at': now.toIso8601String(),
+      });
+    });
+  }
+
+  @override
   Future<void> deleteProduct(String id) async {
     final now = DateTime.now();
     await db.transaction(() async {
@@ -163,6 +197,7 @@ class DriftStore implements DataStore {
     required int qty,
     required PaymentMethod method,
     required Fulfilment fulfilment,
+    int? unitPrice,
     String? customerName,
     String? location,
   }) async {
@@ -172,14 +207,18 @@ class DriftStore implements DataStore {
           .getSingle();
       final saleId = _uuid.v4();
       final now = DateTime.now();
-      final total = qty * product.sellPrice;
+      final price = unitPrice ?? product.sellPrice;
+      // Keep the normal price only when this sale deviates from it.
+      final listPrice = price == product.sellPrice ? null : product.sellPrice;
+      final total = qty * price;
 
       await db.into(db.sales).insert(SalesCompanion.insert(
             id: saleId,
             productId: productId,
             qty: qty,
-            unitPrice: product.sellPrice,
+            unitPrice: price,
             unitCost: Value(product.buyPrice),
+            listPrice: Value(listPrice),
             total: total,
             method: method,
             fulfilment: fulfilment,
@@ -191,8 +230,9 @@ class DriftStore implements DataStore {
         'id': saleId,
         'product_id': productId,
         'qty': qty,
-        'unit_price': product.sellPrice,
+        'unit_price': price,
         'unit_cost': product.buyPrice,
+        'list_price': listPrice,
         'total': total,
         'method': method.name,
         'fulfilment': fulfilment.name,

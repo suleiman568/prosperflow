@@ -50,14 +50,16 @@ Future<bool?> showDeleteConfirmDialog(
   );
 }
 
-/// Visible three-dot menu on a card offering Delete — the discoverable,
-/// mouse-friendly path (web/desktop) alongside swipe and long-press.
+/// Visible three-dot menu on a card offering Delete (and optionally Edit) —
+/// the discoverable, mouse-friendly path (web/desktop) alongside swipe and
+/// long-press.
 class CardOverflowMenu extends StatelessWidget {
   const CardOverflowMenu({
     super.key,
     required this.title,
     required this.message,
     required this.onDelete,
+    this.onEdit,
   });
 
   /// Confirm-dialog title, e.g. 'Delete Palm Oil (25L)?'.
@@ -68,6 +70,9 @@ class CardOverflowMenu extends StatelessWidget {
 
   final Future<void> Function() onDelete;
 
+  /// When set, the menu gains an Edit item above Delete.
+  final VoidCallback? onEdit;
+
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
@@ -76,7 +81,11 @@ class CardOverflowMenu extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppShape.controlRadius),
       ),
-      onSelected: (_) async {
+      onSelected: (value) async {
+        if (value == 'edit') {
+          onEdit?.call();
+          return;
+        }
         final confirmed = await showDeleteConfirmDialog(
           context,
           title: title,
@@ -85,6 +94,23 @@ class CardOverflowMenu extends StatelessWidget {
         if (confirmed == true) await onDelete();
       },
       itemBuilder: (_) => [
+        if (onEdit != null)
+          PopupMenuItem(
+            value: 'edit',
+            height: 40,
+            child: Row(
+              children: [
+                const Icon(Icons.edit_rounded,
+                    size: 16, color: AppColors.textPrimary),
+                const SizedBox(width: 8),
+                Text(
+                  'Edit',
+                  style: AppText.style(
+                      FontWeight.w700, 13, AppColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
         PopupMenuItem(
           value: 'delete',
           height: 40,

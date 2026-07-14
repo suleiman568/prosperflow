@@ -231,6 +231,12 @@ String _profitText(int? profit) {
   return '$sign${formatNaira(profit.abs())}';
 }
 
+/// Green for profit, red for a loss, muted for unknown ("—").
+Color _profitColor(int? profit) {
+  if (profit == null) return AppColors.textSecondary;
+  return profit < 0 ? AppColors.accentRed : AppColors.primary;
+}
+
 /// Today's sales grouped per product, expandable into individual sales.
 /// Fed by its own stream so it updates live and independently of the
 /// Week/Month/All period selector — "today" is always today.
@@ -353,8 +359,15 @@ class _DaySummaryCard extends StatelessWidget {
                       ? '—'
                       : '${_profitText(history.profit)}'
                           '${history.missingCostCount > 0 ? '*' : ''}',
-                  style:
-                      AppText.style(FontWeight.w900, 20, AppColors.primaryDark),
+                  style: AppText.style(
+                    FontWeight.w900,
+                    20,
+                    history.profit == null
+                        ? AppColors.textSecondary
+                        : history.profit! < 0
+                            ? AppColors.accentRed
+                            : AppColors.primaryDark,
+                  ),
                 ),
               ],
             ),
@@ -425,12 +438,7 @@ class _ProductGroupCard extends StatelessWidget {
                             : '${_profitText(group.profit)}'
                                 '${group.profitIsPartial ? '*' : ''} profit',
                         style: AppText.style(
-                          FontWeight.w700,
-                          11,
-                          group.profit == null
-                              ? AppColors.textSecondary
-                              : AppColors.primary,
-                        ),
+                            FontWeight.w700, 11, _profitColor(group.profit)),
                       ),
                     ],
                   ),
@@ -457,15 +465,38 @@ class _ProductGroupCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '${entry.qty} × ${formatNaira(entry.unitPrice)}',
-                            style: AppText.style(
-                                FontWeight.w700, 12, AppColors.textPrimary),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  '${entry.qty} × '
+                                  '${formatNaira(entry.unitPrice)}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppText.style(FontWeight.w700, 12,
+                                      AppColors.textPrimary),
+                                ),
+                              ),
+                              if (entry.discounted) ...[
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    formatNaira(entry.listPrice!),
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppText.style(FontWeight.w600, 11,
+                                            AppColors.textSecondary)
+                                        .copyWith(
+                                            decoration:
+                                                TextDecoration.lineThrough),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
                             '${formatTime(entry.soldAt)} · '
-                            '${_methodLabel(entry)}',
+                            '${_methodLabel(entry)}'
+                            '${entry.discounted ? ' · discounted' : ''}',
                             style: AppText.style(
                                 FontWeight.w600, 11, AppColors.textSecondary),
                           ),
@@ -475,12 +506,7 @@ class _ProductGroupCard extends StatelessWidget {
                     Text(
                       _profitText(entry.profit),
                       style: AppText.style(
-                        FontWeight.w700,
-                        12,
-                        entry.profit == null
-                            ? AppColors.textSecondary
-                            : AppColors.primary,
-                      ),
+                          FontWeight.w700, 12, _profitColor(entry.profit)),
                     ),
                   ],
                 ),

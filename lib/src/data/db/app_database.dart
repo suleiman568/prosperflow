@@ -35,6 +35,11 @@ class Sales extends Table {
   /// profit is unknowable and shown as "—".
   IntColumn get unitCost => integer().nullable()();
 
+  /// The product's normal sell price when this sale was discounted (v4).
+  /// Null when the sale went for the normal price — only set when
+  /// unitPrice differs, so history can show "₦X off ₦Y".
+  IntColumn get listPrice => integer().nullable()();
+
   IntColumn get total => integer()();
   TextColumn get method => textEnum<PaymentMethod>()();
   TextColumn get fulfilment => textEnum<Fulfilment>()();
@@ -95,7 +100,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -107,6 +112,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             // v3: sales snapshot the buy price for profit reporting.
             await m.addColumn(sales, sales.unitCost);
+          }
+          if (from < 4) {
+            // v4: discounted sales keep the normal price for display.
+            await m.addColumn(sales, sales.listPrice);
           }
         },
       );

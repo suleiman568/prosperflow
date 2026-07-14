@@ -664,6 +664,17 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, SaleRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _listPriceMeta = const VerificationMeta(
+    'listPrice',
+  );
+  @override
+  late final GeneratedColumn<int> listPrice = GeneratedColumn<int>(
+    'list_price',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _totalMeta = const VerificationMeta('total');
   @override
   late final GeneratedColumn<int> total = GeneratedColumn<int>(
@@ -742,6 +753,7 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, SaleRow> {
     qty,
     unitPrice,
     unitCost,
+    listPrice,
     total,
     method,
     fulfilment,
@@ -795,6 +807,12 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, SaleRow> {
       context.handle(
         _unitCostMeta,
         unitCost.isAcceptableOrUnknown(data['unit_cost']!, _unitCostMeta),
+      );
+    }
+    if (data.containsKey('list_price')) {
+      context.handle(
+        _listPriceMeta,
+        listPrice.isAcceptableOrUnknown(data['list_price']!, _listPriceMeta),
       );
     }
     if (data.containsKey('total')) {
@@ -863,6 +881,10 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, SaleRow> {
         DriftSqlType.int,
         data['${effectivePrefix}unit_cost'],
       ),
+      listPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}list_price'],
+      ),
       total: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}total'],
@@ -918,6 +940,11 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
   /// Buy price snapshot at sale time (v3). Null on pre-v3 sales, where
   /// profit is unknowable and shown as "—".
   final int? unitCost;
+
+  /// The product's normal sell price when this sale was discounted (v4).
+  /// Null when the sale went for the normal price — only set when
+  /// unitPrice differs, so history can show "₦X off ₦Y".
+  final int? listPrice;
   final int total;
   final PaymentMethod method;
   final Fulfilment fulfilment;
@@ -931,6 +958,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     required this.qty,
     required this.unitPrice,
     this.unitCost,
+    this.listPrice,
     required this.total,
     required this.method,
     required this.fulfilment,
@@ -948,6 +976,9 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     map['unit_price'] = Variable<int>(unitPrice);
     if (!nullToAbsent || unitCost != null) {
       map['unit_cost'] = Variable<int>(unitCost);
+    }
+    if (!nullToAbsent || listPrice != null) {
+      map['list_price'] = Variable<int>(listPrice);
     }
     map['total'] = Variable<int>(total);
     {
@@ -980,6 +1011,9 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
       unitCost: unitCost == null && nullToAbsent
           ? const Value.absent()
           : Value(unitCost),
+      listPrice: listPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(listPrice),
       total: Value(total),
       method: Value(method),
       fulfilment: Value(fulfilment),
@@ -1005,6 +1039,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
       qty: serializer.fromJson<int>(json['qty']),
       unitPrice: serializer.fromJson<int>(json['unitPrice']),
       unitCost: serializer.fromJson<int?>(json['unitCost']),
+      listPrice: serializer.fromJson<int?>(json['listPrice']),
       total: serializer.fromJson<int>(json['total']),
       method: $SalesTable.$convertermethod.fromJson(
         serializer.fromJson<String>(json['method']),
@@ -1027,6 +1062,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
       'qty': serializer.toJson<int>(qty),
       'unitPrice': serializer.toJson<int>(unitPrice),
       'unitCost': serializer.toJson<int?>(unitCost),
+      'listPrice': serializer.toJson<int?>(listPrice),
       'total': serializer.toJson<int>(total),
       'method': serializer.toJson<String>(
         $SalesTable.$convertermethod.toJson(method),
@@ -1047,6 +1083,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     int? qty,
     int? unitPrice,
     Value<int?> unitCost = const Value.absent(),
+    Value<int?> listPrice = const Value.absent(),
     int? total,
     PaymentMethod? method,
     Fulfilment? fulfilment,
@@ -1060,6 +1097,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     qty: qty ?? this.qty,
     unitPrice: unitPrice ?? this.unitPrice,
     unitCost: unitCost.present ? unitCost.value : this.unitCost,
+    listPrice: listPrice.present ? listPrice.value : this.listPrice,
     total: total ?? this.total,
     method: method ?? this.method,
     fulfilment: fulfilment ?? this.fulfilment,
@@ -1075,6 +1113,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
       qty: data.qty.present ? data.qty.value : this.qty,
       unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
       unitCost: data.unitCost.present ? data.unitCost.value : this.unitCost,
+      listPrice: data.listPrice.present ? data.listPrice.value : this.listPrice,
       total: data.total.present ? data.total.value : this.total,
       method: data.method.present ? data.method.value : this.method,
       fulfilment: data.fulfilment.present
@@ -1097,6 +1136,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
           ..write('qty: $qty, ')
           ..write('unitPrice: $unitPrice, ')
           ..write('unitCost: $unitCost, ')
+          ..write('listPrice: $listPrice, ')
           ..write('total: $total, ')
           ..write('method: $method, ')
           ..write('fulfilment: $fulfilment, ')
@@ -1115,6 +1155,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
     qty,
     unitPrice,
     unitCost,
+    listPrice,
     total,
     method,
     fulfilment,
@@ -1132,6 +1173,7 @@ class SaleRow extends DataClass implements Insertable<SaleRow> {
           other.qty == this.qty &&
           other.unitPrice == this.unitPrice &&
           other.unitCost == this.unitCost &&
+          other.listPrice == this.listPrice &&
           other.total == this.total &&
           other.method == this.method &&
           other.fulfilment == this.fulfilment &&
@@ -1147,6 +1189,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
   final Value<int> qty;
   final Value<int> unitPrice;
   final Value<int?> unitCost;
+  final Value<int?> listPrice;
   final Value<int> total;
   final Value<PaymentMethod> method;
   final Value<Fulfilment> fulfilment;
@@ -1161,6 +1204,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     this.qty = const Value.absent(),
     this.unitPrice = const Value.absent(),
     this.unitCost = const Value.absent(),
+    this.listPrice = const Value.absent(),
     this.total = const Value.absent(),
     this.method = const Value.absent(),
     this.fulfilment = const Value.absent(),
@@ -1176,6 +1220,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     required int qty,
     required int unitPrice,
     this.unitCost = const Value.absent(),
+    this.listPrice = const Value.absent(),
     required int total,
     required PaymentMethod method,
     required Fulfilment fulfilment,
@@ -1198,6 +1243,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     Expression<int>? qty,
     Expression<int>? unitPrice,
     Expression<int>? unitCost,
+    Expression<int>? listPrice,
     Expression<int>? total,
     Expression<String>? method,
     Expression<String>? fulfilment,
@@ -1213,6 +1259,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
       if (qty != null) 'qty': qty,
       if (unitPrice != null) 'unit_price': unitPrice,
       if (unitCost != null) 'unit_cost': unitCost,
+      if (listPrice != null) 'list_price': listPrice,
       if (total != null) 'total': total,
       if (method != null) 'method': method,
       if (fulfilment != null) 'fulfilment': fulfilment,
@@ -1230,6 +1277,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     Value<int>? qty,
     Value<int>? unitPrice,
     Value<int?>? unitCost,
+    Value<int?>? listPrice,
     Value<int>? total,
     Value<PaymentMethod>? method,
     Value<Fulfilment>? fulfilment,
@@ -1245,6 +1293,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
       qty: qty ?? this.qty,
       unitPrice: unitPrice ?? this.unitPrice,
       unitCost: unitCost ?? this.unitCost,
+      listPrice: listPrice ?? this.listPrice,
       total: total ?? this.total,
       method: method ?? this.method,
       fulfilment: fulfilment ?? this.fulfilment,
@@ -1273,6 +1322,9 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
     }
     if (unitCost.present) {
       map['unit_cost'] = Variable<int>(unitCost.value);
+    }
+    if (listPrice.present) {
+      map['list_price'] = Variable<int>(listPrice.value);
     }
     if (total.present) {
       map['total'] = Variable<int>(total.value);
@@ -1313,6 +1365,7 @@ class SalesCompanion extends UpdateCompanion<SaleRow> {
           ..write('qty: $qty, ')
           ..write('unitPrice: $unitPrice, ')
           ..write('unitCost: $unitCost, ')
+          ..write('listPrice: $listPrice, ')
           ..write('total: $total, ')
           ..write('method: $method, ')
           ..write('fulfilment: $fulfilment, ')
@@ -3136,6 +3189,7 @@ typedef $$SalesTableCreateCompanionBuilder =
       required int qty,
       required int unitPrice,
       Value<int?> unitCost,
+      Value<int?> listPrice,
       required int total,
       required PaymentMethod method,
       required Fulfilment fulfilment,
@@ -3152,6 +3206,7 @@ typedef $$SalesTableUpdateCompanionBuilder =
       Value<int> qty,
       Value<int> unitPrice,
       Value<int?> unitCost,
+      Value<int?> listPrice,
       Value<int> total,
       Value<PaymentMethod> method,
       Value<Fulfilment> fulfilment,
@@ -3192,6 +3247,11 @@ class $$SalesTableFilterComposer extends Composer<_$AppDatabase, $SalesTable> {
 
   ColumnFilters<int> get unitCost => $composableBuilder(
     column: $table.unitCost,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get listPrice => $composableBuilder(
+    column: $table.listPrice,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3267,6 +3327,11 @@ class $$SalesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get listPrice => $composableBuilder(
+    column: $table.listPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get total => $composableBuilder(
     column: $table.total,
     builder: (column) => ColumnOrderings(column),
@@ -3326,6 +3391,9 @@ class $$SalesTableAnnotationComposer
 
   GeneratedColumn<int> get unitCost =>
       $composableBuilder(column: $table.unitCost, builder: (column) => column);
+
+  GeneratedColumn<int> get listPrice =>
+      $composableBuilder(column: $table.listPrice, builder: (column) => column);
 
   GeneratedColumn<int> get total =>
       $composableBuilder(column: $table.total, builder: (column) => column);
@@ -3387,6 +3455,7 @@ class $$SalesTableTableManager
                 Value<int> qty = const Value.absent(),
                 Value<int> unitPrice = const Value.absent(),
                 Value<int?> unitCost = const Value.absent(),
+                Value<int?> listPrice = const Value.absent(),
                 Value<int> total = const Value.absent(),
                 Value<PaymentMethod> method = const Value.absent(),
                 Value<Fulfilment> fulfilment = const Value.absent(),
@@ -3401,6 +3470,7 @@ class $$SalesTableTableManager
                 qty: qty,
                 unitPrice: unitPrice,
                 unitCost: unitCost,
+                listPrice: listPrice,
                 total: total,
                 method: method,
                 fulfilment: fulfilment,
@@ -3417,6 +3487,7 @@ class $$SalesTableTableManager
                 required int qty,
                 required int unitPrice,
                 Value<int?> unitCost = const Value.absent(),
+                Value<int?> listPrice = const Value.absent(),
                 required int total,
                 required PaymentMethod method,
                 required Fulfilment fulfilment,
@@ -3431,6 +3502,7 @@ class $$SalesTableTableManager
                 qty: qty,
                 unitPrice: unitPrice,
                 unitCost: unitCost,
+                listPrice: listPrice,
                 total: total,
                 method: method,
                 fulfilment: fulfilment,

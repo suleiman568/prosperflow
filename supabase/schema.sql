@@ -88,6 +88,12 @@ alter table public.expenses
 alter table public.sales
   add column if not exists unit_cost integer;
 
+-- v4 addition: discounted sales keep the normal sell price for display
+-- ("₦X off ₦Y"). Null when the sale went for the normal price. Run BEFORE
+-- shipping v4 clients, same as unit_cost.
+alter table public.sales
+  add column if not exists list_price integer;
+
 create table if not exists public.credits (
   sale_id uuid primary key,
   trader_id uuid not null references auth.users (id) on delete cascade,

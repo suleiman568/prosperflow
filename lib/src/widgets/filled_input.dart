@@ -14,11 +14,13 @@ class FilledInput extends StatelessWidget {
     this.digitsOnly = false,
     this.keyboardType,
     this.textInputAction,
+    this.onChanged,
   });
 
   final String hint;
   final TextEditingController? controller;
   final bool obscureText;
+  final ValueChanged<String>? onChanged;
 
   /// Integer-only fields (prices, stock, amounts) — numeric keyboard and
   /// digit filtering, per the "amounts are integers" rule.
@@ -32,6 +34,7 @@ class FilledInput extends StatelessWidget {
     return TextField(
       controller: controller,
       obscureText: obscureText,
+      onChanged: onChanged,
       keyboardType: digitsOnly ? TextInputType.number : keyboardType,
       inputFormatters:
           digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,

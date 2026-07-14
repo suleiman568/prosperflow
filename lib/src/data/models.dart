@@ -45,6 +45,7 @@ class Sale {
     required this.qty,
     required this.unitPrice,
     this.unitCost,
+    this.listPrice,
     required this.total,
     required this.method,
     required this.fulfilment,
@@ -63,6 +64,10 @@ class Sale {
   /// before costs were snapshotted — profit is unknowable for those.
   final int? unitCost;
 
+  /// The product's normal sell price when this sale was discounted;
+  /// null when the sale went for the normal price.
+  final int? listPrice;
+
   final int total;
   final PaymentMethod method;
   final Fulfilment fulfilment;
@@ -75,6 +80,9 @@ class Sale {
     final cost = unitCost;
     return cost == null ? null : (unitPrice - cost) * qty;
   }
+
+  /// True when this sale went for less than the product's normal price.
+  bool get discounted => listPrice != null && listPrice != unitPrice;
 }
 
 class Expense {
@@ -137,6 +145,7 @@ class SaleHistoryEntry {
   const SaleHistoryEntry({
     required this.qty,
     required this.unitPrice,
+    this.listPrice,
     required this.profit,
     required this.soldAt,
     required this.method,
@@ -145,6 +154,12 @@ class SaleHistoryEntry {
 
   final int qty;
   final int unitPrice;
+
+  /// Normal price when the sale was discounted; null otherwise.
+  final int? listPrice;
+
+  /// True when [listPrice] is set and differs from [unitPrice].
+  bool get discounted => listPrice != null && listPrice != unitPrice;
 
   /// Null when the sale predates cost snapshotting — rendered as "—".
   final int? profit;
