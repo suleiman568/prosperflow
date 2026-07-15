@@ -25,10 +25,41 @@ class MemoryStore implements DataStore {
   final List<Expense> _expenses;
   final List<Credit> _credits;
 
+  /// Soft-deleted product ids: hidden from [watchProducts] but kept in
+  /// [_products] so historical sales still resolve their names — matching
+  /// DriftStore's soft-delete behavior.
+  final _deletedIds = <String>{};
+
   final _changes = StreamController<void>.broadcast();
   final _uuid = const Uuid();
 
   void _notify() => _changes.add(null);
+
+  /// Sales resolve product names at read time (like DriftStore), so a
+  /// product rename relabels history identically on device and web.
+  Sale _withCurrentName(Sale sale) {
+    final product =
+        _products.where((p) => p.id == sale.productId).firstOrNull;
+    if (product == null || product.name == sale.productName) return sale;
+    return Sale(
+      id: sale.id,
+      productId: sale.productId,
+      productName: product.name,
+      qty: sale.qty,
+      unitPrice: sale.unitPrice,
+      unitCost: sale.unitCost,
+      listPrice: sale.listPrice,
+      total: sale.total,
+      method: sale.method,
+      fulfilment: sale.fulfilment,
+      customerName: sale.customerName,
+      location: sale.location,
+      soldAt: sale.soldAt,
+    );
+  }
+
+  List<Sale> get _salesWithCurrentNames =>
+      [for (final sale in _sales) _withCurrentName(sale)];
 
   /// Emits the current value immediately, then again on every change.
   /// Multi-listen safe: each listener runs its own generator, so re-listening
@@ -43,7 +74,8 @@ class MemoryStore implements DataStore {
   }
 
   @override
-  Stream<List<Product>> watchProducts() => _watch(() => List.of(_products));
+  Stream<List<Product>> watchProducts() => _watch(
+      () => [for (final p in _products) if (!_deletedIds.contains(p.id)) p]);
 
   @override
   Future<void> addProduct({
@@ -65,8 +97,32 @@ class MemoryStore implements DataStore {
   }
 
   @override
+  Future<void> updateProduct({
+    required String id,
+    required String name,
+    required String unit,
+    required int buyPrice,
+    required int sellPrice,
+    required int lowStockThreshold,
+  }) async {
+    final index = _products.indexWhere((p) => p.id == id);
+    if (index == -1) return; // unknown id: no-op, like DriftStore's UPDATE
+    final current = _products[index];
+    _products[index] = Product(
+      id: id,
+      name: name,
+      unit: unit,
+      stock: current.stock,
+      buyPrice: buyPrice,
+      sellPrice: sellPrice,
+      lowStockThreshold: lowStockThreshold,
+    );
+    _notify();
+  }
+
+  @override
   Future<void> deleteProduct(String id) async {
-    _products.removeWhere((p) => p.id == id);
+    _deletedIds.add(id);
     _notify();
   }
 
@@ -96,13 +152,16 @@ class MemoryStore implements DataStore {
     required int qty,
     required PaymentMethod method,
     required Fulfilment fulfilment,
+    int? unitPrice,
     String? customerName,
     String? location,
   }) async {
     final index = _products.indexWhere((p) => p.id == productId);
     final product = _products[index];
     final now = DateTime.now();
-    final total = qty * product.sellPrice;
+    final price = unitPrice ?? product.sellPrice;
+    final listPrice = price == product.sellPrice ? null : product.sellPrice;
+    final total = qty * price;
     final saleId = _uuid.v4();
 
     _sales.add(Sale(
@@ -110,8 +169,9 @@ class MemoryStore implements DataStore {
       productId: productId,
       productName: product.name,
       qty: qty,
-      unitPrice: product.sellPrice,
+      unitPrice: price,
       unitCost: product.buyPrice,
+      listPrice: listPrice,
       total: total,
       method: method,
       fulfilment: fulfilment,
@@ -199,7 +259,7 @@ class MemoryStore implements DataStore {
 
   @override
   Stream<TodayHistory> watchTodayHistory() => _watch(() => buildTodayHistory(
-        sales: List.of(_sales),
+        sales: _salesWithCurrentNames,
         paidCreditSaleIds: {
           for (final c in _credits)
             if (c.status == CreditStatus.paid) c.saleId,
@@ -210,9 +270,10 @@ class MemoryStore implements DataStore {
   @override
   Stream<ReportData> watchReport(ReportPeriod period) => _watch(() {
         final since = periodStart(period, DateTime.now());
+        final all = _salesWithCurrentNames;
         final sales = since == null
-            ? _sales
-            : _sales.where((s) => s.soldAt.isAfter(since)).toList();
+            ? all
+            : all.where((s) => s.soldAt.isAfter(since)).toList();
         final expenses = since == null
             ? _expenses
             : _expenses.where((e) => e.spentOn.isAfter(since)).toList();

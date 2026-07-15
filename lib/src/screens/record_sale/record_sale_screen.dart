@@ -32,6 +32,11 @@ class RecordSaleScreen extends StatefulWidget {
 class _RecordSaleScreenState extends State<RecordSaleScreen> {
   String? _productId;
   int _qty = 1;
+
+  /// Sale-time price override (custom price / discount); null = normal
+  /// sell price. Reset when the product changes.
+  int? _customPrice;
+
   PaymentMethod _method = PaymentMethod.cash;
   Fulfilment _fulfilment = Fulfilment.walkIn;
   bool _saving = false;
@@ -66,6 +71,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                 onTap: () {
                   setState(() {
                     _productId = product.id;
+                    _customPrice = null; // price override is per product
                     _qty = _qty.clamp(1, product.stock.clamp(1, 1 << 31));
                   });
                   Navigator.of(sheetContext).pop();
@@ -89,6 +95,26 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
     );
   }
 
+  Future<void> _adjustPrice(Product product) async {
+    final result = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _AdjustPriceSheet(
+        listPrice: product.sellPrice,
+        buyPrice: product.buyPrice,
+        currentPrice: _customPrice ?? product.sellPrice,
+      ),
+    );
+    if (result == null) return; // dismissed, keep as-is
+    setState(() {
+      _customPrice = result == product.sellPrice ? null : result;
+    });
+  }
+
   Future<void> _submit(Product product) async {
     if (_saving) return;
     if (_method == PaymentMethod.credit &&
@@ -100,6 +126,44 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
       showAppToast(context, '⚠ ${product.name} is out of stock');
       return;
     }
+
+    // Warn-but-allow: selling below cost needs an explicit confirmation.
+    final price = _customPrice ?? product.sellPrice;
+    if (price < product.buyPrice) {
+      final loss = (product.buyPrice - price) * _qty;
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppShape.cardRadius),
+          ),
+          title: Text('Sell below cost?', style: AppText.screenTitle),
+          content: Text(
+            'At ${formatNaira(price)} this sale loses ${formatNaira(loss)} '
+            '(cost is ${formatNaira(product.buyPrice)}/unit).',
+            style:
+                AppText.style(FontWeight.w500, 13, AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text('Cancel',
+                  style: AppText.style(
+                      FontWeight.w700, 13, AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text('Sell anyway',
+                  style: AppText.style(
+                      FontWeight.w700, 13, AppColors.accentRed)),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true || !mounted) return;
+    }
+
     setState(() => _saving = true);
     final navigator = Navigator.of(context);
     final customer = _customerController.text.trim();
@@ -109,6 +173,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
       qty: _qty,
       method: _method,
       fulfilment: _fulfilment,
+      unitPrice: _customPrice,
       customerName: customer.isEmpty ? null : customer,
       location: _fulfilment == Fulfilment.delivery && location.isNotEmpty
           ? location
@@ -168,7 +233,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
   }
 
   Widget _buildForm(List<Product> products, Product product, int qty) {
-    final total = qty * product.sellPrice;
+    final price = _customPrice ?? product.sellPrice;
+    final discounted = price != product.sellPrice;
+    final belowCost = price < product.buyPrice;
+    final total = qty * price;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
       children: [
@@ -253,20 +321,49 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _FieldLabel('PRICE/UNIT'),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.inputBg,
-                      borderRadius:
-                          BorderRadius.circular(AppShape.controlRadius),
-                    ),
-                    child: Text(
-                      formatNaira(product.sellPrice),
-                      style: AppText.style(
-                          FontWeight.w700, 16, AppColors.textPrimary),
+                  const _FieldLabel('PRICE/UNIT — TAP TO ADJUST'),
+                  GestureDetector(
+                    onTap: () => _adjustPrice(product),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 14),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.inputBg,
+                        borderRadius:
+                            BorderRadius.circular(AppShape.controlRadius),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              formatNaira(price),
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.style(
+                                  FontWeight.w700, 16, AppColors.textPrimary),
+                            ),
+                          ),
+                          if (discounted) ...[
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                formatNaira(product.sellPrice),
+                                overflow: TextOverflow.ellipsis,
+                                style: AppText.style(FontWeight.w600, 12,
+                                        AppColors.textSecondary)
+                                    .copyWith(
+                                        decoration:
+                                            TextDecoration.lineThrough),
+                              ),
+                            ),
+                          ] else ...[
+                            const SizedBox(width: 5),
+                            const Icon(Icons.edit_rounded,
+                                size: 13, color: AppColors.textSecondary),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -274,6 +371,14 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
             ),
           ],
         ),
+        if (belowCost) ...[
+          const SizedBox(height: 8),
+          Text(
+            '⚠ Below cost — this sale loses '
+            '${formatNaira((product.buyPrice - price) * qty)}',
+            style: AppText.style(FontWeight.w700, 12, AppColors.accentRed),
+          ),
+        ],
         const SizedBox(height: AppShape.cardGap),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -562,6 +667,185 @@ class _FulfilmentPill extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for a sale-time price override: type a custom price, or a
+/// discount as % or amount off the normal price — all three drive the same
+/// final price, previewed live. Warns (without blocking) below cost.
+class _AdjustPriceSheet extends StatefulWidget {
+  const _AdjustPriceSheet({
+    required this.listPrice,
+    required this.buyPrice,
+    required this.currentPrice,
+  });
+
+  final int listPrice;
+  final int buyPrice;
+  final int currentPrice;
+
+  @override
+  State<_AdjustPriceSheet> createState() => _AdjustPriceSheetState();
+}
+
+class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
+  late final TextEditingController _price;
+  final _percent = TextEditingController();
+  final _amount = TextEditingController();
+  late int _final = widget.currentPrice;
+
+  @override
+  void initState() {
+    super.initState();
+    _price = TextEditingController(text: '${widget.currentPrice}');
+  }
+
+  @override
+  void dispose() {
+    _price.dispose();
+    _percent.dispose();
+    _amount.dispose();
+    super.dispose();
+  }
+
+  void _fromPrice(String text) {
+    final value = int.tryParse(text.trim());
+    if (value == null || value < 0) return;
+    setState(() {
+      _final = value;
+      _percent.clear();
+      _amount.clear();
+    });
+  }
+
+  void _fromPercent(String text) {
+    final pct = int.tryParse(text.trim());
+    if (pct == null || pct < 0 || pct > 100) return;
+    setState(() {
+      _final = widget.listPrice - (widget.listPrice * pct / 100).round();
+      _price.text = '$_final';
+      _amount.clear();
+    });
+  }
+
+  void _fromAmount(String text) {
+    final off = int.tryParse(text.trim());
+    if (off == null || off < 0 || off > widget.listPrice) return;
+    setState(() {
+      _final = widget.listPrice - off;
+      _price.text = '$_final';
+      _percent.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final discounted = _final != widget.listPrice;
+    final belowCost = _final < widget.buyPrice;
+    final pctOff = widget.listPrice == 0
+        ? 0
+        : (100 * (widget.listPrice - _final) / widget.listPrice).round();
+
+    Widget label(String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(text, style: AppText.fieldLabel),
+        );
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 18,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Adjust price', style: AppText.screenTitle),
+          const SizedBox(height: 4),
+          Text(
+            'Normal price ${formatNaira(widget.listPrice)}',
+            style: AppText.style(FontWeight.w600, 12, AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          label('CUSTOM PRICE (₦)'),
+          FilledInput(
+            hint: '${widget.listPrice}',
+            controller: _price,
+            digitsOnly: true,
+            onChanged: _fromPrice,
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    label('DISCOUNT (%)'),
+                    FilledInput(
+                      hint: '5',
+                      controller: _percent,
+                      digitsOnly: true,
+                      onChanged: _fromPercent,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppShape.gridGap),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    label('DISCOUNT (₦)'),
+                    FilledInput(
+                      hint: '500',
+                      controller: _amount,
+                      digitsOnly: true,
+                      onChanged: _fromAmount,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            discounted
+                ? 'Final price: ${formatNaira(_final)} ($pctOff% off)'
+                : 'Final price: ${formatNaira(_final)} (normal price)',
+            style: AppText.style(FontWeight.w700, 13, AppColors.textPrimary),
+          ),
+          if (belowCost) ...[
+            const SizedBox(height: 6),
+            Text(
+              '⚠ Below cost (${formatNaira(widget.buyPrice)}) — '
+              'you will make a loss',
+              style: AppText.style(FontWeight.w700, 12, AppColors.accentRed),
+            ),
+          ],
+          const SizedBox(height: 18),
+          PrimaryButton(
+            label: 'Apply price',
+            onPressed: () => Navigator.of(context).pop(_final),
+          ),
+          if (widget.currentPrice != widget.listPrice) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(widget.listPrice),
+                child: Text(
+                  'Reset to normal price',
+                  style: AppText.style(
+                      FontWeight.w700, 13, AppColors.textSecondary),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

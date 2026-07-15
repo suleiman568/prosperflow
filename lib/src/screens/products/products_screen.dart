@@ -57,6 +57,33 @@ class _ProductsScreenState extends State<ProductsScreen> {
     showAppToast(context, '✅ ${product.name} deleted');
   }
 
+  void _openEditProduct(Product product) {
+    final store = AppScope.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => _EditProductSheet(
+        product: product,
+        onSave: (name, unit, buyPrice, sellPrice, lowStockThreshold) async {
+          await store.updateProduct(
+            id: product.id,
+            name: name,
+            unit: unit,
+            buyPrice: buyPrice,
+            sellPrice: sellPrice,
+            lowStockThreshold: lowStockThreshold,
+          );
+          if (!mounted) return;
+          showAppToast(context, '✅ $name updated');
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = AppScope.of(context);
@@ -89,6 +116,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           message: 'It will be removed from your products. '
                               'Past sales are not affected.',
                           onDelete: () => _deleteProduct(products[index]),
+                          onEdit: () => _openEditProduct(products[index]),
                         ),
                       ),
                     ),
@@ -349,4 +377,153 @@ class _AddProductSheetState extends State<_AddProductSheet> {
         child: Text(text, style: AppText.fieldLabel),
       );
 
+}
+
+typedef _SaveProduct = Future<void> Function(
+    String name, String unit, int buyPrice, int sellPrice,
+    int lowStockThreshold);
+
+/// Edit sheet for an existing product. Stock is deliberately absent — it
+/// changes through sales; prices/name/unit/threshold change here. Edits
+/// never touch past sales (their price/cost snapshots are frozen).
+class _EditProductSheet extends StatefulWidget {
+  const _EditProductSheet({required this.product, required this.onSave});
+
+  final Product product;
+  final _SaveProduct onSave;
+
+  @override
+  State<_EditProductSheet> createState() => _EditProductSheetState();
+}
+
+class _EditProductSheetState extends State<_EditProductSheet> {
+  late final _name = TextEditingController(text: widget.product.name);
+  late final _unit = TextEditingController(text: widget.product.unit);
+  late final _buyPrice =
+      TextEditingController(text: '${widget.product.buyPrice}');
+  late final _sellPrice =
+      TextEditingController(text: '${widget.product.sellPrice}');
+  late final _threshold =
+      TextEditingController(text: '${widget.product.lowStockThreshold}');
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _unit.dispose();
+    _buyPrice.dispose();
+    _sellPrice.dispose();
+    _threshold.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final name = _name.text.trim();
+    final unit = _unit.text.trim();
+    final buy = int.tryParse(_buyPrice.text.trim());
+    final sell = int.tryParse(_sellPrice.text.trim());
+    final threshold = int.tryParse(_threshold.text.trim());
+    if (name.isEmpty ||
+        unit.isEmpty ||
+        buy == null ||
+        sell == null ||
+        threshold == null) {
+      showAppToast(context, '⚠ Fill in every field to save changes');
+      return;
+    }
+    final navigator = Navigator.of(context);
+    try {
+      await widget.onSave(name, unit, buy, sell, threshold);
+    } catch (_) {
+      // Keep the sheet open so nothing typed is lost.
+      if (mounted) {
+        showAppToast(context, '⚠ Could not save changes — please try again');
+      }
+      return;
+    }
+    navigator.pop();
+  }
+
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(text, style: AppText.fieldLabel),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 18,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Edit Product', style: AppText.screenTitle),
+          const SizedBox(height: 4),
+          Text(
+            'Past sales keep their original prices.',
+            style: AppText.style(FontWeight.w600, 12, AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          _label('PRODUCT NAME'),
+          FilledInput(
+            hint: 'Palm Oil (25L)',
+            controller: _name,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          _label('UNIT'),
+          FilledInput(
+            hint: 'bottles',
+            controller: _unit,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label('BUY PRICE (₦)'),
+                    FilledInput(
+                        hint: '6800',
+                        controller: _buyPrice,
+                        digitsOnly: true,
+                        textInputAction: TextInputAction.next),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppShape.gridGap),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label('SELL PRICE (₦)'),
+                    FilledInput(
+                        hint: '9200',
+                        controller: _sellPrice,
+                        digitsOnly: true,
+                        textInputAction: TextInputAction.next),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppShape.cardGap),
+          _label('LOW-STOCK ALERT AT'),
+          FilledInput(
+              hint: '10',
+              controller: _threshold,
+              digitsOnly: true,
+              textInputAction: TextInputAction.done),
+          const SizedBox(height: 22),
+          PrimaryButton(label: 'Save Changes', onPressed: _submit),
+        ],
+      ),
+    );
+  }
 }

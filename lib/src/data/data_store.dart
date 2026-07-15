@@ -39,6 +39,21 @@ abstract class DataStore {
     required int sellPrice,
   });
 
+  /// Edits a product's details. Historical sales are untouched — their
+  /// unitPrice/unitCost snapshots were frozen at sale time — but product
+  /// names resolve at read time, so a rename relabels history everywhere.
+  ///
+  /// Known behavior: edits sync as plain updates with no versioning, so if
+  /// two devices edit the same product offline, whichever syncs last wins.
+  Future<void> updateProduct({
+    required String id,
+    required String name,
+    required String unit,
+    required int buyPrice,
+    required int sellPrice,
+    required int lowStockThreshold,
+  });
+
   /// Soft-deletes a product (Backend Plan §3: the `deleted` flag syncs like
   /// any other update). Past sales referencing it stay intact in reports.
   Future<void> deleteProduct(String id);
@@ -50,11 +65,17 @@ abstract class DataStore {
 
   /// Records a sale: inserts the sale, decrements the product's stock, and
   /// opens a credit record when [method] is [PaymentMethod.credit].
+  ///
+  /// [unitPrice] overrides the product's normal sell price for this sale
+  /// (a custom price or discount). When it differs from the normal price,
+  /// the normal price is kept as the sale's listPrice so history can show
+  /// the discount. Profit still uses the product's buyPrice snapshot.
   Future<void> recordSale({
     required String productId,
     required int qty,
     required PaymentMethod method,
     required Fulfilment fulfilment,
+    int? unitPrice,
     String? customerName,
     String? location,
   });
@@ -146,6 +167,7 @@ TodayHistory buildTodayHistory({
             SaleHistoryEntry(
               qty: sale.qty,
               unitPrice: sale.unitPrice,
+              listPrice: sale.discounted ? sale.listPrice : null,
               profit: sale.profit,
               soldAt: sale.soldAt,
               method: sale.method,
