@@ -411,6 +411,46 @@ class DriftStore implements DataStore {
     );
   }
 
+  @override
+  Future<ExportBundle> exportBundle(ReportPeriod period) async {
+    final now = DateTime.now();
+    final since = periodStart(period, now);
+
+    // Unfiltered product read: exported sales of soft-deleted products
+    // must still resolve their names.
+    final productRows = await db.select(db.products).get();
+    final names = {for (final p in productRows) p.id: p.name};
+
+    // Filter in SQL (like _computeReport) so a long sales history isn't
+    // loaded into memory just to be discarded; buildExportBundle applies
+    // the same strict window again, harmlessly, for store parity.
+    var salesQuery = db.select(db.sales);
+    if (since != null) {
+      salesQuery = salesQuery..where((s) => s.soldAt.isBiggerThanValue(since));
+    }
+    final saleRows = await salesQuery.get();
+
+    var expensesQuery = db.select(db.expenses)
+      ..where((e) => e.deleted.equals(false));
+    if (since != null) {
+      expensesQuery = expensesQuery
+        ..where((e) => e.spentOn.isBiggerThanValue(since));
+    }
+    final expenseRows = await expensesQuery.get();
+
+    final paidRows = await (db.select(db.credits)
+          ..where((c) => c.status.equalsValue(CreditStatus.paid)))
+        .get();
+
+    return buildExportBundle(
+      period: period,
+      sales: saleRows.map((row) => _sale(row, names)).toList(),
+      expenses: expenseRows.map(_expense).toList(),
+      paidCreditSaleIds: {for (final c in paidRows) c.saleId},
+      now: now,
+    );
+  }
+
   Future<ReportData> _computeReport(ReportPeriod period) async {
     final since = periodStart(period, DateTime.now());
 

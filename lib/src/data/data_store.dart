@@ -2,6 +2,53 @@ import 'models.dart';
 
 enum ReportPeriod { week, month, all }
 
+/// Everything a report export (PDF/CSV) needs for one period: raw rows plus
+/// the aggregates the Reports screen shows. Read-only — building an export
+/// never writes to the store or the outbox.
+class ExportBundle {
+  const ExportBundle({
+    required this.period,
+    required this.generatedAt,
+    required this.sales,
+    required this.expenses,
+    required this.paidCreditSaleIds,
+    required this.report,
+  });
+
+  final ReportPeriod period;
+  final DateTime generatedAt;
+
+  /// Newest first, names resolved (soft-deleted products included).
+  final List<Sale> sales;
+
+  /// Newest first, soft-deleted expenses excluded.
+  final List<Expense> expenses;
+
+  final Set<String> paidCreditSaleIds;
+
+  /// The same aggregates the Reports screen shows for [period].
+  final ReportData report;
+
+  /// Margin over sales that have a recorded cost; null when none do.
+  int? get marginProfit {
+    int? sum;
+    for (final sale in sales) {
+      final profit = sale.profit;
+      if (profit != null) sum = (sum ?? 0) + profit;
+    }
+    return sum;
+  }
+
+  /// Sales recorded before cost tracking — excluded from [marginProfit].
+  int get missingCostCount => sales.where((s) => s.unitCost == null).length;
+
+  String get periodLabel => switch (period) {
+        ReportPeriod.week => 'This Week',
+        ReportPeriod.month => 'This Month',
+        ReportPeriod.all => 'All Time',
+      };
+}
+
 class ReportData {
   const ReportData({
     required this.salesTotal,
@@ -106,6 +153,10 @@ abstract class DataStore {
   /// Implemented reactively by both stores so device and web behave
   /// identically.
   Stream<TodayHistory> watchTodayHistory();
+
+  /// One-shot snapshot of everything a PDF/CSV export needs for [period].
+  /// Read-only; matches what the Reports screen shows for the same period.
+  Future<ExportBundle> exportBundle(ReportPeriod period);
 }
 
 DateTime startOfToday(DateTime now) => DateTime(now.year, now.month, now.day);
@@ -121,6 +172,40 @@ DateTime? periodStart(ReportPeriod period, DateTime now) => switch (period) {
 ///
 /// Credit sales whose credit has been collected count as cash — collecting
 /// a credit "moves the amount from credit to cash" (handoff §4).
+/// Shared export assembly — one implementation so DriftStore and
+/// MemoryStore can't drift apart. Filters with the same strict `isAfter`
+/// window as `watchReport`, so the export always matches the screen.
+ExportBundle buildExportBundle({
+  required ReportPeriod period,
+  required List<Sale> sales,
+  required List<Expense> expenses,
+  required Set<String> paidCreditSaleIds,
+  required DateTime now,
+}) {
+  final since = periodStart(period, now);
+  final periodSales = (since == null
+      ? List.of(sales)
+      : sales.where((s) => s.soldAt.isAfter(since)).toList())
+    ..sort((a, b) => b.soldAt.compareTo(a.soldAt));
+  final periodExpenses = (since == null
+      ? List.of(expenses)
+      : expenses.where((e) => e.spentOn.isAfter(since)).toList())
+    ..sort((a, b) => b.spentOn.compareTo(a.spentOn));
+
+  return ExportBundle(
+    period: period,
+    generatedAt: now,
+    sales: periodSales,
+    expenses: periodExpenses,
+    paidCreditSaleIds: paidCreditSaleIds,
+    report: buildReport(
+      sales: periodSales,
+      expenses: periodExpenses,
+      paidCreditSaleIds: paidCreditSaleIds,
+    ),
+  );
+}
+
 /// Shared "Sales History for Today" aggregation — one implementation so
 /// DriftStore and MemoryStore can't drift apart.
 ///
