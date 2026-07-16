@@ -20,6 +20,19 @@ import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 import 'helpers.dart';
 import 'seed_data.dart';
 
+/// Records every SELECT the database runs, so tests can assert filters
+/// are pushed down into SQL instead of applied in memory.
+class _RecordingInterceptor extends QueryInterceptor {
+  final selects = <String>[];
+
+  @override
+  Future<List<Map<String, Object?>>> runSelect(
+      QueryExecutor executor, String statement, List<Object?> args) {
+    selects.add(statement);
+    return executor.runSelect(statement, args);
+  }
+}
+
 void main() {
   group('exportBundle', () {
     late AppDatabase db;
@@ -62,6 +75,40 @@ void main() {
         expect(
             week.sales[i - 1].soldAt.isBefore(week.sales[i].soldAt), isFalse);
       }
+    });
+
+    test('the sales query is period-filtered in SQL, not in memory',
+        () async {
+      final interceptor = _RecordingInterceptor();
+      final loggedDb =
+          AppDatabase(NativeDatabase.memory().interceptWith(interceptor));
+      addTearDown(loggedDb.close);
+      await seedDatabase(loggedDb);
+      final loggedStore = DriftStore(loggedDb);
+
+      interceptor.selects.clear();
+      await loggedStore.exportBundle(ReportPeriod.week);
+
+      final salesSelects = interceptor.selects
+          .where((s) => s.contains('sales'))
+          .toList();
+      expect(salesSelects, isNotEmpty);
+      // Every sales read carries the sold_at window — no full-table load.
+      expect(
+          salesSelects.every(
+              (s) => s.contains('WHERE') && s.contains('sold_at')),
+          isTrue,
+          reason: 'week export must filter sales in the database: '
+              '$salesSelects');
+
+      // "All time" legitimately reads everything — no window expected.
+      interceptor.selects.clear();
+      await loggedStore.exportBundle(ReportPeriod.all);
+      expect(
+          interceptor.selects
+              .where((s) => s.contains('sales'))
+              .any((s) => s.contains('sold_at')),
+          isFalse);
     });
 
     test('DriftStore and MemoryStore build identical bundles (parity)',

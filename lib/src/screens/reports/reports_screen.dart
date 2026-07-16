@@ -137,7 +137,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
       }
       if (!mounted) return;
       showAppToast(context, '✅ ${bundle.periodLabel} report exported');
-    } catch (_) {
+    } catch (error, stack) {
+      // Surface the failure instead of swallowing it (same pattern as the
+      // product edit sheet): log for diagnosis, toast for the user.
+      debugPrint('Report export failed: $error\n$stack');
       if (!mounted) return;
       showAppToast(context, '⚠ Export failed — please try again');
     }
