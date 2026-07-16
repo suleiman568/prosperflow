@@ -1,13 +1,21 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 import '../../data/app_scope.dart';
 import '../../data/data_store.dart';
 import '../../data/models.dart';
+import '../../export/csv_export.dart';
+import '../../export/pdf_export.dart';
+import '../../export/share_export.dart';
 import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
+import '../../widgets/app_toast.dart';
 
 /// Screen 6 — Reports.
 ///
@@ -60,6 +68,81 @@ class _ReportsScreenState extends State<ReportsScreen> {
     ),
   };
 
+  void _openExportSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+              child: Text('Export report', style: AppText.screenTitle),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_rounded,
+                  color: AppColors.accentRed),
+              title: Text('PDF report',
+                  style: AppText.style(
+                      FontWeight.w700, 14, AppColors.textPrimary)),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _export(pdf: true);
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.table_chart_rounded, color: AppColors.primary),
+              title: Text('CSV spreadsheet',
+                  style: AppText.style(
+                      FontWeight.w700, 14, AppColors.textPrimary)),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _export(pdf: false);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _export({required bool pdf}) async {
+    final store = AppScope.of(context);
+    try {
+      final bundle = await store.exportBundle(_period);
+      final d = bundle.generatedAt;
+      final stamp = '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+      final name = 'prosperflow-${_period.name}-$stamp';
+
+      if (pdf) {
+        final bytes = await buildReportPdf(
+          bundle,
+          regularFont: await rootBundle.load('assets/fonts/Inter-Regular.ttf'),
+          boldFont: await rootBundle.load('assets/fonts/Inter-Bold.ttf'),
+        );
+        await shareExportFile(bytes, '$name.pdf', 'application/pdf');
+      } else {
+        // UTF-8 BOM so Excel renders the ₦ signs correctly.
+        final bytes = Uint8List.fromList(
+            [0xEF, 0xBB, 0xBF, ...utf8.encode(buildReportCsv(bundle))]);
+        await shareExportFile(bytes, '$name.csv', 'text/csv');
+      }
+      if (!mounted) return;
+      showAppToast(context, '✅ ${bundle.periodLabel} report exported');
+    } catch (_) {
+      if (!mounted) return;
+      showAppToast(context, '⚠ Export failed — please try again');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = AppScope.of(context);
@@ -68,7 +151,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _Header(),
+            _Header(onExport: _openExportSheet),
             Expanded(
               child: StreamBuilder<ReportData>(
                 stream: store.watchReport(_period),
@@ -519,6 +602,10 @@ class _ProductGroupCard extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
+  const _Header({required this.onExport});
+
+  final VoidCallback onExport;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -543,6 +630,13 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text('Reports', style: AppText.screenTitle),
+          const Spacer(),
+          IconButton(
+            tooltip: 'Export report',
+            onPressed: onExport,
+            icon: const Icon(Icons.ios_share_rounded,
+                size: 20, color: AppColors.textPrimary),
+          ),
         ],
       ),
     );

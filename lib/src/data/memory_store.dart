@@ -268,6 +268,19 @@ class MemoryStore implements DataStore {
       ));
 
   @override
+  Future<ExportBundle> exportBundle(ReportPeriod period) async =>
+      buildExportBundle(
+        period: period,
+        sales: _salesWithCurrentNames,
+        expenses: List.of(_expenses),
+        paidCreditSaleIds: {
+          for (final c in _credits)
+            if (c.status == CreditStatus.paid) c.saleId,
+        },
+        now: DateTime.now(),
+      );
+
+  @override
   Stream<ReportData> watchReport(ReportPeriod period) => _watch(() {
         final since = periodStart(period, DateTime.now());
         final all = _salesWithCurrentNames;

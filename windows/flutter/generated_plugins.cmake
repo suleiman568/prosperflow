@@ -5,6 +5,8 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   connectivity_plus
+  printing
+  share_plus
   sqlite3_flutter_libs
   url_launcher_windows
 )

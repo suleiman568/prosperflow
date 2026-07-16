@@ -411,6 +411,32 @@ class DriftStore implements DataStore {
     );
   }
 
+  @override
+  Future<ExportBundle> exportBundle(ReportPeriod period) async {
+    final now = DateTime.now();
+
+    // Unfiltered product read: exported sales of soft-deleted products
+    // must still resolve their names.
+    final productRows = await db.select(db.products).get();
+    final names = {for (final p in productRows) p.id: p.name};
+
+    final saleRows = await db.select(db.sales).get();
+    final expenseRows = await (db.select(db.expenses)
+          ..where((e) => e.deleted.equals(false)))
+        .get();
+    final paidRows = await (db.select(db.credits)
+          ..where((c) => c.status.equalsValue(CreditStatus.paid)))
+        .get();
+
+    return buildExportBundle(
+      period: period,
+      sales: saleRows.map((row) => _sale(row, names)).toList(),
+      expenses: expenseRows.map(_expense).toList(),
+      paidCreditSaleIds: {for (final c in paidRows) c.saleId},
+      now: now,
+    );
+  }
+
   Future<ReportData> _computeReport(ReportPeriod period) async {
     final since = periodStart(period, DateTime.now());
 
