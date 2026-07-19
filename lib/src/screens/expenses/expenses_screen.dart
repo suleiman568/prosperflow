@@ -198,69 +198,75 @@ class _ExpenseCard extends StatelessWidget {
         boxShadow: AppShape.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(width: 4, color: AppColors.accentRed),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 14, 16, 14),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.redTint,
-                      ),
-                      child: Icon(
-                        expenseCategoryIcon(expense.category),
-                        size: 18,
-                        color: AppColors.accentRed,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            expense.description,
-                            style: AppText.style(
-                              FontWeight.w700,
-                              13,
-                              AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            formatWeekdayDayMonth(expense.spentOn),
-                            style: AppText.style(
-                              FontWeight.w600,
-                              11,
-                              AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      '-${formatNaira(expense.amount)}',
-                      style: AppText.style(
-                        FontWeight.w700,
-                        13,
-                        AppColors.accentRed,
-                      ),
-                    ),
-                    if (menu != null) ...[const SizedBox(width: 2), menu!],
-                  ],
-                ),
-              ),
+      // The 4px red edge is a Positioned stripe that stretches to the card's
+      // height for free (Stack sizes to the padded content) — no extra
+      // IntrinsicHeight layout pass per row.
+      child: Stack(
+        children: [
+          const Positioned(
+            top: 0,
+            bottom: 0,
+            left: 0,
+            child: SizedBox(
+              width: 4,
+              child: ColoredBox(color: AppColors.accentRed),
             ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.redTint,
+                  ),
+                  child: Icon(
+                    expenseCategoryIcon(expense.category),
+                    size: 18,
+                    color: AppColors.accentRed,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        expense.description,
+                        style: AppText.style(
+                          FontWeight.w700,
+                          13,
+                          AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        formatWeekdayDayMonth(expense.spentOn),
+                        style: AppText.style(
+                          FontWeight.w600,
+                          11,
+                          AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '-${formatNaira(expense.amount)}',
+                  style: AppText.style(
+                    FontWeight.w700,
+                    13,
+                    AppColors.accentRed,
+                  ),
+                ),
+                if (menu != null) ...[const SizedBox(width: 2), menu!],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
