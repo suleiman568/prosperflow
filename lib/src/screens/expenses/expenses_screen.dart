@@ -7,8 +7,10 @@ import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
+import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/deletable_card.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
 
@@ -71,8 +73,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 stream: store.watchExpenses(),
                 builder: (context, snapshot) {
                   final expenses = snapshot.data ?? const <Expense>[];
-                  final weekStart =
-                      DateTime.now().subtract(const Duration(days: 7));
+                  if (snapshot.hasData && expenses.isEmpty) {
+                    return const EmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'No expenses yet',
+                      message:
+                          'Track costs like transport, rent and '
+                          'stock here\nso your profit stays honest. '
+                          'Tap + to add one.',
+                    );
+                  }
+                  final weekStart = DateTime.now().subtract(
+                    const Duration(days: 7),
+                  );
                   final weekTotal = expenses
                       .where((e) => e.spentOn.isAfter(weekStart))
                       .fold(0, (sum, e) => sum + e.amount);
@@ -88,13 +101,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             Text(
                               "THIS WEEK'S TOTAL",
                               style: AppText.style(
-                                  FontWeight.w700, 12, AppColors.accentRed),
+                                FontWeight.w700,
+                                12,
+                                AppColors.accentRed,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               formatNaira(weekTotal),
                               style: AppText.style(
-                                  FontWeight.w900, 28, AppColors.accentRed),
+                                FontWeight.w900,
+                                28,
+                                AppColors.accentRed,
+                              ),
                             ),
                           ],
                         ),
@@ -104,14 +123,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         DeletableCard(
                           itemKey: expense.id,
                           title: 'Delete ${expense.description}?',
-                          message: 'The -${formatNaira(expense.amount)} '
+                          message:
+                              'The -${formatNaira(expense.amount)} '
                               'expense will leave your totals and reports.',
                           onDelete: () => _deleteExpense(expense),
                           child: _ExpenseCard(
                             expense: expense,
                             menu: CardOverflowMenu(
                               title: 'Delete ${expense.description}?',
-                              message: 'The -${formatNaira(expense.amount)} '
+                              message:
+                                  'The -${formatNaira(expense.amount)} '
                                   'expense will leave your totals and '
                                   'reports.',
                               onDelete: () => _deleteExpense(expense),
@@ -134,12 +155,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 }
 
 IconData expenseCategoryIcon(ExpenseCategory category) => switch (category) {
-      ExpenseCategory.delivery => Icons.local_shipping_rounded,
-      ExpenseCategory.stock => Icons.shopping_cart_rounded,
-      ExpenseCategory.rent => Icons.storefront_rounded,
-      ExpenseCategory.transport => Icons.bolt_rounded,
-      ExpenseCategory.other => Icons.receipt_long_rounded,
-    };
+  ExpenseCategory.delivery => Icons.local_shipping_rounded,
+  ExpenseCategory.stock => Icons.shopping_cart_rounded,
+  ExpenseCategory.rent => Icons.storefront_rounded,
+  ExpenseCategory.transport => Icons.bolt_rounded,
+  ExpenseCategory.other => Icons.receipt_long_rounded,
+};
 
 class _Header extends StatelessWidget {
   @override
@@ -149,22 +170,10 @@ class _Header extends StatelessWidget {
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
-              final navigator = Navigator.of(context);
-              if (navigator.canPop()) {
-                navigator.pop();
-              } else {
-                navigator.pushReplacementNamed('/dashboard');
-              }
-            },
-            child: const Icon(Icons.arrow_back,
-                size: 20, color: AppColors.textPrimary),
-          ),
-          const SizedBox(width: 12),
+          const HeaderBackButton(),
           Text('Expenses', style: AppText.screenTitle),
         ],
       ),
@@ -189,60 +198,69 @@ class _ExpenseCard extends StatelessWidget {
         boxShadow: AppShape.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Row(
-        children: [
-          Container(width: 4, height: 70, color: AppColors.accentRed),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 14, 16, 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.redTint,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: AppColors.accentRed),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 14, 16, 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.redTint,
+                      ),
+                      child: Icon(
+                        expenseCategoryIcon(expense.category),
+                        size: 18,
+                        color: AppColors.accentRed,
+                      ),
                     ),
-                    child: Icon(
-                      expenseCategoryIcon(expense.category),
-                      size: 18,
-                      color: AppColors.accentRed,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            expense.description,
+                            style: AppText.style(
+                              FontWeight.w700,
+                              13,
+                              AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            formatWeekdayDayMonth(expense.spentOn),
+                            style: AppText.style(
+                              FontWeight.w600,
+                              11,
+                              AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          expense.description,
-                          style: AppText.style(
-                              FontWeight.w700, 13, AppColors.textPrimary),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          formatWeekdayDayMonth(expense.spentOn),
-                          style: AppText.style(
-                              FontWeight.w600, 11, AppColors.textSecondary),
-                        ),
-                      ],
+                    Text(
+                      '-${formatNaira(expense.amount)}',
+                      style: AppText.style(
+                        FontWeight.w700,
+                        13,
+                        AppColors.accentRed,
+                      ),
                     ),
-                  ),
-                  Text(
-                    '-${formatNaira(expense.amount)}',
-                    style:
-                        AppText.style(FontWeight.w700, 13, AppColors.accentRed),
-                  ),
-                  if (menu != null) ...[
-                    const SizedBox(width: 2),
-                    menu!,
+                    if (menu != null) ...[const SizedBox(width: 2), menu!],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -263,22 +281,20 @@ class _Fab extends StatelessWidget {
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.accentRed,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x59C62828),
-              offset: Offset(0, 8),
-              blurRadius: 20,
-            ),
-          ],
-        ),
+        ).copyWith(boxShadow: AppShape.glow(AppColors.accentRed)),
         child: const Icon(Icons.add, size: 24, color: Colors.white),
       ),
     );
   }
 }
 
-typedef _AddExpense = Future<void> Function(
-    String description, int amount, ExpenseCategory category, DateTime spentOn);
+typedef _AddExpense =
+    Future<void> Function(
+      String description,
+      int amount,
+      ExpenseCategory category,
+      DateTime spentOn,
+    );
 
 class _AddExpenseSheet extends StatefulWidget {
   const _AddExpenseSheet({required this.onAdd});
@@ -411,8 +427,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
             onTap: _pickDate,
             child: Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               decoration: BoxDecoration(
                 color: AppColors.inputBg,
                 borderRadius: BorderRadius.circular(AppShape.controlRadius),
@@ -421,8 +436,11 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(formatWeekdayDayMonth(_date), style: AppText.input),
-                  const Icon(Icons.calendar_today_rounded,
-                      size: 16, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
                 ],
               ),
             ),
@@ -435,7 +453,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: AppText.fieldLabel),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(text, style: AppText.fieldLabel),
+  );
 }

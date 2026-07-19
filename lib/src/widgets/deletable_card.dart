@@ -127,12 +127,11 @@ class CardOverflowMenu extends StatelessWidget {
           ),
         ),
       ],
-      child: Container(
-        width: 28,
-        height: 28,
-        alignment: Alignment.center,
-        child: const Icon(Icons.more_vert,
-            size: 18, color: AppColors.placeholder),
+      // 44×44 hit area (touch guideline); the icon itself stays 18px.
+      child: const SizedBox(
+        width: 44,
+        height: 44,
+        child: Icon(Icons.more_vert, size: 18, color: AppColors.placeholder),
       ),
     );
   }

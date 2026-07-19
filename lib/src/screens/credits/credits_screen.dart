@@ -7,6 +7,7 @@ import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
+import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 
 /// Screen 7 — Outstanding Credits.
@@ -110,22 +111,10 @@ class _Header extends StatelessWidget {
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
-              final navigator = Navigator.of(context);
-              if (navigator.canPop()) {
-                navigator.pop();
-              } else {
-                navigator.pushReplacementNamed('/dashboard');
-              }
-            },
-            child: const Icon(Icons.arrow_back,
-                size: 20, color: AppColors.textPrimary),
-          ),
-          const SizedBox(width: 12),
+          const HeaderBackButton(),
           Expanded(
             child: Text(
               'Outstanding Credits',

@@ -44,6 +44,10 @@ abstract final class AppColors {
   static const redTint = Color(0xFFFFEBEE);
   static const redBorder = Color(0xFFFFCDD2);
 
+  /// Dark end of the loss gradient (pairs with [accentRed] the way
+  /// [primaryDark] pairs with [primary]).
+  static const lossRed = Color(0xFFB71C1C);
+
   /// Card surfaces, tab bar.
   static const surface = Colors.white;
 
@@ -108,4 +112,17 @@ abstract final class AppShape {
       blurRadius: 10,
     ),
   ];
+
+  /// Colored glow under FABs, the primary button, and the brand logo:
+  /// the accent at ~35% (button ~30%), 0 8px 20px by default (the logo
+  /// uses a slightly deeper 0 10px 24px).
+  static List<BoxShadow> glow(Color color,
+          {double alpha = 0.35, double dy = 8, double blur = 20}) =>
+      [
+        BoxShadow(
+          color: color.withValues(alpha: alpha),
+          offset: Offset(0, dy),
+          blurRadius: blur,
+        ),
+      ];
 }
