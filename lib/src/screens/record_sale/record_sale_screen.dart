@@ -7,6 +7,7 @@ import '../../theme/tokens.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
+import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
@@ -213,8 +214,13 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                 stream: store.watchProducts(),
                 builder: (context, snapshot) {
                   final products = snapshot.data;
-                  if (products == null || products.isEmpty) {
+                  if (products == null) {
                     return const Center(child: CircularProgressIndicator());
+                  }
+                  if (products.isEmpty) {
+                    // A brand-new install has no products yet — never show
+                    // a spinner that can't resolve; point at the fix.
+                    return const _NoProductsState();
                   }
                   final product = products.firstWhere(
                     (p) => p.id == _productId,
@@ -285,7 +291,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                 children: [
                   const _FieldLabel('QTY'),
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    // 3px vertical: keeps the row ~50px tall now that the
+                    // steppers carry a 44px hit area.
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.inputBg,
                       borderRadius:
@@ -493,22 +502,10 @@ class _Header extends StatelessWidget {
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
-              final navigator = Navigator.of(context);
-              if (navigator.canPop()) {
-                navigator.pop();
-              } else {
-                navigator.pushReplacementNamed('/dashboard');
-              }
-            },
-            child: const Icon(Icons.arrow_back,
-                size: 20, color: AppColors.textPrimary),
-          ),
-          const SizedBox(width: 12),
+          const HeaderBackButton(),
           Text('Record Sale', style: AppText.screenTitle),
         ],
       ),
@@ -538,19 +535,28 @@ class _StepperButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 44×44 hit area (touch guideline); the visible button stays 34×34.
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: onTap == null ? AppColors.placeholder : AppColors.textPrimary,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Center(
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color:
+                  onTap == null ? AppColors.placeholder : AppColors.textPrimary,
+            ),
+          ),
         ),
       ),
     );
@@ -846,6 +852,48 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// First-run state: recording a sale needs at least one product.
+class _NoProductsState extends StatelessWidget {
+  const _NoProductsState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppShape.screenPadding),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.inventory_2_outlined,
+                size: 44, color: AppColors.placeholder),
+            const SizedBox(height: 12),
+            Text(
+              'Add a product first',
+              style: AppText.style(FontWeight.w800, 16, AppColors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Your sales start from your products — add\n'
+              'one and it will appear here to sell.',
+              textAlign: TextAlign.center,
+              style: AppText.style(FontWeight.w600, 13, AppColors.textSecondary),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: 260,
+              child: PrimaryButton(
+                label: 'Go to Products',
+                onPressed: () =>
+                    Navigator.of(context).pushReplacementNamed('/products'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

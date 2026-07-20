@@ -28,13 +28,7 @@ class PrimaryButton extends StatelessWidget {
       height: 52,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppShape.controlRadius),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x4D0B8F4E),
-            offset: Offset(0, 8),
-            blurRadius: 20,
-          ),
-        ],
+        boxShadow: AppShape.glow(AppColors.primary, alpha: 0.30),
       ),
       child: FilledButton(
         onPressed: busy ? null : onPressed,

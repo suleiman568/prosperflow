@@ -15,6 +15,7 @@ import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
+import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 
 /// Screen 6 — Reports.
@@ -36,35 +37,35 @@ class _ReportsScreenState extends State<ReportsScreen> {
   ReportPeriod _period = ReportPeriod.week;
 
   String get _periodWord => switch (_period) {
-        ReportPeriod.week => 'week',
-        ReportPeriod.month => 'month',
-        ReportPeriod.all => 'run',
-      };
+    ReportPeriod.week => 'week',
+    ReportPeriod.month => 'month',
+    ReportPeriod.all => 'run',
+  };
 
   static const _paymentSpecs = {
     PaymentMethod.cash: (
       Icons.payments_rounded,
       'Cash',
       AppColors.primary,
-      AppColors.mintTint
+      AppColors.mintTint,
     ),
     PaymentMethod.transfer: (
       Icons.account_balance_rounded,
       'Transfer',
       AppColors.accentBlue,
-      AppColors.blueTint
+      AppColors.blueTint,
     ),
     PaymentMethod.pos: (
       Icons.credit_card_rounded,
       'POS',
       AppColors.accentPurple,
-      AppColors.purpleTint
+      AppColors.purpleTint,
     ),
     PaymentMethod.credit: (
       Icons.schedule_rounded,
       'Credit',
       AppColors.accentOrange,
-      AppColors.orangeTint
+      AppColors.orangeTint,
     ),
   };
 
@@ -85,22 +86,36 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Text('Export report', style: AppText.screenTitle),
             ),
             ListTile(
-              leading: const Icon(Icons.picture_as_pdf_rounded,
-                  color: AppColors.accentRed),
-              title: Text('PDF report',
-                  style: AppText.style(
-                      FontWeight.w700, 14, AppColors.textPrimary)),
+              leading: const Icon(
+                Icons.picture_as_pdf_rounded,
+                color: AppColors.accentRed,
+              ),
+              title: Text(
+                'PDF report',
+                style: AppText.style(
+                  FontWeight.w700,
+                  14,
+                  AppColors.textPrimary,
+                ),
+              ),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _export(pdf: true);
               },
             ),
             ListTile(
-              leading:
-                  const Icon(Icons.table_chart_rounded, color: AppColors.primary),
-              title: Text('CSV spreadsheet',
-                  style: AppText.style(
-                      FontWeight.w700, 14, AppColors.textPrimary)),
+              leading: const Icon(
+                Icons.table_chart_rounded,
+                color: AppColors.primary,
+              ),
+              title: Text(
+                'CSV spreadsheet',
+                style: AppText.style(
+                  FontWeight.w700,
+                  14,
+                  AppColors.textPrimary,
+                ),
+              ),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _export(pdf: false);
@@ -118,7 +133,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     try {
       final bundle = await store.exportBundle(_period);
       final d = bundle.generatedAt;
-      final stamp = '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      final stamp =
+          '${d.year}-${d.month.toString().padLeft(2, '0')}-'
           '${d.day.toString().padLeft(2, '0')}';
       final name = 'prosperflow-${_period.name}-$stamp';
 
@@ -131,8 +147,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
         await shareExportFile(bytes, '$name.pdf', 'application/pdf');
       } else {
         // UTF-8 BOM so Excel renders the ₦ signs correctly.
-        final bytes = Uint8List.fromList(
-            [0xEF, 0xBB, 0xBF, ...utf8.encode(buildReportCsv(bundle))]);
+        final bytes = Uint8List.fromList([
+          0xEF,
+          0xBB,
+          0xBF,
+          ...utf8.encode(buildReportCsv(bundle)),
+        ]);
         await shareExportFile(bytes, '$name.csv', 'text/csv');
       }
       if (!mounted) return;
@@ -176,8 +196,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildReport(ReportData report) {
     final profit = report.profit;
-    final paymentTotal = report.paymentBuckets
-        .fold(0, (sum, bucket) => sum + bucket.amount);
+    final paymentTotal = report.paymentBuckets.fold(
+      0,
+      (sum, bucket) => sum + bucket.amount,
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
@@ -208,7 +230,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               end: Alignment.bottomRight,
               colors: profit >= 0
                   ? const [AppColors.primary, AppColors.primaryDark]
-                  : const [AppColors.accentRed, Color(0xFFB71C1C)],
+                  : const [AppColors.accentRed, AppColors.lossRed],
             ),
           ),
           child: Column(
@@ -217,7 +239,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
               Text(
                 profit >= 0 ? 'NET PROFIT' : 'NET LOSS',
                 style: AppText.style(
-                    FontWeight.w700, 11, Colors.white.withValues(alpha: 0.9)),
+                  FontWeight.w700,
+                  11,
+                  Colors.white.withValues(alpha: 0.9),
+                ),
               ),
               const SizedBox(height: 4),
               Text(formatNaira(profit.abs()), style: AppText.moneyHero),
@@ -227,7 +252,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     ? "📈 You're on track! Great $_periodWord."
                     : '⚠ Spending more than you earn.',
                 style: AppText.style(
-                    FontWeight.w600, 12, Colors.white.withValues(alpha: 0.85)),
+                  FontWeight.w600,
+                  12,
+                  Colors.white.withValues(alpha: 0.85),
+                ),
               ),
             ],
           ),
@@ -274,17 +302,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
         const SizedBox(height: 10),
         for (final (index, bucket) in report.paymentBuckets.indexed) ...[
           if (index > 0) const SizedBox(height: 8),
-          Builder(builder: (context) {
-            final (icon, label, color, tint) = _paymentSpecs[bucket.method]!;
-            return _PaymentRowCard(
-              icon: icon,
-              label: label,
-              color: color,
-              tint: tint,
-              amount: bucket.amount,
-              fraction: paymentTotal == 0 ? 0 : bucket.amount / paymentTotal,
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final (icon, label, color, tint) = _paymentSpecs[bucket.method]!;
+              return _PaymentRowCard(
+                icon: icon,
+                label: label,
+                color: color,
+                tint: tint,
+                amount: bucket.amount,
+                fraction: paymentTotal == 0 ? 0 : bucket.amount / paymentTotal,
+              );
+            },
+          ),
         ],
         const SizedBox(height: AppShape.cardGap),
         Text(
@@ -366,7 +396,10 @@ class _SalesHistorySectionState extends State<_SalesHistorySection> {
               child: Text(
                 '🌅 No sales recorded yet today',
                 style: AppText.style(
-                    FontWeight.w600, 13, AppColors.textSecondary),
+                  FontWeight.w600,
+                  13,
+                  AppColors.textSecondary,
+                ),
               ),
             ),
           );
@@ -394,7 +427,10 @@ class _SalesHistorySectionState extends State<_SalesHistorySection> {
                 'sale${history.missingCostCount == 1 ? '' : 's'} recorded '
                 'before cost tracking',
                 style: AppText.style(
-                    FontWeight.w600, 10, AppColors.textSecondary),
+                  FontWeight.w600,
+                  10,
+                  AppColors.textSecondary,
+                ),
               ),
             ],
           ],
@@ -420,14 +456,18 @@ class _DaySummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("TODAY'S REVENUE",
-                    style:
-                        AppText.style(FontWeight.w700, 11, AppColors.primary)),
+                Text(
+                  "TODAY'S REVENUE",
+                  style: AppText.style(FontWeight.w700, 11, AppColors.primary),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   formatNaira(history.revenue),
-                  style:
-                      AppText.style(FontWeight.w900, 20, AppColors.textPrimary),
+                  style: AppText.style(
+                    FontWeight.w900,
+                    20,
+                    AppColors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -436,24 +476,18 @@ class _DaySummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('PROFIT',
-                    style:
-                        AppText.style(FontWeight.w700, 11, AppColors.primary)),
+                Text(
+                  'PROFIT',
+                  style: AppText.style(FontWeight.w700, 11, AppColors.primary),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   history.profit == null
                       ? '—'
                       : '${_profitText(history.profit)}'
-                          '${history.missingCostCount > 0 ? '*' : ''}',
+                            '${history.missingCostCount > 0 ? '*' : ''}',
                   style: AppText.style(
-                    FontWeight.w900,
-                    20,
-                    history.profit == null
-                        ? AppColors.textSecondary
-                        : history.profit! < 0
-                            ? AppColors.accentRed
-                            : AppColors.primaryDark,
-                  ),
+                      FontWeight.w900, 20, _profitColor(history.profit)),
                 ),
               ],
             ),
@@ -495,7 +529,10 @@ class _ProductGroupCard extends StatelessWidget {
                         Text(
                           group.productName,
                           style: AppText.style(
-                              FontWeight.w700, 13, AppColors.textPrimary),
+                            FontWeight.w700,
+                            13,
+                            AppColors.textPrimary,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
@@ -504,7 +541,10 @@ class _ProductGroupCard extends StatelessWidget {
                           '${group.entries.length} '
                           'sale${group.entries.length == 1 ? '' : 's'}',
                           style: AppText.style(
-                              FontWeight.w600, 11, AppColors.textSecondary),
+                            FontWeight.w600,
+                            11,
+                            AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -515,89 +555,121 @@ class _ProductGroupCard extends StatelessWidget {
                       Text(
                         formatNaira(group.revenue),
                         style: AppText.style(
-                            FontWeight.w800, 13, AppColors.textPrimary),
+                          FontWeight.w800,
+                          13,
+                          AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         group.profit == null
                             ? '— profit'
                             : '${_profitText(group.profit)}'
-                                '${group.profitIsPartial ? '*' : ''} profit',
+                                  '${group.profitIsPartial ? '*' : ''} profit',
                         style: AppText.style(
-                            FontWeight.w700, 11, _profitColor(group.profit)),
+                          FontWeight.w700,
+                          11,
+                          _profitColor(group.profit),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(width: 6),
-                  Icon(
-                    expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    size: 20,
-                    color: AppColors.textSecondary,
+                  AnimatedRotation(
+                    turns: expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          if (expanded) ...[
-            const Divider(height: 1, color: AppColors.divider),
-            for (final entry in group.entries)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+          // Smoothly grows/shrinks instead of snapping open (batch item 4).
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: !expanded
+                ? const SizedBox(width: double.infinity)
+                : Column(
+                    children: [
+                      const Divider(height: 1, color: AppColors.divider),
+                      for (final entry in group.entries)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                          child: Row(
                             children: [
-                              Flexible(
-                                child: Text(
-                                  '${entry.qty} × '
-                                  '${formatNaira(entry.unitPrice)}',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppText.style(FontWeight.w700, 12,
-                                      AppColors.textPrimary),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            '${entry.qty} × '
+                                            '${formatNaira(entry.unitPrice)}',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppText.style(
+                                              FontWeight.w700,
+                                              12,
+                                              AppColors.textPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                        if (entry.discounted) ...[
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              formatNaira(entry.listPrice!),
+                                              overflow: TextOverflow.ellipsis,
+                                              style:
+                                                  AppText.style(
+                                                    FontWeight.w600,
+                                                    11,
+                                                    AppColors.textSecondary,
+                                                  ).copyWith(
+                                                    decoration: TextDecoration
+                                                        .lineThrough,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${formatTime(entry.soldAt)} · '
+                                      '${_methodLabel(entry)}'
+                                      '${entry.discounted ? ' · discounted' : ''}',
+                                      style: AppText.style(
+                                        FontWeight.w600,
+                                        11,
+                                        AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              if (entry.discounted) ...[
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    formatNaira(entry.listPrice!),
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppText.style(FontWeight.w600, 11,
-                                            AppColors.textSecondary)
-                                        .copyWith(
-                                            decoration:
-                                                TextDecoration.lineThrough),
-                                  ),
+                              Text(
+                                _profitText(entry.profit),
+                                style: AppText.style(
+                                  FontWeight.w700,
+                                  12,
+                                  _profitColor(entry.profit),
                                 ),
-                              ],
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${formatTime(entry.soldAt)} · '
-                            '${_methodLabel(entry)}'
-                            '${entry.discounted ? ' · discounted' : ''}',
-                            style: AppText.style(
-                                FontWeight.w600, 11, AppColors.textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      _profitText(entry.profit),
-                      style: AppText.style(
-                          FontWeight.w700, 12, _profitColor(entry.profit)),
-                    ),
-                  ],
-                ),
-              ),
-          ],
+                        ),
+                    ],
+                  ),
+          ),
         ],
       ),
     );
@@ -616,29 +688,20 @@ class _Header extends StatelessWidget {
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
-              final navigator = Navigator.of(context);
-              if (navigator.canPop()) {
-                navigator.pop();
-              } else {
-                navigator.pushReplacementNamed('/dashboard');
-              }
-            },
-            child: const Icon(Icons.arrow_back,
-                size: 20, color: AppColors.textPrimary),
-          ),
-          const SizedBox(width: 12),
+          const HeaderBackButton(),
           Text('Reports', style: AppText.screenTitle),
           const Spacer(),
           IconButton(
             tooltip: 'Export report',
             onPressed: onExport,
-            icon: const Icon(Icons.ios_share_rounded,
-                size: 20, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.ios_share_rounded,
+              size: 20,
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -822,8 +885,11 @@ class _PaymentRowCard extends StatelessWidget {
               ),
               Text(
                 formatNaira(amount),
-                style:
-                    AppText.style(FontWeight.w700, 12, AppColors.textPrimary),
+                style: AppText.style(
+                  FontWeight.w700,
+                  12,
+                  AppColors.textPrimary,
+                ),
               ),
             ],
           ),

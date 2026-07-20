@@ -22,13 +22,7 @@ class BrandLogo extends StatelessWidget {
           end: Alignment(0.34, 0.94),
           colors: [AppColors.primary, AppColors.primaryDark],
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x590B8F4E),
-            offset: Offset(0, 10),
-            blurRadius: 24,
-          ),
-        ],
+        boxShadow: AppShape.glow(AppColors.primary, dy: 10, blur: 24),
       ),
       child: Center(
         child: CustomPaint(

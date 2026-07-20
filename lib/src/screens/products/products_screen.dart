@@ -6,8 +6,10 @@ import '../../theme/tokens.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
+import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/deletable_card.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/primary_button.dart';
 
@@ -98,6 +100,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 stream: store.watchProducts(),
                 builder: (context, snapshot) {
                   final products = snapshot.data ?? const <Product>[];
+                  if (snapshot.hasData && products.isEmpty) {
+                    return const EmptyState(
+                      icon: Icons.inventory_2_outlined,
+                      title: 'No products yet',
+                      message:
+                          'Everything you sell lives here.\n'
+                          'Tap + to add your first product.',
+                    );
+                  }
                   return ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
                     itemCount: products.length,
@@ -106,14 +117,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     itemBuilder: (_, index) => DeletableCard(
                       itemKey: products[index].id,
                       title: 'Delete ${products[index].name}?',
-                      message: 'It will be removed from your products. '
+                      message:
+                          'It will be removed from your products. '
                           'Past sales are not affected.',
                       onDelete: () => _deleteProduct(products[index]),
                       child: _ProductCard(
                         product: products[index],
                         menu: CardOverflowMenu(
                           title: 'Delete ${products[index].name}?',
-                          message: 'It will be removed from your products. '
+                          message:
+                              'It will be removed from your products. '
                               'Past sales are not affected.',
                           onDelete: () => _deleteProduct(products[index]),
                           onEdit: () => _openEditProduct(products[index]),
@@ -141,22 +154,10 @@ class _Header extends StatelessWidget {
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
-              final navigator = Navigator.of(context);
-              if (navigator.canPop()) {
-                navigator.pop();
-              } else {
-                navigator.pushReplacementNamed('/dashboard');
-              }
-            },
-            child: const Icon(Icons.arrow_back,
-                size: 20, color: AppColors.textPrimary),
-          ),
-          const SizedBox(width: 12),
+          const HeaderBackButton(),
           Text('Products', style: AppText.screenTitle),
         ],
       ),
@@ -182,21 +183,30 @@ class _ProductCard extends StatelessWidget {
               children: [
                 Text(
                   product.name,
-                  style:
-                      AppText.style(FontWeight.w700, 15, AppColors.textPrimary),
+                  style: AppText.style(
+                    FontWeight.w700,
+                    15,
+                    AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${product.stock} ${product.unit}',
                   style: AppText.style(
-                      FontWeight.w600, 12, AppColors.textSecondary),
+                    FontWeight.w600,
+                    12,
+                    AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${formatNaira(product.buyPrice)} → '
                   '${formatNaira(product.sellPrice)}',
                   style: AppText.style(
-                      FontWeight.w600, 12, AppColors.textSecondary),
+                    FontWeight.w600,
+                    12,
+                    AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -205,11 +215,11 @@ class _ProductCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
-                  color:
-                      product.isLow ? AppColors.orangeTint : AppColors.mintTint,
+                  color: product.isLow
+                      ? AppColors.orangeTint
+                      : AppColors.mintTint,
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Text(
@@ -221,10 +231,7 @@ class _ProductCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (menu != null) ...[
-                const SizedBox(height: 6),
-                menu!,
-              ],
+              if (menu != null) ...[const SizedBox(height: 6), menu!],
             ],
           ),
         ],
@@ -232,7 +239,6 @@ class _ProductCard extends StatelessWidget {
     );
   }
 }
-
 
 class _Fab extends StatelessWidget {
   const _Fab({required this.onTap});
@@ -249,22 +255,21 @@ class _Fab extends StatelessWidget {
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.primary,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x590B8F4E),
-              offset: Offset(0, 8),
-              blurRadius: 20,
-            ),
-          ],
-        ),
+        ).copyWith(boxShadow: AppShape.glow(AppColors.primary)),
         child: const Icon(Icons.add, size: 24, color: Colors.white),
       ),
     );
   }
 }
 
-typedef _AddProduct = Future<void> Function(
-    String name, String unit, int stock, int buyPrice, int sellPrice);
+typedef _AddProduct =
+    Future<void> Function(
+      String name,
+      String unit,
+      int stock,
+      int buyPrice,
+      int sellPrice,
+    );
 
 class _AddProductSheet extends StatefulWidget {
   const _AddProductSheet({required this.onAdd});
@@ -346,7 +351,12 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _label('BUY PRICE (₦)'),
-                    FilledInput(hint: '6800', controller: _buyPrice, digitsOnly: true, textInputAction: TextInputAction.next),
+                    FilledInput(
+                      hint: '6800',
+                      controller: _buyPrice,
+                      digitsOnly: true,
+                      textInputAction: TextInputAction.next,
+                    ),
                   ],
                 ),
               ),
@@ -356,7 +366,12 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _label('SELL PRICE (₦)'),
-                    FilledInput(hint: '9200', controller: _sellPrice, digitsOnly: true, textInputAction: TextInputAction.next),
+                    FilledInput(
+                      hint: '9200',
+                      controller: _sellPrice,
+                      digitsOnly: true,
+                      textInputAction: TextInputAction.next,
+                    ),
                   ],
                 ),
               ),
@@ -364,7 +379,12 @@ class _AddProductSheetState extends State<_AddProductSheet> {
           ),
           const SizedBox(height: AppShape.cardGap),
           _label('OPENING STOCK'),
-          FilledInput(hint: '42', controller: _stock, digitsOnly: true, textInputAction: TextInputAction.done),
+          FilledInput(
+            hint: '42',
+            controller: _stock,
+            digitsOnly: true,
+            textInputAction: TextInputAction.done,
+          ),
           const SizedBox(height: 22),
           PrimaryButton(label: 'Add Product', onPressed: _submit),
         ],
@@ -373,15 +393,19 @@ class _AddProductSheetState extends State<_AddProductSheet> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: AppText.fieldLabel),
-      );
-
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(text, style: AppText.fieldLabel),
+  );
 }
 
-typedef _SaveProduct = Future<void> Function(
-    String name, String unit, int buyPrice, int sellPrice,
-    int lowStockThreshold);
+typedef _SaveProduct =
+    Future<void> Function(
+      String name,
+      String unit,
+      int buyPrice,
+      int sellPrice,
+      int lowStockThreshold,
+    );
 
 /// Edit sheet for an existing product. Stock is deliberately absent — it
 /// changes through sales; prices/name/unit/threshold change here. Edits
@@ -399,12 +423,15 @@ class _EditProductSheet extends StatefulWidget {
 class _EditProductSheetState extends State<_EditProductSheet> {
   late final _name = TextEditingController(text: widget.product.name);
   late final _unit = TextEditingController(text: widget.product.unit);
-  late final _buyPrice =
-      TextEditingController(text: '${widget.product.buyPrice}');
-  late final _sellPrice =
-      TextEditingController(text: '${widget.product.sellPrice}');
-  late final _threshold =
-      TextEditingController(text: '${widget.product.lowStockThreshold}');
+  late final _buyPrice = TextEditingController(
+    text: '${widget.product.buyPrice}',
+  );
+  late final _sellPrice = TextEditingController(
+    text: '${widget.product.sellPrice}',
+  );
+  late final _threshold = TextEditingController(
+    text: '${widget.product.lowStockThreshold}',
+  );
 
   @override
   void dispose() {
@@ -444,9 +471,9 @@ class _EditProductSheetState extends State<_EditProductSheet> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: AppText.fieldLabel),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(text, style: AppText.fieldLabel),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -490,10 +517,11 @@ class _EditProductSheetState extends State<_EditProductSheet> {
                   children: [
                     _label('BUY PRICE (₦)'),
                     FilledInput(
-                        hint: '6800',
-                        controller: _buyPrice,
-                        digitsOnly: true,
-                        textInputAction: TextInputAction.next),
+                      hint: '6800',
+                      controller: _buyPrice,
+                      digitsOnly: true,
+                      textInputAction: TextInputAction.next,
+                    ),
                   ],
                 ),
               ),
@@ -504,10 +532,11 @@ class _EditProductSheetState extends State<_EditProductSheet> {
                   children: [
                     _label('SELL PRICE (₦)'),
                     FilledInput(
-                        hint: '9200',
-                        controller: _sellPrice,
-                        digitsOnly: true,
-                        textInputAction: TextInputAction.next),
+                      hint: '9200',
+                      controller: _sellPrice,
+                      digitsOnly: true,
+                      textInputAction: TextInputAction.next,
+                    ),
                   ],
                 ),
               ),
@@ -516,10 +545,11 @@ class _EditProductSheetState extends State<_EditProductSheet> {
           const SizedBox(height: AppShape.cardGap),
           _label('LOW-STOCK ALERT AT'),
           FilledInput(
-              hint: '10',
-              controller: _threshold,
-              digitsOnly: true,
-              textInputAction: TextInputAction.done),
+            hint: '10',
+            controller: _threshold,
+            digitsOnly: true,
+            textInputAction: TextInputAction.done,
+          ),
           const SizedBox(height: 22),
           PrimaryButton(label: 'Save Changes', onPressed: _submit),
         ],
