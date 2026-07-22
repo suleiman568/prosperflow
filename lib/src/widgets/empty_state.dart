@@ -25,17 +25,17 @@ class EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 44, color: AppColors.placeholder),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: AppText.style(FontWeight.w800, 16, AppColors.textPrimary),
-            ),
+            const SizedBox(height: AppShape.gapMd),
+            Text(title, style: AppText.emptyTitle),
             const SizedBox(height: 6),
             Text(
               message,
               textAlign: TextAlign.center,
-              style:
-                  AppText.style(FontWeight.w600, 13, AppColors.textSecondary),
+              style: AppText.style(
+                FontWeight.w600,
+                13,
+                AppColors.textSecondary,
+              ),
             ),
           ],
         ),

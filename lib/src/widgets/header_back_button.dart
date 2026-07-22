@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
+import 'pressable.dart';
 
 /// Header back arrow with a full 44×44 hit area (the visible icon stays
 /// 20px). Pops when possible, otherwise returns to the dashboard — the
@@ -10,8 +11,7 @@ class HeaderBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return Pressable(
       onTap: () {
         final navigator = Navigator.of(context);
         if (navigator.canPop()) {

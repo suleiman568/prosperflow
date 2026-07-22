@@ -12,6 +12,7 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/deletable_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/filled_input.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 
 /// Screen 5 — Expenses.
@@ -90,7 +91,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       .where((e) => e.spentOn.isAfter(weekStart))
                       .fold(0, (sum, e) => sum + e.amount);
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
+                    padding: AppShape.screenBodyFab,
                     children: [
                       AppCard.tinted(
                         color: AppColors.redTint,
@@ -106,7 +107,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 AppColors.accentRed,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: AppShape.gapXs),
                             Text(
                               formatNaira(weekTotal),
                               style: AppText.style(
@@ -234,22 +235,11 @@ class _ExpenseCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        expense.description,
-                        style: AppText.style(
-                          FontWeight.w700,
-                          13,
-                          AppColors.textPrimary,
-                        ),
-                      ),
+                      Text(expense.description, style: AppText.listTitle),
                       const SizedBox(height: 2),
                       Text(
                         formatWeekdayDayMonth(expense.spentOn),
-                        style: AppText.style(
-                          FontWeight.w600,
-                          11,
-                          AppColors.textSecondary,
-                        ),
+                        style: AppText.caption,
                       ),
                     ],
                   ),
@@ -279,7 +269,7 @@ class _Fab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
       child: Container(
         width: 56,
@@ -367,7 +357,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Add Expense', style: AppText.screenTitle),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppShape.gapLg),
           _label('DESCRIPTION'),
           FilledInput(
             hint: 'Delivery Cost',

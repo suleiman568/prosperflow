@@ -40,7 +40,7 @@ class DashboardScreen extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                padding: AppShape.screenBody,
                 children: [
                   Text(
                     'Welcome back, ${AppScope.authOf(context).traderName} 👋',
@@ -53,11 +53,7 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     formatFullDate(DateTime.now()),
-                    style: AppText.style(
-                      FontWeight.w500,
-                      13,
-                      AppColors.textSecondary,
-                    ),
+                    style: AppText.dialogBody,
                   ),
                   const SizedBox(height: AppShape.cardGap),
                   Row(
@@ -139,7 +135,7 @@ class DashboardScreen extends StatelessWidget {
                                 ],
                               ),
                               for (final product in lowStock) ...[
-                                const SizedBox(height: 8),
+                                const SizedBox(height: AppShape.gapSm),
                                 Text(
                                   product.lowStockLine,
                                   style: AppText.style(
@@ -427,7 +423,7 @@ class _QuickAction extends StatelessWidget {
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
-              style: AppText.style(FontWeight.w700, 13, AppColors.textPrimary),
+              style: AppText.listTitle,
             ),
           ),
         ],

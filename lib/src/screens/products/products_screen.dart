@@ -11,6 +11,7 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/deletable_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/filled_input.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 
 /// Screen 4 — Products.
@@ -110,7 +111,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     );
                   }
                   return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
+                    padding: AppShape.screenBodyFab,
                     itemCount: products.length,
                     separatorBuilder: (_, _) =>
                         const SizedBox(height: AppShape.cardGap),
@@ -181,32 +182,17 @@ class _ProductCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  product.name,
-                  style: AppText.style(
-                    FontWeight.w700,
-                    15,
-                    AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
+                Text(product.name, style: AppText.cardTitle),
+                const SizedBox(height: AppShape.gapXs),
                 Text(
                   '${product.stock} ${product.unit}',
-                  style: AppText.style(
-                    FontWeight.w600,
-                    12,
-                    AppColors.textSecondary,
-                  ),
+                  style: AppText.cardMeta,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${formatNaira(product.buyPrice)} → '
                   '${formatNaira(product.sellPrice)}',
-                  style: AppText.style(
-                    FontWeight.w600,
-                    12,
-                    AppColors.textSecondary,
-                  ),
+                  style: AppText.cardMeta,
                 ),
               ],
             ),
@@ -247,7 +233,7 @@ class _Fab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
       child: Container(
         width: 56,
@@ -329,7 +315,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Add Product', style: AppText.screenTitle),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppShape.gapLg),
           _label('PRODUCT NAME'),
           FilledInput(
             hint: 'Palm Oil (25L)',
@@ -489,12 +475,12 @@ class _EditProductSheetState extends State<_EditProductSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Edit Product', style: AppText.screenTitle),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppShape.gapXs),
           Text(
             'Past sales keep their original prices.',
-            style: AppText.style(FontWeight.w600, 12, AppColors.textSecondary),
+            style: AppText.cardMeta,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppShape.gapLg),
           _label('PRODUCT NAME'),
           FilledInput(
             hint: 'Palm Oil (25L)',

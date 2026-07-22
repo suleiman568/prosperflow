@@ -65,7 +65,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final error = await AppScope.authOf(context).resetPassword(email);
     if (!mounted) return;
     showAppToast(
-        context, error != null ? '⚠ $error' : '📧 Password reset email sent');
+      context,
+      error != null ? '⚠ $error' : '📧 Password reset email sent',
+    );
   }
 
   void _openCreateAccount() {
@@ -81,8 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (message != null) {
             showAppToast(context, message);
           } else {
-            Navigator.of(context)
-                .pushReplacementNamed(DashboardScreen.route);
+            Navigator.of(context).pushReplacementNamed(DashboardScreen.route);
           }
         },
       ),
@@ -104,14 +105,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 18),
                 Text(
                   'ProsperFlow',
-                  style:
-                      AppText.style(FontWeight.w900, 26, AppColors.textPrimary),
+                  style: AppText.style(
+                    FontWeight.w900,
+                    26,
+                    AppColors.textPrimary,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppShape.gapSm),
                 Text(
                   'Your digital sales ledger',
                   style: AppText.style(
-                      FontWeight.w500, 14, AppColors.textSecondary),
+                    FontWeight.w500,
+                    14,
+                    AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 28),
                 FilledInput(
@@ -120,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppShape.gapMd),
                 FilledInput(
                   hint: '••••••••',
                   controller: _passwordController,
@@ -135,14 +142,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: _forgotPassword,
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 8),
+                          horizontal: 4,
+                          vertical: 8,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Text(
                         'Forgot password?',
                         style: AppText.style(
-                            FontWeight.w600, 12, AppColors.primary),
+                          FontWeight.w600,
+                          12,
+                          AppColors.primary,
+                        ),
                       ),
                     ),
                   ),
@@ -155,13 +167,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text.rich(
                     TextSpan(
                       text: 'New trader? ',
-                      style: AppText.style(
-                          FontWeight.w500, 13, AppColors.textSecondary),
+                      style: AppText.dialogBody,
                       children: [
                         TextSpan(
                           text: 'Create account',
                           style: AppText.style(
-                              FontWeight.w700, 13, AppColors.primary),
+                            FontWeight.w700,
+                            13,
+                            AppColors.primary,
+                          ),
                         ),
                       ],
                     ),
@@ -212,8 +226,11 @@ class _CreateAccountSheetState extends State<_CreateAccountSheet> {
     setState(() => _busy = true);
     final auth = AppScope.authOf(context);
     final navigator = Navigator.of(context);
-    final error =
-        await auth.signUp(name: name, email: email, password: password);
+    final error = await auth.signUp(
+      name: name,
+      email: email,
+      password: password,
+    );
     if (!mounted) return;
     setState(() => _busy = false);
     navigator.pop();
@@ -234,7 +251,7 @@ class _CreateAccountSheetState extends State<_CreateAccountSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Create account', style: AppText.screenTitle),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppShape.gapLg),
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Text('YOUR NAME', style: AppText.fieldLabel),

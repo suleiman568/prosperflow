@@ -10,6 +10,7 @@ import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/filled_input.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/sync_widgets.dart';
 
@@ -80,7 +81,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                 title: Text(
                   product.name,
                   style: AppText.style(
-                      FontWeight.w700, 14, AppColors.textPrimary),
+                    FontWeight.w700,
+                    14,
+                    AppColors.textPrimary,
+                  ),
                 ),
                 trailing: Text(
                   '${product.stock} in stock',
@@ -89,7 +93,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                 selected: product.id == _productId,
                 selectedTileColor: AppColors.mintTint,
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppShape.gapSm),
           ],
         ),
       ),
@@ -143,21 +147,26 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
           content: Text(
             'At ${formatNaira(price)} this sale loses ${formatNaira(loss)} '
             '(cost is ${formatNaira(product.buyPrice)}/unit).',
-            style:
-                AppText.style(FontWeight.w500, 13, AppColors.textSecondary),
+            style: AppText.dialogBody,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text('Cancel',
-                  style: AppText.style(
-                      FontWeight.w700, 13, AppColors.textSecondary)),
+              child: Text(
+                'Cancel',
+                style: AppText.style(
+                  FontWeight.w700,
+                  13,
+                  AppColors.textSecondary,
+                ),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text('Sell anyway',
-                  style: AppText.style(
-                      FontWeight.w700, 13, AppColors.accentRed)),
+              child: Text(
+                'Sell anyway',
+                style: AppText.style(FontWeight.w700, 13, AppColors.accentRed),
+              ),
             ),
           ],
         ),
@@ -244,10 +253,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
     final belowCost = price < product.buyPrice;
     final total = qty * price;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      padding: AppShape.screenBody,
       children: [
         const _FieldLabel('PRODUCT — TAP TO CHANGE'),
-        GestureDetector(
+        Pressable(
           onTap: () => _pickProduct(products),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -263,7 +272,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                     product.name,
                     overflow: TextOverflow.ellipsis,
                     style: AppText.style(
-                        FontWeight.w700, 14, AppColors.textPrimary),
+                      FontWeight.w700,
+                      14,
+                      AppColors.textPrimary,
+                    ),
                   ),
                 ),
                 Row(
@@ -271,10 +283,16 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                     Text(
                       '${product.stock} in stock',
                       style: AppText.style(
-                          FontWeight.w600, 12, AppColors.primary),
+                        FontWeight.w600,
+                        12,
+                        AppColors.primary,
+                      ),
                     ),
-                    const Icon(Icons.arrow_drop_down,
-                        size: 18, color: AppColors.primary),
+                    const Icon(
+                      Icons.arrow_drop_down,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
                   ],
                 ),
               ],
@@ -293,25 +311,32 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                   Container(
                     // 3px vertical: keeps the row ~50px tall now that the
                     // steppers carry a 44px hit area.
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.inputBg,
-                      borderRadius:
-                          BorderRadius.circular(AppShape.controlRadius),
+                      borderRadius: BorderRadius.circular(
+                        AppShape.controlRadius,
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _StepperButton(
                           icon: Icons.remove,
-                          onTap:
-                              qty > 1 ? () => setState(() => _qty = qty - 1) : null,
+                          onTap: qty > 1
+                              ? () => setState(() => _qty = qty - 1)
+                              : null,
                         ),
                         Text(
                           '$qty',
                           style: AppText.style(
-                              FontWeight.w700, 16, AppColors.textPrimary),
+                            FontWeight.w700,
+                            16,
+                            AppColors.textPrimary,
+                          ),
                         ),
                         _StepperButton(
                           icon: Icons.add,
@@ -331,16 +356,19 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const _FieldLabel('PRICE/UNIT — TAP TO ADJUST'),
-                  GestureDetector(
+                  Pressable(
                     onTap: () => _adjustPrice(product),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 14),
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: AppColors.inputBg,
-                        borderRadius:
-                            BorderRadius.circular(AppShape.controlRadius),
+                        borderRadius: BorderRadius.circular(
+                          AppShape.controlRadius,
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -350,7 +378,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                               formatNaira(price),
                               overflow: TextOverflow.ellipsis,
                               style: AppText.style(
-                                  FontWeight.w700, 16, AppColors.textPrimary),
+                                FontWeight.w700,
+                                16,
+                                AppColors.textPrimary,
+                              ),
                             ),
                           ),
                           if (discounted) ...[
@@ -359,17 +390,18 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                               child: Text(
                                 formatNaira(product.sellPrice),
                                 overflow: TextOverflow.ellipsis,
-                                style: AppText.style(FontWeight.w600, 12,
-                                        AppColors.textSecondary)
-                                    .copyWith(
-                                        decoration:
-                                            TextDecoration.lineThrough),
+                                style: AppText.cardMeta.copyWith(
+                                  decoration: TextDecoration.lineThrough,
+                                ),
                               ),
                             ),
                           ] else ...[
                             const SizedBox(width: 5),
-                            const Icon(Icons.edit_rounded,
-                                size: 13, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.edit_rounded,
+                              size: 13,
+                              color: AppColors.textSecondary,
+                            ),
                           ],
                         ],
                       ),
@@ -381,7 +413,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
           ],
         ),
         if (belowCost) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppShape.gapSm),
           Text(
             '⚠ Below cost — this sale loses '
             '${formatNaira((product.buyPrice - price) * qty)}',
@@ -408,14 +440,20 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                   Text(
                     'TOTAL',
                     style: AppText.style(
-                        FontWeight.w700, 11, Colors.white.withValues(alpha: 0.9)),
+                      FontWeight.w700,
+                      11,
+                      Colors.white.withValues(alpha: 0.9),
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppShape.gapXs),
                   Text(formatNaira(total), style: AppText.moneyHero),
                 ],
               ),
-              const Icon(Icons.account_balance_wallet_rounded,
-                  size: 32, color: Colors.white),
+              const Icon(
+                Icons.account_balance_wallet_rounded,
+                size: 32,
+                color: Colors.white,
+              ),
             ],
           ),
         ),
@@ -536,9 +574,8 @@ class _StepperButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 44×44 hit area (touch guideline); the visible button stays 34×34.
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 44,
         height: 44,
@@ -553,8 +590,9 @@ class _StepperButton extends StatelessWidget {
             child: Icon(
               icon,
               size: 18,
-              color:
-                  onTap == null ? AppColors.placeholder : AppColors.textPrimary,
+              color: onTap == null
+                  ? AppColors.placeholder
+                  : AppColors.textPrimary,
             ),
           ),
         ),
@@ -579,25 +617,25 @@ class _PaymentPill extends StatelessWidget {
       Icons.payments_rounded,
       'Cash',
       AppColors.primary,
-      AppColors.mintTint
+      AppColors.mintTint,
     ),
     PaymentMethod.transfer: (
       Icons.account_balance_rounded,
       'Transfer',
       AppColors.accentBlue,
-      AppColors.blueTint
+      AppColors.blueTint,
     ),
     PaymentMethod.pos: (
       Icons.credit_card_rounded,
       'POS',
       AppColors.accentPurple,
-      AppColors.purpleTint
+      AppColors.purpleTint,
     ),
     PaymentMethod.credit: (
       Icons.schedule_rounded,
       'Credit',
       AppColors.accentOrange,
-      AppColors.orangeBorder
+      AppColors.orangeBorder,
     ),
   };
 
@@ -659,9 +697,11 @@ class _FulfilmentPill extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                size: 16,
-                color: selected ? Colors.white : AppColors.textSecondary),
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? Colors.white : AppColors.textSecondary,
+            ),
             const SizedBox(width: 6),
             Text(
               label,
@@ -755,9 +795,9 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
         : (100 * (widget.listPrice - _final) / widget.listPrice).round();
 
     Widget label(String text) => Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(text, style: AppText.fieldLabel),
-        );
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(text, style: AppText.fieldLabel),
+    );
 
     return Padding(
       padding: EdgeInsets.only(
@@ -771,12 +811,12 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Adjust price', style: AppText.screenTitle),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppShape.gapXs),
           Text(
             'Normal price ${formatNaira(widget.listPrice)}',
-            style: AppText.style(FontWeight.w600, 12, AppColors.textSecondary),
+            style: AppText.cardMeta,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppShape.gapLg),
           label('CUSTOM PRICE (₦)'),
           FilledInput(
             hint: '${widget.listPrice}',
@@ -823,7 +863,7 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
             discounted
                 ? 'Final price: ${formatNaira(_final)} ($pctOff% off)'
                 : 'Final price: ${formatNaira(_final)} (normal price)',
-            style: AppText.style(FontWeight.w700, 13, AppColors.textPrimary),
+            style: AppText.listTitle,
           ),
           if (belowCost) ...[
             const SizedBox(height: 6),
@@ -839,14 +879,17 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
             onPressed: () => Navigator.of(context).pop(_final),
           ),
           if (widget.currentPrice != widget.listPrice) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppShape.gapSm),
             Center(
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(widget.listPrice),
                 child: Text(
                   'Reset to normal price',
                   style: AppText.style(
-                      FontWeight.w700, 13, AppColors.textSecondary),
+                    FontWeight.w700,
+                    13,
+                    AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
@@ -869,19 +912,23 @@ class _NoProductsState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.inventory_2_outlined,
-                size: 44, color: AppColors.placeholder),
-            const SizedBox(height: 12),
-            Text(
-              'Add a product first',
-              style: AppText.style(FontWeight.w800, 16, AppColors.textPrimary),
+            const Icon(
+              Icons.inventory_2_outlined,
+              size: 44,
+              color: AppColors.placeholder,
             ),
+            const SizedBox(height: AppShape.gapMd),
+            Text('Add a product first', style: AppText.emptyTitle),
             const SizedBox(height: 6),
             Text(
               'Your sales start from your products — add\n'
               'one and it will appear here to sell.',
               textAlign: TextAlign.center,
-              style: AppText.style(FontWeight.w600, 13, AppColors.textSecondary),
+              style: AppText.style(
+                FontWeight.w600,
+                13,
+                AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 18),
             SizedBox(
