@@ -41,6 +41,37 @@ void main() {
     expect(_scaleOf(tester, find.byType(Pressable)).scale, 1.0);
   });
 
+  testWidgets(
+      'disabling onTap while held releases the pressed state (no stuck scale)',
+      (tester) async {
+    Widget build({required bool enabled}) => MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Pressable(
+                onTap: enabled ? () {} : null,
+                child: const SizedBox(width: 80, height: 40),
+              ),
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(build(enabled: true));
+
+    // Press and hold: it shrinks.
+    final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(Pressable)));
+    await tester.pump();
+    expect(_scaleOf(tester, find.byType(Pressable)).scale, lessThan(1.0));
+
+    // Parent rebuilds with onTap: null while the finger is still down —
+    // the control must not stay stuck scaled-down.
+    await tester.pumpWidget(build(enabled: false));
+    await tester.pumpAndSettle();
+    expect(_scaleOf(tester, find.byType(Pressable)).scale, 1.0);
+
+    await gesture.up();
+  });
+
   testWidgets('a null onTap leaves the child inert (no shrink)',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(

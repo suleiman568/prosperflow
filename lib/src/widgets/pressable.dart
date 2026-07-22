@@ -29,8 +29,22 @@ class _PressableState extends State<Pressable> {
   bool _pressed = false;
 
   void _set(bool value) {
-    if (widget.onTap == null || _pressed == value) return;
+    // Only a live control shrinks; releasing always clears the state, even
+    // if onTap has since gone null (so it can't stay stuck scaled-down).
+    if (value && widget.onTap == null) return;
+    if (_pressed == value) return;
     setState(() => _pressed = value);
+  }
+
+  @override
+  void didUpdateWidget(covariant Pressable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If a parent disables the control (onTap → null) mid-press — and no
+    // release event ever arrives because it's now inert — release the
+    // pressed state here so the button returns to full size.
+    if (_pressed && widget.onTap == null) {
+      setState(() => _pressed = false);
+    }
   }
 
   @override
