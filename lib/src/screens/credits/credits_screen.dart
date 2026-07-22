@@ -128,10 +128,13 @@ class _Header extends StatelessWidget {
         children: [
           const HeaderBackButton(),
           Expanded(
-            child: Text(
-              'Outstanding Credits',
-              style: AppText.screenTitle,
-              overflow: TextOverflow.ellipsis,
+            child: Semantics(
+              header: true,
+              child: Text(
+                'Outstanding Credits',
+                style: AppText.screenTitle,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ],
@@ -202,6 +205,7 @@ class _CreditCard extends StatelessWidget {
                         const SizedBox(height: 6),
                         Pressable(
                           onTap: onMarkPaid,
+                          semanticLabel: 'Mark as paid',
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,

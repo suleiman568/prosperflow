@@ -6,6 +6,7 @@ import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/screen_title.dart';
 import '../../sync/sync_engine.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/sync_widgets.dart';
@@ -284,7 +285,7 @@ class _AppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
+          ScreenTitle(
             'ProsperFlow',
             style: AppText.style(FontWeight.w800, 18, AppColors.textPrimary),
           ),
@@ -409,6 +410,7 @@ class _QuickAction extends StatelessWidget {
     return AppCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
       onTap: () => Navigator.of(context).pushNamed(route),
+      semanticLabel: label,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

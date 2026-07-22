@@ -14,6 +14,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
+import '../../widgets/screen_title.dart';
 
 /// Screen 5 — Expenses.
 ///
@@ -173,10 +174,7 @@ class _Header extends StatelessWidget {
       ),
       padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
-        children: [
-          const HeaderBackButton(),
-          Text('Expenses', style: AppText.screenTitle),
-        ],
+        children: [const HeaderBackButton(), const ScreenTitle('Expenses')],
       ),
     );
   }
@@ -271,6 +269,7 @@ class _Fab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Pressable(
       onTap: onTap,
+      semanticLabel: 'Add expense',
       child: Container(
         width: 56,
         height: 56,

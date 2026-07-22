@@ -16,6 +16,7 @@ import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
+import '../../widgets/screen_title.dart';
 import '../../widgets/app_toast.dart';
 
 /// Screen 6 — Reports.
@@ -665,7 +666,7 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           const HeaderBackButton(),
-          Text('Reports', style: AppText.screenTitle),
+          const ScreenTitle('Reports'),
           const Spacer(),
           IconButton(
             tooltip: 'Export report',

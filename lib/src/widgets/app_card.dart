@@ -14,6 +14,7 @@ class AppCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.onTap,
+    this.semanticLabel,
   }) : color = AppColors.surface,
        borderColor = null,
        hasShadow = true;
@@ -25,6 +26,7 @@ class AppCard extends StatelessWidget {
     this.borderColor,
     this.padding = const EdgeInsets.all(16),
     this.onTap,
+    this.semanticLabel,
   }) : hasShadow = false;
 
   final Widget child;
@@ -33,6 +35,9 @@ class AppCard extends StatelessWidget {
   final Color? borderColor;
   final bool hasShadow;
   final VoidCallback? onTap;
+
+  /// Screen-reader label for tappable cards (e.g. quick actions).
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +52,6 @@ class AppCard extends StatelessWidget {
       child: child,
     );
     if (onTap == null) return card;
-    return Pressable(onTap: onTap, child: card);
+    return Pressable(onTap: onTap, semanticLabel: semanticLabel, child: card);
   }
 }
