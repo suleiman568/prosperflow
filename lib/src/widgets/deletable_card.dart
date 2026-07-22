@@ -20,10 +20,7 @@ Future<bool?> showDeleteConfirmDialog(
         title,
         style: AppText.style(FontWeight.w800, 17, AppColors.textPrimary),
       ),
-      content: Text(
-        message,
-        style: AppText.style(FontWeight.w500, 13, AppColors.textSecondary),
-      ),
+      content: Text(message, style: AppText.dialogBody),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -100,14 +97,13 @@ class CardOverflowMenu extends StatelessWidget {
             height: 40,
             child: Row(
               children: [
-                const Icon(Icons.edit_rounded,
-                    size: 16, color: AppColors.textPrimary),
-                const SizedBox(width: 8),
-                Text(
-                  'Edit',
-                  style: AppText.style(
-                      FontWeight.w700, 13, AppColors.textPrimary),
+                const Icon(
+                  Icons.edit_rounded,
+                  size: 16,
+                  color: AppColors.textPrimary,
                 ),
+                const SizedBox(width: 8),
+                Text('Edit', style: AppText.listTitle),
               ],
             ),
           ),
@@ -116,8 +112,11 @@ class CardOverflowMenu extends StatelessWidget {
           height: 40,
           child: Row(
             children: [
-              const Icon(Icons.delete_rounded,
-                  size: 16, color: AppColors.accentRed),
+              const Icon(
+                Icons.delete_rounded,
+                size: 16,
+                color: AppColors.accentRed,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Delete',
@@ -165,8 +164,11 @@ class DeletableCard extends StatelessWidget {
   final Widget child;
 
   Future<void> _longPressDelete(BuildContext context) async {
-    final confirmed =
-        await showDeleteConfirmDialog(context, title: title, message: message);
+    final confirmed = await showDeleteConfirmDialog(
+      context,
+      title: title,
+      message: message,
+    );
     if (confirmed == true) await onDelete();
   }
 

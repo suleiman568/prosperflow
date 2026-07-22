@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
+import 'pressable.dart';
 
 /// White card per the design system: 16px radius,
 /// shadow 0 2px 10px rgba(0,0,0,0.05).
@@ -13,9 +14,9 @@ class AppCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.onTap,
-  })  : color = AppColors.surface,
-        borderColor = null,
-        hasShadow = true;
+  }) : color = AppColors.surface,
+       borderColor = null,
+       hasShadow = true;
 
   const AppCard.tinted({
     super.key,
@@ -46,6 +47,6 @@ class AppCard extends StatelessWidget {
       child: child,
     );
     if (onTap == null) return card;
-    return GestureDetector(onTap: onTap, child: card);
+    return Pressable(onTap: onTap, child: card);
   }
 }

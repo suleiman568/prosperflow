@@ -7,6 +7,7 @@ import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 
@@ -52,37 +53,48 @@ class _CreditsScreenState extends State<CreditsScreen> {
                   if (credits.isEmpty) return const _EmptyState();
                   final total = credits.fold(0, (sum, c) => sum + c.amount);
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                    padding: AppShape.screenBody,
                     children: [
-                        AppCard.tinted(
-                          color: AppColors.orangeTint,
-                          borderColor: AppColors.orangeBorder,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'TOTAL OUTSTANDING',
-                                    style: AppText.style(FontWeight.w700, 12,
-                                        AppColors.accentOrange),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    formatNaira(total),
-                                    style: AppText.style(FontWeight.w900, 24,
-                                        AppColors.accentOrange),
-                                  ),
-                                ],
-                              ),
-                              const Icon(Icons.schedule_rounded,
-                                  size: 24, color: AppColors.accentOrange),
-                            ],
-                          ),
+                      AppCard.tinted(
+                        color: AppColors.orangeTint,
+                        borderColor: AppColors.orangeBorder,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'TOTAL OUTSTANDING',
+                                  style: AppText.style(
+                                    FontWeight.w700,
+                                    12,
+                                    AppColors.accentOrange,
+                                  ),
+                                ),
+                                const SizedBox(height: AppShape.gapXs),
+                                Text(
+                                  formatNaira(total),
+                                  style: AppText.style(
+                                    FontWeight.w900,
+                                    24,
+                                    AppColors.accentOrange,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Icon(
+                              Icons.schedule_rounded,
+                              size: 24,
+                              color: AppColors.accentOrange,
+                            ),
+                          ],
+                        ),
+                      ),
                       for (final credit in credits) ...[
                         const SizedBox(height: AppShape.cardGap),
                         _CreditCard(
@@ -161,19 +173,17 @@ class _CreditCard extends StatelessWidget {
                           Text(
                             credit.customerName,
                             style: AppText.style(
-                                FontWeight.w700, 14, AppColors.textPrimary),
+                              FontWeight.w700,
+                              14,
+                              AppColors.textPrimary,
+                            ),
                           ),
                           const SizedBox(height: 3),
-                          Text(
-                            credit.product,
-                            style: AppText.style(
-                                FontWeight.w600, 11, AppColors.textSecondary),
-                          ),
+                          Text(credit.product, style: AppText.caption),
                           const SizedBox(height: 2),
                           Text(
                             'Sold: ${formatDayMonthYear(credit.soldAt)}',
-                            style: AppText.style(
-                                FontWeight.w600, 11, AppColors.textSecondary),
+                            style: AppText.caption,
                           ),
                         ],
                       ),
@@ -184,29 +194,41 @@ class _CreditCard extends StatelessWidget {
                         Text(
                           formatNaira(credit.amount),
                           style: AppText.style(
-                              FontWeight.w800, 14, AppColors.accentOrange),
+                            FontWeight.w800,
+                            14,
+                            AppColors.accentOrange,
+                          ),
                         ),
                         const SizedBox(height: 6),
-                        GestureDetector(
+                        Pressable(
                           onTap: onMarkPaid,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
                               borderRadius: BorderRadius.circular(
-                                  AppShape.controlRadius),
+                                AppShape.controlRadius,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.check,
-                                    size: 12, color: Colors.white),
+                                const Icon(
+                                  Icons.check,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Mark as Paid',
                                   style: AppText.style(
-                                      FontWeight.w700, 11, Colors.white),
+                                    FontWeight.w700,
+                                    11,
+                                    Colors.white,
+                                  ),
                                 ),
                               ],
                             ),
@@ -241,8 +263,11 @@ class _EmptyState extends StatelessWidget {
               shape: BoxShape.circle,
               color: AppColors.mintTint,
             ),
-            child: const Icon(Icons.check_circle_rounded,
-                size: 44, color: AppColors.primary),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              size: 44,
+              color: AppColors.primary,
+            ),
           ),
           const SizedBox(height: 14),
           Text(

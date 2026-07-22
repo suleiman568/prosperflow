@@ -63,15 +63,18 @@ abstract final class AppColors {
 abstract final class AppText {
   static const _family = 'Inter';
 
-  static TextStyle style(FontWeight weight, double size, Color color,
-          {double? height}) =>
-      TextStyle(
-        fontFamily: _family,
-        fontWeight: weight,
-        fontSize: size,
-        color: color,
-        height: height,
-      );
+  static TextStyle style(
+    FontWeight weight,
+    double size,
+    Color color, {
+    double? height,
+  }) => TextStyle(
+    fontFamily: _family,
+    fontWeight: weight,
+    fontSize: size,
+    color: color,
+    height: height,
+  );
 
   /// Money hero — 900 · 32px (Total card, Net Profit).
   static final moneyHero = style(FontWeight.w900, 32, Colors.white);
@@ -85,6 +88,37 @@ abstract final class AppText {
   /// Filled input text — 500 · 15px.
   static final input = style(FontWeight.w500, 15, AppColors.textPrimary);
   static final inputHint = style(FontWeight.w500, 15, AppColors.placeholder);
+
+  // ---- Semantic roles (naming for the repeated elements; same pixels) ----
+
+  /// Section heading over a list/group — 800 · 13px
+  /// ("Top Products", "Payment Breakdown", "Sales History for Today").
+  static final sectionHeading = style(
+    FontWeight.w800,
+    13,
+    AppColors.textPrimary,
+  );
+
+  /// Title on a large tile (product card, quick action) — 700 · 15px.
+  static final cardTitle = style(FontWeight.w700, 15, AppColors.textPrimary);
+
+  /// Title on a dense list row (expense/credit/history) — 700 · 13px.
+  static final listTitle = style(FontWeight.w700, 13, AppColors.textPrimary);
+
+  /// Secondary meta line under a title — 600 · 12px.
+  static final cardMeta = style(FontWeight.w600, 12, AppColors.textSecondary);
+
+  /// Small caption/footnote — 600 · 11px.
+  static final caption = style(FontWeight.w600, 11, AppColors.textSecondary);
+
+  /// Dialog / sheet body copy — 500 · 13px.
+  static final dialogBody = style(FontWeight.w500, 13, AppColors.textSecondary);
+
+  /// Empty-state title — 800 · 16px.
+  static final emptyTitle = style(FontWeight.w800, 16, AppColors.textPrimary);
+
+  /// Prominent stat value on a card — 800 · 20px (Sales/Expenses totals).
+  static final statValue = style(FontWeight.w800, 20, AppColors.textPrimary);
 }
 
 /// Shape & spacing tokens.
@@ -104,25 +138,54 @@ abstract final class AppShape {
   /// Grid gap.
   static const gridGap = 12.0;
 
+  // ---- Vertical gap scale (for SizedBox spacers) ----
+  /// 4px — tight gap between a label and its value.
+  static const gapXs = 4.0;
+
+  /// 8px — small gap between related rows.
+  static const gapSm = 8.0;
+
+  /// 12px — medium gap.
+  static const gapMd = 12.0;
+
+  /// 16px — gap before a new section/field.
+  static const gapLg = 16.0;
+
+  /// Standard screen body padding: [screenPadding] sides, snug top, room for
+  /// the floating tab bar / FAB at the bottom.
+  static const screenBody = EdgeInsets.fromLTRB(
+    screenPadding,
+    14,
+    screenPadding,
+    24,
+  );
+
+  /// Screen body padding for lists that sit under a FAB.
+  static const screenBodyFab = EdgeInsets.fromLTRB(
+    screenPadding,
+    14,
+    screenPadding,
+    96,
+  );
+
   /// Card shadow: 0 2px 10px rgba(0,0,0,0.05).
   static const cardShadow = [
-    BoxShadow(
-      color: Color(0x0D000000),
-      offset: Offset(0, 2),
-      blurRadius: 10,
-    ),
+    BoxShadow(color: Color(0x0D000000), offset: Offset(0, 2), blurRadius: 10),
   ];
 
   /// Colored glow under FABs, the primary button, and the brand logo:
   /// the accent at ~35% (button ~30%), 0 8px 20px by default (the logo
   /// uses a slightly deeper 0 10px 24px).
-  static List<BoxShadow> glow(Color color,
-          {double alpha = 0.35, double dy = 8, double blur = 20}) =>
-      [
-        BoxShadow(
-          color: color.withValues(alpha: alpha),
-          offset: Offset(0, dy),
-          blurRadius: blur,
-        ),
-      ];
+  static List<BoxShadow> glow(
+    Color color, {
+    double alpha = 0.35,
+    double dy = 8,
+    double blur = 20,
+  }) => [
+    BoxShadow(
+      color: color.withValues(alpha: alpha),
+      offset: Offset(0, dy),
+      blurRadius: blur,
+    ),
+  ];
 }
