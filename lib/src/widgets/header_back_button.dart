@@ -12,6 +12,7 @@ class HeaderBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Pressable(
+      semanticLabel: 'Back',
       onTap: () {
         final navigator = Navigator.of(context);
         if (navigator.canPop()) {

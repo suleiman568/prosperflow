@@ -13,6 +13,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
+import '../../widgets/screen_title.dart';
 
 /// Screen 4 — Products.
 ///
@@ -157,10 +158,7 @@ class _Header extends StatelessWidget {
       ),
       padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
-        children: [
-          const HeaderBackButton(),
-          Text('Products', style: AppText.screenTitle),
-        ],
+        children: [const HeaderBackButton(), const ScreenTitle('Products')],
       ),
     );
   }
@@ -235,6 +233,7 @@ class _Fab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Pressable(
       onTap: onTap,
+      semanticLabel: 'Add product',
       child: Container(
         width: 56,
         height: 56,
