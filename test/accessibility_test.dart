@@ -6,6 +6,7 @@ import 'package:prosperflow/src/screens/dashboard/dashboard_screen.dart';
 import 'package:prosperflow/src/screens/expenses/expenses_screen.dart';
 import 'package:prosperflow/src/screens/products/products_screen.dart';
 import 'package:prosperflow/src/screens/record_sale/record_sale_screen.dart';
+import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 
 import 'helpers.dart';
 
@@ -123,22 +124,28 @@ void main() {
               .isNotEmpty,
         );
 
-    testWidgets('each screen exposes its title as a heading', (tester) async {
-      final handle = tester.ensureSemantics();
-      usePhoneSurface(tester, height: 1600);
+    // One test per screen so a regression on any single screen's heading
+    // fails on its own rather than hiding behind the others.
+    final titles = <String, ({Widget screen, String title})>{
+      'Dashboard': (screen: const DashboardScreen(), title: 'ProsperFlow'),
+      'Products': (screen: const ProductsScreen(), title: 'Products'),
+      'Expenses': (screen: const ExpensesScreen(), title: 'Expenses'),
+      'Record Sale': (screen: const RecordSaleScreen(), title: 'Record Sale'),
+      'Reports': (screen: const ReportsScreen(), title: 'Reports'),
+      'Credits': (screen: const CreditsScreen(), title: 'Outstanding Credits'),
+    };
 
-      Future<void> check(Widget screen, String title) async {
-        await pumpWithStore(tester, screen, store: fixtureStore());
+    titles.forEach((name, spec) {
+      testWidgets('$name exposes its title as a heading', (tester) async {
+        final handle = tester.ensureSemantics();
+        usePhoneSurface(tester, height: 1600);
+
+        await pumpWithStore(tester, spec.screen, store: fixtureStore());
         await tester.pump();
-        expect(titleIsHeader(tester, title), isTrue, reason: title);
-      }
 
-      await check(const DashboardScreen(), 'ProsperFlow');
-      await check(const ProductsScreen(), 'Products');
-      await check(const ExpensesScreen(), 'Expenses');
-      await check(const RecordSaleScreen(), 'Record Sale');
-      await check(const CreditsScreen(), 'Outstanding Credits');
-      handle.dispose();
+        expect(titleIsHeader(tester, spec.title), isTrue, reason: spec.title);
+        handle.dispose();
+      });
     });
   });
 }

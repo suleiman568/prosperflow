@@ -10,6 +10,7 @@ import '../../widgets/app_tab_bar.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/screen_title.dart';
 
 /// Screen 7 — Outstanding Credits.
 ///
@@ -127,14 +128,10 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           const HeaderBackButton(),
-          Expanded(
-            child: Semantics(
-              header: true,
-              child: Text(
-                'Outstanding Credits',
-                style: AppText.screenTitle,
-                overflow: TextOverflow.ellipsis,
-              ),
+          const Expanded(
+            child: ScreenTitle(
+              'Outstanding Credits',
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
