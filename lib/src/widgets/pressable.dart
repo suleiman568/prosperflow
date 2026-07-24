@@ -9,12 +9,18 @@ class Pressable extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
+    this.semanticLabel,
     this.scale = 0.97,
     this.behavior = HitTestBehavior.opaque,
   });
 
   final Widget child;
   final VoidCallback? onTap;
+
+  /// Screen-reader label. When set, the control is exposed as a button
+  /// (enabled when [onTap] is non-null) with this label, and its visual
+  /// children are hidden from semantics to avoid a doubled announcement.
+  final String? semanticLabel;
 
   /// Pressed scale (1.0 = no shrink). 0.97 is the default nudge.
   final double scale;
@@ -49,7 +55,7 @@ class _PressableState extends State<Pressable> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    Widget result = GestureDetector(
       behavior: widget.behavior,
       onTap: widget.onTap,
       onTapDown: (_) => _set(true),
@@ -59,8 +65,23 @@ class _PressableState extends State<Pressable> {
         scale: _pressed ? widget.scale : 1.0,
         duration: const Duration(milliseconds: 90),
         curve: Curves.easeOut,
-        child: widget.child,
+        child: widget.semanticLabel == null
+            ? widget.child
+            : ExcludeSemantics(child: widget.child),
       ),
     );
+    if (widget.semanticLabel != null) {
+      // container: true forces a standalone semantics node so the control is
+      // its own focusable button even when nested among a card's text —
+      // otherwise the label gets merged into the surrounding content.
+      result = Semantics(
+        container: true,
+        button: true,
+        enabled: widget.onTap != null,
+        label: widget.semanticLabel,
+        child: result,
+      );
+    }
+    return result;
   }
 }

@@ -10,6 +10,7 @@ import '../../widgets/app_tab_bar.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/screen_title.dart';
 
 /// Screen 7 — Outstanding Credits.
 ///
@@ -127,10 +128,9 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           const HeaderBackButton(),
-          Expanded(
-            child: Text(
+          const Expanded(
+            child: ScreenTitle(
               'Outstanding Credits',
-              style: AppText.screenTitle,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -202,6 +202,7 @@ class _CreditCard extends StatelessWidget {
                         const SizedBox(height: 6),
                         Pressable(
                           onTap: onMarkPaid,
+                          semanticLabel: 'Mark as paid',
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,

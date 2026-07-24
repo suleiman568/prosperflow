@@ -12,6 +12,7 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
+import '../../widgets/screen_title.dart';
 import '../../widgets/sync_widgets.dart';
 
 /// Screen 3 — Record Sale.
@@ -258,6 +259,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
         const _FieldLabel('PRODUCT — TAP TO CHANGE'),
         Pressable(
           onTap: () => _pickProduct(products),
+          semanticLabel: 'Change product, currently ${product.name}',
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
@@ -326,6 +328,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                       children: [
                         _StepperButton(
                           icon: Icons.remove,
+                          label: 'Decrease quantity',
                           onTap: qty > 1
                               ? () => setState(() => _qty = qty - 1)
                               : null,
@@ -340,6 +343,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                         ),
                         _StepperButton(
                           icon: Icons.add,
+                          label: 'Increase quantity',
                           onTap: qty < product.stock
                               ? () => setState(() => _qty = qty + 1)
                               : null,
@@ -358,6 +362,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                   const _FieldLabel('PRICE/UNIT — TAP TO ADJUST'),
                   Pressable(
                     onTap: () => _adjustPrice(product),
+                    semanticLabel: 'Adjust price',
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -542,10 +547,7 @@ class _Header extends StatelessWidget {
       ),
       padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
-        children: [
-          const HeaderBackButton(),
-          Text('Record Sale', style: AppText.screenTitle),
-        ],
+        children: [const HeaderBackButton(), const ScreenTitle('Record Sale')],
       ),
     );
   }
@@ -566,9 +568,10 @@ class _FieldLabel extends StatelessWidget {
 }
 
 class _StepperButton extends StatelessWidget {
-  const _StepperButton({required this.icon, this.onTap});
+  const _StepperButton({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
+  final String label;
   final VoidCallback? onTap;
 
   @override
@@ -576,6 +579,7 @@ class _StepperButton extends StatelessWidget {
     // 44×44 hit area (touch guideline); the visible button stays 34×34.
     return Pressable(
       onTap: onTap,
+      semanticLabel: label,
       child: SizedBox(
         width: 44,
         height: 44,

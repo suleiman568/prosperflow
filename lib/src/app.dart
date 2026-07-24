@@ -28,6 +28,16 @@ class ProsperFlowApp extends StatelessWidget {
         ),
         splashFactory: InkSparkle.splashFactory,
       ),
+      builder: (context, child) {
+        // Honour the OS "larger text" accessibility setting, but clamp the
+        // upper bound: our compact stat cards and 2×2 grids overflow past
+        // ~1.3×, so we cap there rather than let labels clip. Below 1.0 we
+        // leave the user's choice untouched.
+        return MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       initialRoute: AppScope.authOf(context).isSignedIn
           ? DashboardScreen.route
           : LoginScreen.route,
