@@ -11,6 +11,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/screen_title.dart';
+import '../../widgets/skeleton.dart';
 
 /// Screen 7 — Outstanding Credits.
 ///
@@ -50,7 +51,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 stream: store.watchOwedCredits(),
                 builder: (context, snapshot) {
                   final credits = snapshot.data;
-                  if (credits == null) return const SizedBox.shrink();
+                  if (credits == null) return const _LoadingList();
                   if (credits.isEmpty) return const _EmptyState();
                   final total = credits.fold(0, (sum, c) => sum + c.amount);
                   return ListView(
@@ -132,6 +133,96 @@ class _Header extends StatelessWidget {
             child: ScreenTitle(
               'Outstanding Credits',
               overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Placeholder total banner + rows shown while the credit stream delivers
+/// its first value, so the screen fades in instead of flashing blank.
+class _LoadingList extends StatelessWidget {
+  const _LoadingList();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: AppShape.screenBody,
+      children: [
+        AppCard.tinted(
+          color: AppColors.orangeTint,
+          borderColor: AppColors.orangeBorder,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Skeleton(width: 130, height: 12),
+                  SizedBox(height: AppShape.gapSm),
+                  Skeleton(width: 150, height: 24),
+                ],
+              ),
+              Skeleton.circle(size: 24),
+            ],
+          ),
+        ),
+        for (var i = 0; i < 4; i++) ...[
+          const SizedBox(height: AppShape.cardGap),
+          const _SkeletonCreditCard(),
+        ],
+      ],
+    );
+  }
+}
+
+class _SkeletonCreditCard extends StatelessWidget {
+  const _SkeletonCreditCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppShape.cardRadius),
+        boxShadow: AppShape.cardShadow,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(width: 4, height: 96, color: AppColors.orangeTint),
+          const Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(12, 14, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Skeleton(width: 120, height: 14),
+                        SizedBox(height: 6),
+                        Skeleton(width: 150, height: 11),
+                        SizedBox(height: 4),
+                        Skeleton(width: 90, height: 11),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Skeleton(width: 70, height: 14),
+                      SizedBox(height: 10),
+                      Skeleton(width: 90, height: 26, radius: 12),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
