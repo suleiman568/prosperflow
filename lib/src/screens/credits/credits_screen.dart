@@ -4,6 +4,7 @@ import '../../data/app_scope.dart';
 import '../../data/models.dart';
 import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
+import '../../utils/haptics.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -35,6 +36,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
   Future<void> _markPaid(Credit credit) async {
     await AppScope.of(context).markCreditPaid(credit.saleId);
     if (!mounted) return;
+    AppHaptics.success();
     showAppToast(
       context,
       '✅ ${formatNaira(credit.amount)} collected from ${credit.customerName}',

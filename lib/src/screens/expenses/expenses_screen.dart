@@ -4,6 +4,7 @@ import '../../data/app_scope.dart';
 import '../../data/models.dart';
 import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
+import '../../utils/haptics.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -54,6 +55,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             spentOn: spentOn,
           );
           if (!mounted) return;
+          AppHaptics.success();
           showAppToast(context, '✅ Expense recorded');
         },
       ),
@@ -63,6 +65,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Future<void> _deleteExpense(Expense expense) async {
     await AppScope.of(context).deleteExpense(expense.id);
     if (!mounted) return;
+    AppHaptics.warning();
     showAppToast(context, '\u2705 ${expense.description} deleted');
   }
 
