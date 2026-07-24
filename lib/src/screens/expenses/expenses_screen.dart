@@ -18,6 +18,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 5 — Expenses.
 ///
@@ -106,58 +107,61 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   final weekTotal = expenses
                       .where((e) => e.spentOn.isAfter(weekStart))
                       .fold(0, (sum, e) => sum + e.amount);
-                  return ListView(
-                    padding: AppShape.screenBodyFab,
-                    children: [
-                      AppCard.tinted(
-                        color: AppColors.redTint,
-                        borderColor: AppColors.redBorder,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "THIS WEEK'S TOTAL",
-                              style: AppText.style(
-                                FontWeight.w700,
-                                12,
-                                AppColors.accentRed,
+                  return PullToSync(
+                    child: ListView(
+                      padding: AppShape.screenBodyFab,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        AppCard.tinted(
+                          color: AppColors.redTint,
+                          borderColor: AppColors.redBorder,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "THIS WEEK'S TOTAL",
+                                style: AppText.style(
+                                  FontWeight.w700,
+                                  12,
+                                  AppColors.accentRed,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: AppShape.gapXs),
-                            Text(
-                              formatNaira(weekTotal),
-                              style: AppText.style(
-                                FontWeight.w900,
-                                28,
-                                AppColors.accentRed,
+                              const SizedBox(height: AppShape.gapXs),
+                              Text(
+                                formatNaira(weekTotal),
+                                style: AppText.style(
+                                  FontWeight.w900,
+                                  28,
+                                  AppColors.accentRed,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      for (final expense in expenses) ...[
-                        const SizedBox(height: AppShape.cardGap),
-                        DeletableCard(
-                          itemKey: expense.id,
-                          title: 'Delete ${expense.description}?',
-                          message:
-                              'The -${formatNaira(expense.amount)} '
-                              'expense will leave your totals and reports.',
-                          onDelete: () => _deleteExpense(expense),
-                          child: _ExpenseCard(
-                            expense: expense,
-                            menu: CardOverflowMenu(
-                              title: 'Delete ${expense.description}?',
-                              message:
-                                  'The -${formatNaira(expense.amount)} '
-                                  'expense will leave your totals and '
-                                  'reports.',
-                              onDelete: () => _deleteExpense(expense),
-                            ),
+                            ],
                           ),
                         ),
+                        for (final expense in expenses) ...[
+                          const SizedBox(height: AppShape.cardGap),
+                          DeletableCard(
+                            itemKey: expense.id,
+                            title: 'Delete ${expense.description}?',
+                            message:
+                                'The -${formatNaira(expense.amount)} '
+                                'expense will leave your totals and reports.',
+                            onDelete: () => _deleteExpense(expense),
+                            child: _ExpenseCard(
+                              expense: expense,
+                              menu: CardOverflowMenu(
+                                title: 'Delete ${expense.description}?',
+                                message:
+                                    'The -${formatNaira(expense.amount)} '
+                                    'expense will leave your totals and '
+                                    'reports.',
+                                onDelete: () => _deleteExpense(expense),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   );
                 },
               ),

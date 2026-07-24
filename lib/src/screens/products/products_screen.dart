@@ -17,6 +17,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 4 — Products.
 ///
@@ -127,27 +128,30 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           'Tap + to add your first product.',
                     );
                   }
-                  return ListView.separated(
-                    padding: AppShape.screenBodyFab,
-                    itemCount: products.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: AppShape.cardGap),
-                    itemBuilder: (_, index) => DeletableCard(
-                      itemKey: products[index].id,
-                      title: 'Delete ${products[index].name}?',
-                      message:
-                          'It will be removed from your products. '
-                          'Past sales are not affected.',
-                      onDelete: () => _deleteProduct(products[index]),
-                      child: _ProductCard(
-                        product: products[index],
-                        menu: CardOverflowMenu(
-                          title: 'Delete ${products[index].name}?',
-                          message:
-                              'It will be removed from your products. '
-                              'Past sales are not affected.',
-                          onDelete: () => _deleteProduct(products[index]),
-                          onEdit: () => _openEditProduct(products[index]),
+                  return PullToSync(
+                    child: ListView.separated(
+                      padding: AppShape.screenBodyFab,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: products.length,
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppShape.cardGap),
+                      itemBuilder: (_, index) => DeletableCard(
+                        itemKey: products[index].id,
+                        title: 'Delete ${products[index].name}?',
+                        message:
+                            'It will be removed from your products. '
+                            'Past sales are not affected.',
+                        onDelete: () => _deleteProduct(products[index]),
+                        child: _ProductCard(
+                          product: products[index],
+                          menu: CardOverflowMenu(
+                            title: 'Delete ${products[index].name}?',
+                            message:
+                                'It will be removed from your products. '
+                                'Past sales are not affected.',
+                            onDelete: () => _deleteProduct(products[index]),
+                            onEdit: () => _openEditProduct(products[index]),
+                          ),
                         ),
                       ),
                     ),

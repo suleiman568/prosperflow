@@ -14,6 +14,7 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 7 — Outstanding Credits.
 ///
@@ -66,57 +67,60 @@ class _CreditsScreenState extends State<CreditsScreen> {
                   if (credits == null) return const _LoadingList();
                   if (credits.isEmpty) return const _EmptyState();
                   final total = credits.fold(0, (sum, c) => sum + c.amount);
-                  return ListView(
-                    padding: AppShape.screenBody,
-                    children: [
-                      AppCard.tinted(
-                        color: AppColors.orangeTint,
-                        borderColor: AppColors.orangeBorder,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'TOTAL OUTSTANDING',
-                                  style: AppText.style(
-                                    FontWeight.w700,
-                                    12,
-                                    AppColors.accentOrange,
+                  return PullToSync(
+                    child: ListView(
+                      padding: AppShape.screenBody,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        AppCard.tinted(
+                          color: AppColors.orangeTint,
+                          borderColor: AppColors.orangeBorder,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'TOTAL OUTSTANDING',
+                                    style: AppText.style(
+                                      FontWeight.w700,
+                                      12,
+                                      AppColors.accentOrange,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: AppShape.gapXs),
-                                Text(
-                                  formatNaira(total),
-                                  style: AppText.style(
-                                    FontWeight.w900,
-                                    24,
-                                    AppColors.accentOrange,
+                                  const SizedBox(height: AppShape.gapXs),
+                                  Text(
+                                    formatNaira(total),
+                                    style: AppText.style(
+                                      FontWeight.w900,
+                                      24,
+                                      AppColors.accentOrange,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const Icon(
-                              Icons.schedule_rounded,
-                              size: 24,
-                              color: AppColors.accentOrange,
-                            ),
-                          ],
+                                ],
+                              ),
+                              const Icon(
+                                Icons.schedule_rounded,
+                                size: 24,
+                                color: AppColors.accentOrange,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      for (final credit in credits) ...[
-                        const SizedBox(height: AppShape.cardGap),
-                        _CreditCard(
-                          credit: credit,
-                          onMarkPaid: () => _markPaid(credit),
-                        ),
+                        for (final credit in credits) ...[
+                          const SizedBox(height: AppShape.cardGap),
+                          _CreditCard(
+                            credit: credit,
+                            onMarkPaid: () => _markPaid(credit),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   );
                 },
               ),

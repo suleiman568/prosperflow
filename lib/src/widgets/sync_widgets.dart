@@ -82,6 +82,24 @@ class SyncStatusRow extends StatelessWidget {
   }
 }
 
+/// Wraps a scrollable list in pull-to-refresh that runs a manual sync — the
+/// same action (and toasts) as the header ↻ button, with the platform's
+/// standard refresh spinner in the app's green.
+class PullToSync extends StatelessWidget {
+  const PullToSync({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () => runManualSync(context),
+      child: child,
+    );
+  }
+}
+
 /// Manual sync with the design's toasts (handoff §6).
 Future<void> runManualSync(BuildContext context) async {
   final engine = AppScope.syncOf(context);
