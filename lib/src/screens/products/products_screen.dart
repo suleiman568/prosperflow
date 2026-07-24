@@ -10,6 +10,7 @@ import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/deletable_card.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
@@ -31,6 +32,9 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
+  /// Bumped by the error state's "Try again" to force a fresh subscription.
+  int _retryTick = 0;
+
   void _openAddProduct() {
     final store = AppScope.of(context);
     showModalBottomSheet<void>(
@@ -100,8 +104,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
             _Header(),
             Expanded(
               child: StreamBuilder<List<Product>>(
+                key: ValueKey(_retryTick),
                 stream: store.watchProducts(),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return ErrorState(
+                      onRetry: () => setState(() => _retryTick++),
+                    );
+                  }
                   if (!snapshot.hasData) return const _LoadingList();
                   final products = snapshot.data!;
                   if (products.isEmpty) {

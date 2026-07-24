@@ -10,6 +10,7 @@ import '../../widgets/app_tab_bar.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
 
@@ -28,6 +29,9 @@ class CreditsScreen extends StatefulWidget {
 }
 
 class _CreditsScreenState extends State<CreditsScreen> {
+  /// Bumped by the error state's "Try again" to force a fresh subscription.
+  int _retryTick = 0;
+
   Future<void> _markPaid(Credit credit) async {
     await AppScope.of(context).markCreditPaid(credit.saleId);
     if (!mounted) return;
@@ -48,8 +52,14 @@ class _CreditsScreenState extends State<CreditsScreen> {
             _Header(),
             Expanded(
               child: StreamBuilder<List<Credit>>(
+                key: ValueKey(_retryTick),
                 stream: store.watchOwedCredits(),
                 builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return ErrorState(
+                      onRetry: () => setState(() => _retryTick++),
+                    );
+                  }
                   final credits = snapshot.data;
                   if (credits == null) return const _LoadingList();
                   if (credits.isEmpty) return const _EmptyState();
