@@ -34,7 +34,24 @@ class _SkeletonState extends State<Skeleton>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1200),
-  )..repeat();
+  );
+
+  bool _reduceMotion = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Honour the platform "reduce motion" setting: an endlessly repeating
+    // shimmer is exactly the kind of motion it asks us to drop, so we hold a
+    // static placeholder instead. Read here (not initState) so a runtime
+    // change to the setting flips the animation on or off.
+    _reduceMotion = MediaQuery.of(context).disableAnimations;
+    if (_reduceMotion) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
 
   @override
   void dispose() {
@@ -42,8 +59,26 @@ class _SkeletonState extends State<Skeleton>
     super.dispose();
   }
 
+  BoxDecoration _decoration({Gradient? gradient}) => BoxDecoration(
+    color: gradient == null ? AppColors.inputBg : null,
+    shape: widget.shape,
+    borderRadius: widget.shape == BoxShape.rectangle
+        ? BorderRadius.circular(widget.radius)
+        : null,
+    gradient: gradient,
+  );
+
   @override
   Widget build(BuildContext context) {
+    if (_reduceMotion) {
+      // Static shape — same size and fill, no sweeping highlight.
+      return Container(
+        width: widget.width,
+        height: widget.height,
+        decoration: _decoration(),
+      );
+    }
+
     const base = AppColors.inputBg;
     const highlight = Color(0xFFF8F8F6);
     return AnimatedBuilder(
@@ -53,11 +88,7 @@ class _SkeletonState extends State<Skeleton>
         return Container(
           width: widget.width,
           height: widget.height,
-          decoration: BoxDecoration(
-            shape: widget.shape,
-            borderRadius: widget.shape == BoxShape.rectangle
-                ? BorderRadius.circular(widget.radius)
-                : null,
+          decoration: _decoration(
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,

@@ -63,6 +63,50 @@ void main() {
       final before = stops();
       await tester.pump(const Duration(milliseconds: 300));
       expect(stops(), isNot(before), reason: 'shimmer should animate');
+      expect(tester.hasRunningAnimations, isTrue);
+    });
+
+    testWidgets('holds a static shape when reduce-motion is enabled', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Builder(
+                builder: (context) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(disableAnimations: true),
+                  child: const Skeleton(width: 100),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      BoxDecoration decoration() =>
+          tester
+                  .widget<Container>(
+                    find.descendant(
+                      of: find.byType(Skeleton),
+                      matching: find.byType(Container),
+                    ),
+                  )
+                  .decoration
+              as BoxDecoration;
+
+      // No sweeping gradient — just the flat placeholder fill — and nothing
+      // is animating.
+      expect(decoration().gradient, isNull);
+      expect(decoration().color, isNotNull);
+      expect(tester.hasRunningAnimations, isFalse);
+
+      // And it stays static as time passes.
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(decoration().gradient, isNull);
+      expect(tester.hasRunningAnimations, isFalse);
     });
 
     testWidgets('circle variant is laid out square', (tester) async {
