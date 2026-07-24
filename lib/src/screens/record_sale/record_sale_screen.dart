@@ -8,6 +8,7 @@ import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
+import '../../utils/haptics.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/pressable.dart';
@@ -191,6 +192,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
           : null,
     );
     if (!mounted) return;
+    AppHaptics.success();
     showAppToast(
       context,
       AppScope.syncOf(context).state.online
@@ -330,7 +332,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                           icon: Icons.remove,
                           label: 'Decrease quantity',
                           onTap: qty > 1
-                              ? () => setState(() => _qty = qty - 1)
+                              ? () {
+                                  AppHaptics.selection();
+                                  setState(() => _qty = qty - 1);
+                                }
                               : null,
                         ),
                         Text(
@@ -345,7 +350,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                           icon: Icons.add,
                           label: 'Increase quantity',
                           onTap: qty < product.stock
-                              ? () => setState(() => _qty = qty + 1)
+                              ? () {
+                                  AppHaptics.selection();
+                                  setState(() => _qty = qty + 1);
+                                }
                               : null,
                         ),
                       ],

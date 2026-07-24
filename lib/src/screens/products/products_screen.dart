@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/app_scope.dart';
 import '../../data/models.dart';
 import '../../theme/tokens.dart';
+import '../../utils/haptics.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -54,6 +55,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             sellPrice: sellPrice,
           );
           if (!mounted) return;
+          AppHaptics.success();
           showAppToast(context, '✅ $name added');
         },
       ),
@@ -63,6 +65,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Future<void> _deleteProduct(Product product) async {
     await AppScope.of(context).deleteProduct(product.id);
     if (!mounted) return;
+    AppHaptics.warning();
     showAppToast(context, '✅ ${product.name} deleted');
   }
 
@@ -87,6 +90,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             lowStockThreshold: lowStockThreshold,
           );
           if (!mounted) return;
+          AppHaptics.success();
           showAppToast(context, '✅ $name updated');
         },
       ),
