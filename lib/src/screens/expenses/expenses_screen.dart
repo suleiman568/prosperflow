@@ -15,6 +15,7 @@ import '../../widgets/filled_input.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_title.dart';
+import '../../widgets/skeleton.dart';
 
 /// Screen 5 — Expenses.
 ///
@@ -74,8 +75,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               child: StreamBuilder<List<Expense>>(
                 stream: store.watchExpenses(),
                 builder: (context, snapshot) {
-                  final expenses = snapshot.data ?? const <Expense>[];
-                  if (snapshot.hasData && expenses.isEmpty) {
+                  if (!snapshot.hasData) return const _LoadingList();
+                  final expenses = snapshot.data!;
+                  if (expenses.isEmpty) {
                     return const EmptyState(
                       icon: Icons.receipt_long_outlined,
                       title: 'No expenses yet',
@@ -175,6 +177,71 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
         children: [const HeaderBackButton(), const ScreenTitle('Expenses')],
+      ),
+    );
+  }
+}
+
+/// Placeholder total banner + rows shown while the expense stream delivers
+/// its first value, so the screen fades in instead of flashing blank.
+class _LoadingList extends StatelessWidget {
+  const _LoadingList();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: AppShape.screenBodyFab,
+      children: [
+        AppCard.tinted(
+          color: AppColors.redTint,
+          borderColor: AppColors.redBorder,
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Skeleton(width: 120, height: 12),
+              SizedBox(height: AppShape.gapSm),
+              Skeleton(width: 160, height: 28),
+            ],
+          ),
+        ),
+        for (var i = 0; i < 5; i++) ...[
+          const SizedBox(height: AppShape.cardGap),
+          const _SkeletonExpenseCard(),
+        ],
+      ],
+    );
+  }
+}
+
+class _SkeletonExpenseCard extends StatelessWidget {
+  const _SkeletonExpenseCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppShape.cardRadius),
+        boxShadow: AppShape.cardShadow,
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: const Row(
+        children: [
+          Skeleton.circle(size: 42),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Skeleton(width: 140, height: 13),
+                SizedBox(height: 6),
+                Skeleton(width: 90, height: 11),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
+          Skeleton(width: 60, height: 13),
+        ],
       ),
     );
   }

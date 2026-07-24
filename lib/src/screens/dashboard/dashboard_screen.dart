@@ -7,6 +7,7 @@ import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/screen_title.dart';
+import '../../widgets/skeleton.dart';
 import '../../sync/sync_engine.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/sync_widgets.dart';
@@ -73,6 +74,7 @@ class DashboardScreen extends StatelessWidget {
                               tint: AppColors.mintTint,
                               amount: stats.total,
                               caption: '${stats.count} sales today',
+                              loading: !snapshot.hasData,
                             );
                           },
                         ),
@@ -92,6 +94,7 @@ class DashboardScreen extends StatelessWidget {
                               tint: AppColors.blueTint,
                               amount: stats.total,
                               caption: '${stats.count} sales',
+                              loading: !snapshot.hasData,
                             );
                           },
                         ),
@@ -344,6 +347,7 @@ class _StatCard extends StatelessWidget {
     required this.tint,
     required this.amount,
     required this.caption,
+    this.loading = false,
   });
 
   final IconData icon;
@@ -352,6 +356,10 @@ class _StatCard extends StatelessWidget {
   final Color tint;
   final int amount;
   final String caption;
+
+  /// While the stats stream is delivering its first value, show a skeleton
+  /// for the figures instead of flashing a stale ₦0 / "0 sales".
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -378,12 +386,18 @@ class _StatCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            formatNaira(amount),
-            style: AppText.style(FontWeight.w900, 24, AppColors.textPrimary),
-          ),
-          const SizedBox(height: 2),
-          Text(caption, style: AppText.style(FontWeight.w600, 11, color)),
+          if (loading) ...[
+            const Skeleton(width: 100, height: 24),
+            const SizedBox(height: 6),
+            const Skeleton(width: 60, height: 11),
+          ] else ...[
+            Text(
+              formatNaira(amount),
+              style: AppText.style(FontWeight.w900, 24, AppColors.textPrimary),
+            ),
+            const SizedBox(height: 2),
+            Text(caption, style: AppText.style(FontWeight.w600, 11, color)),
+          ],
         ],
       ),
     );

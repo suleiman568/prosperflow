@@ -14,6 +14,7 @@ import '../../widgets/filled_input.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_title.dart';
+import '../../widgets/skeleton.dart';
 
 /// Screen 4 — Products.
 ///
@@ -101,8 +102,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
               child: StreamBuilder<List<Product>>(
                 stream: store.watchProducts(),
                 builder: (context, snapshot) {
-                  final products = snapshot.data ?? const <Product>[];
-                  if (snapshot.hasData && products.isEmpty) {
+                  if (!snapshot.hasData) return const _LoadingList();
+                  final products = snapshot.data!;
+                  if (products.isEmpty) {
                     return const EmptyState(
                       icon: Icons.inventory_2_outlined,
                       title: 'No products yet',
@@ -159,6 +161,50 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
         children: [const HeaderBackButton(), const ScreenTitle('Products')],
+      ),
+    );
+  }
+}
+
+/// Placeholder cards shown while the product stream delivers its first value,
+/// so the list fades in instead of flashing an empty screen.
+class _LoadingList extends StatelessWidget {
+  const _LoadingList();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: AppShape.screenBodyFab,
+      itemCount: 5,
+      separatorBuilder: (_, _) => const SizedBox(height: AppShape.cardGap),
+      itemBuilder: (_, _) => const _SkeletonProductCard(),
+    );
+  }
+}
+
+class _SkeletonProductCard extends StatelessWidget {
+  const _SkeletonProductCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Skeleton(width: 150, height: 15),
+                SizedBox(height: 10),
+                Skeleton(width: 80, height: 12),
+                SizedBox(height: 6),
+                Skeleton(width: 120, height: 12),
+              ],
+            ),
+          ),
+          Skeleton(width: 40, height: 20, radius: 100),
+        ],
       ),
     );
   }
