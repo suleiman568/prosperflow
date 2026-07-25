@@ -17,6 +17,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 4 — Products.
 ///
@@ -33,8 +34,13 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  /// Bumped by the error state's "Try again" to force a fresh subscription.
+  /// Bumped to force a fresh subscription — by the error panel's "Try again"
+  /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
+
+  void _retry() {
+    if (mounted) setState(() => _retryTick++);
+  }
 
   void _openAddProduct() {
     final store = AppScope.of(context);
@@ -111,47 +117,55 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 key: ValueKey(_retryTick),
                 stream: store.watchProducts(),
                 builder: (context, snapshot) {
+                  final Widget body;
+                  VoidCallback? onRefresh;
                   if (snapshot.hasError) {
-                    return ErrorState(
-                      onRetry: () => setState(() => _retryTick++),
+                    onRefresh = _retry;
+                    body = RefreshableViewport(
+                      child: ErrorState(onRetry: _retry),
                     );
-                  }
-                  if (!snapshot.hasData) return const _LoadingList();
-                  final products = snapshot.data!;
-                  if (products.isEmpty) {
-                    return const EmptyState(
-                      icon: Icons.inventory_2_outlined,
-                      title: 'No products yet',
-                      message:
-                          'Everything you sell lives here.\n'
-                          'Tap + to add your first product.',
+                  } else if (!snapshot.hasData) {
+                    body = const _LoadingList();
+                  } else if (snapshot.data!.isEmpty) {
+                    body = const RefreshableViewport(
+                      child: EmptyState(
+                        icon: Icons.inventory_2_outlined,
+                        title: 'No products yet',
+                        message:
+                            'Everything you sell lives here.\n'
+                            'Tap + to add your first product.',
+                      ),
                     );
-                  }
-                  return ListView.separated(
-                    padding: AppShape.screenBodyFab,
-                    itemCount: products.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: AppShape.cardGap),
-                    itemBuilder: (_, index) => DeletableCard(
-                      itemKey: products[index].id,
-                      title: 'Delete ${products[index].name}?',
-                      message:
-                          'It will be removed from your products. '
-                          'Past sales are not affected.',
-                      onDelete: () => _deleteProduct(products[index]),
-                      child: _ProductCard(
-                        product: products[index],
-                        menu: CardOverflowMenu(
-                          title: 'Delete ${products[index].name}?',
-                          message:
-                              'It will be removed from your products. '
-                              'Past sales are not affected.',
-                          onDelete: () => _deleteProduct(products[index]),
-                          onEdit: () => _openEditProduct(products[index]),
+                  } else {
+                    final products = snapshot.data!;
+                    body = ListView.separated(
+                      padding: AppShape.screenBodyFab,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: products.length,
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppShape.cardGap),
+                      itemBuilder: (_, index) => DeletableCard(
+                        itemKey: products[index].id,
+                        title: 'Delete ${products[index].name}?',
+                        message:
+                            'It will be removed from your products. '
+                            'Past sales are not affected.',
+                        onDelete: () => _deleteProduct(products[index]),
+                        child: _ProductCard(
+                          product: products[index],
+                          menu: CardOverflowMenu(
+                            title: 'Delete ${products[index].name}?',
+                            message:
+                                'It will be removed from your products. '
+                                'Past sales are not affected.',
+                            onDelete: () => _deleteProduct(products[index]),
+                            onEdit: () => _openEditProduct(products[index]),
+                          ),
                         ),
                       ),
-                    ),
-                  );
+                    );
+                  }
+                  return PullToSync(onRefresh: onRefresh, child: body);
                 },
               ),
             ),
@@ -189,6 +203,7 @@ class _LoadingList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: AppShape.screenBodyFab,
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: 5,
       separatorBuilder: (_, _) => const SizedBox(height: AppShape.cardGap),
       itemBuilder: (_, _) => const _SkeletonProductCard(),

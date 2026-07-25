@@ -82,6 +82,69 @@ class SyncStatusRow extends StatelessWidget {
   }
 }
 
+/// Wraps a scrollable in pull-to-refresh that runs a manual sync — the same
+/// action (and toasts) as the header ↻ button, with the platform's standard
+/// refresh spinner in the app's green.
+///
+/// Note on scope: a manual sync *backs up* pending local changes (flushes the
+/// push-only outbox to Supabase). It does not yet pull remote changes down —
+/// two-way sync (server → device) is a separate, larger piece of work
+/// (per-table watermarks, conflict resolution, local upsert) tracked outside
+/// this widget. The gesture is deliberately framed as "sync/back up now".
+class PullToSync extends StatelessWidget {
+  const PullToSync({super.key, required this.child, this.onRefresh});
+
+  final Widget child;
+
+  /// Extra work to run alongside the manual sync. Used from the error panel
+  /// to re-subscribe the failed stream (the same reset the "Try again" button
+  /// does) — a pull there must recover the screen, not just back up pending
+  /// changes.
+  ///
+  /// It runs *after* the sync, on purpose: [runManualSync] shows its
+  /// completion toast via this [context], and a reset that re-keys the
+  /// enclosing `StreamBuilder` would unmount that context first — dropping the
+  /// toast. Syncing first keeps the context alive for the toast, then the
+  /// reset recovers the view.
+  final VoidCallback? onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async {
+        await runManualSync(context);
+        onRefresh?.call();
+      },
+      child: child,
+    );
+  }
+}
+
+/// Makes non-scrolling content (an empty or error panel) fill the viewport so
+/// it can still be pulled down to sync — [RefreshIndicator] needs a scrollable
+/// child that can overscroll, which a bare centered panel isn't. Wrap this in
+/// [PullToSync] to make those states refreshable, which is exactly when a user
+/// most wants to retry a sync.
+class RefreshableViewport extends StatelessWidget {
+  const RefreshableViewport({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 /// Manual sync with the design's toasts (handoff §6).
 Future<void> runManualSync(BuildContext context) async {
   final engine = AppScope.syncOf(context);

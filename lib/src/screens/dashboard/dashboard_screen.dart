@@ -41,234 +41,241 @@ class DashboardScreen extends StatelessWidget {
                   OfflinePill(state: snapshot.data ?? sync.state),
             ),
             Expanded(
-              child: ListView(
-                padding: AppShape.screenBody,
-                children: [
-                  Text(
-                    'Welcome back, ${AppScope.authOf(context).traderName} 👋',
-                    style: AppText.style(
-                      FontWeight.w800,
-                      19,
-                      AppColors.textPrimary,
+              child: PullToSync(
+                child: ListView(
+                  padding: AppShape.screenBody,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    Text(
+                      'Welcome back, ${AppScope.authOf(context).traderName} 👋',
+                      style: AppText.style(
+                        FontWeight.w800,
+                        19,
+                        AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formatFullDate(DateTime.now()),
-                    style: AppText.dialogBody,
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: StreamBuilder<SalesStats>(
-                          stream: store.watchTodayStats(),
-                          builder: (_, snapshot) {
-                            final stats =
-                                snapshot.data ??
-                                const SalesStats(total: 0, count: 0);
-                            return _StatCard(
-                              icon: Icons.trending_up_rounded,
-                              label: "Today's Sales",
-                              color: AppColors.primary,
-                              tint: AppColors.mintTint,
-                              amount: stats.total,
-                              caption: '${stats.count} sales today',
-                              loading: !snapshot.hasData,
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: AppShape.gridGap),
-                      Expanded(
-                        child: StreamBuilder<SalesStats>(
-                          stream: store.watchWeekStats(),
-                          builder: (_, snapshot) {
-                            final stats =
-                                snapshot.data ??
-                                const SalesStats(total: 0, count: 0);
-                            return _StatCard(
-                              icon: Icons.calendar_today_rounded,
-                              label: 'This Week',
-                              color: AppColors.accentBlue,
-                              tint: AppColors.blueTint,
-                              amount: stats.total,
-                              caption: '${stats.count} sales',
-                              loading: !snapshot.hasData,
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  StreamBuilder<List<Product>>(
-                    stream: store.watchProducts(),
-                    builder: (_, snapshot) {
-                      final lowStock = (snapshot.data ?? const <Product>[])
-                          .where((p) => p.isLow)
-                          .toList();
-                      if (lowStock.isEmpty) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(top: AppShape.cardGap),
-                        child: AppCard.tinted(
-                          color: AppColors.orangeTint,
-                          borderColor: AppColors.orangeBorder,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.warning_amber_rounded,
-                                    size: 16,
-                                    color: AppColors.accentOrange,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Low Stock Alert',
-                                    style: AppText.style(
-                                      FontWeight.w800,
-                                      13,
-                                      AppColors.accentOrange,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              for (final product in lowStock) ...[
-                                const SizedBox(height: AppShape.gapSm),
-                                Text(
-                                  product.lowStockLine,
-                                  style: AppText.style(
-                                    FontWeight.w600,
-                                    13,
-                                    AppColors.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  StreamBuilder<SyncState>(
-                    stream: sync.watchState(),
-                    builder: (_, snapshot) =>
-                        SyncStatusRow(state: snapshot.data ?? sync.state),
-                  ),
-                  const SizedBox(height: AppShape.cardGap),
-                  Text(
-                    'Quick Actions',
-                    style: AppText.style(
-                      FontWeight.w800,
-                      15,
-                      AppColors.textPrimary,
+                    const SizedBox(height: 2),
+                    Text(
+                      formatFullDate(DateTime.now()),
+                      style: AppText.dialogBody,
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: AppShape.gridGap,
-                    crossAxisSpacing: AppShape.gridGap,
-                    childAspectRatio: 169 / 105,
-                    children: [
-                      _QuickAction(
-                        icon: Icons.shopping_cart_rounded,
-                        tint: AppColors.mintTint,
-                        iconColor: AppColors.primary,
-                        label: 'Record Sale',
-                        route: '/record-sale',
-                      ),
-                      _QuickAction(
-                        icon: Icons.inventory_2_rounded,
-                        tint: AppColors.blueTint,
-                        iconColor: AppColors.accentBlue,
-                        label: 'Products',
-                        route: '/products',
-                      ),
-                      _QuickAction(
-                        icon: Icons.payments_rounded,
-                        tint: AppColors.redTint,
-                        iconColor: AppColors.accentRed,
-                        label: 'Expenses',
-                        route: '/expenses',
-                      ),
-                      _QuickAction(
-                        icon: Icons.bar_chart_rounded,
-                        tint: AppColors.purpleTint,
-                        iconColor: AppColors.accentPurple,
-                        label: 'Reports',
-                        route: '/reports',
-                      ),
-                    ],
-                  ),
-                  StreamBuilder<List<Credit>>(
-                    stream: store.watchOwedCredits(),
-                    builder: (context, snapshot) {
-                      final credits = snapshot.data ?? const <Credit>[];
-                      if (credits.isEmpty) return const SizedBox.shrink();
-                      final total = credits.fold(0, (sum, c) => sum + c.amount);
-                      return Padding(
-                        padding: const EdgeInsets.only(top: AppShape.cardGap),
-                        child: AppCard.tinted(
-                          color: AppColors.orangeTint,
-                          borderColor: AppColors.orangeBorder,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
+                    const SizedBox(height: AppShape.cardGap),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StreamBuilder<SalesStats>(
+                            stream: store.watchTodayStats(),
+                            builder: (_, snapshot) {
+                              final stats =
+                                  snapshot.data ??
+                                  const SalesStats(total: 0, count: 0);
+                              return _StatCard(
+                                icon: Icons.trending_up_rounded,
+                                label: "Today's Sales",
+                                color: AppColors.primary,
+                                tint: AppColors.mintTint,
+                                amount: stats.total,
+                                caption: '${stats.count} sales today',
+                                loading: !snapshot.hasData,
+                              );
+                            },
                           ),
-                          onTap: () =>
-                              Navigator.of(context).pushNamed('/credits'),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                        const SizedBox(width: AppShape.gridGap),
+                        Expanded(
+                          child: StreamBuilder<SalesStats>(
+                            stream: store.watchWeekStats(),
+                            builder: (_, snapshot) {
+                              final stats =
+                                  snapshot.data ??
+                                  const SalesStats(total: 0, count: 0);
+                              return _StatCard(
+                                icon: Icons.calendar_today_rounded,
+                                label: 'This Week',
+                                color: AppColors.accentBlue,
+                                tint: AppColors.blueTint,
+                                amount: stats.total,
+                                caption: '${stats.count} sales',
+                                loading: !snapshot.hasData,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    StreamBuilder<List<Product>>(
+                      stream: store.watchProducts(),
+                      builder: (_, snapshot) {
+                        final lowStock = (snapshot.data ?? const <Product>[])
+                            .where((p) => p.isLow)
+                            .toList();
+                        if (lowStock.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: AppShape.cardGap),
+                          child: AppCard.tinted(
+                            color: AppColors.orangeTint,
+                            borderColor: AppColors.orangeBorder,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Text(
-                                      'OUTSTANDING CREDITS',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppText.style(
-                                        FontWeight.w700,
-                                        12,
-                                        AppColors.accentOrange,
-                                      ),
+                                    const Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 16,
+                                      color: AppColors.accentOrange,
                                     ),
-                                    const SizedBox(height: 2),
+                                    const SizedBox(width: 8),
                                     Text(
-                                      formatNaira(total),
+                                      'Low Stock Alert',
                                       style: AppText.style(
                                         FontWeight.w800,
-                                        18,
+                                        13,
                                         AppColors.accentOrange,
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              Text(
-                                '${credits.length} customers →',
-                                style: AppText.style(
-                                  FontWeight.w600,
-                                  12,
-                                  AppColors.accentOrange,
-                                ),
-                              ),
-                            ],
+                                for (final product in lowStock) ...[
+                                  const SizedBox(height: AppShape.gapSm),
+                                  Text(
+                                    product.lowStockLine,
+                                    style: AppText.style(
+                                      FontWeight.w600,
+                                      13,
+                                      AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: AppShape.cardGap),
+                    StreamBuilder<SyncState>(
+                      stream: sync.watchState(),
+                      builder: (_, snapshot) =>
+                          SyncStatusRow(state: snapshot.data ?? sync.state),
+                    ),
+                    const SizedBox(height: AppShape.cardGap),
+                    Text(
+                      'Quick Actions',
+                      style: AppText.style(
+                        FontWeight.w800,
+                        15,
+                        AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: AppShape.gridGap,
+                      crossAxisSpacing: AppShape.gridGap,
+                      childAspectRatio: 169 / 105,
+                      children: [
+                        _QuickAction(
+                          icon: Icons.shopping_cart_rounded,
+                          tint: AppColors.mintTint,
+                          iconColor: AppColors.primary,
+                          label: 'Record Sale',
+                          route: '/record-sale',
                         ),
-                      );
-                    },
-                  ),
-                ],
+                        _QuickAction(
+                          icon: Icons.inventory_2_rounded,
+                          tint: AppColors.blueTint,
+                          iconColor: AppColors.accentBlue,
+                          label: 'Products',
+                          route: '/products',
+                        ),
+                        _QuickAction(
+                          icon: Icons.payments_rounded,
+                          tint: AppColors.redTint,
+                          iconColor: AppColors.accentRed,
+                          label: 'Expenses',
+                          route: '/expenses',
+                        ),
+                        _QuickAction(
+                          icon: Icons.bar_chart_rounded,
+                          tint: AppColors.purpleTint,
+                          iconColor: AppColors.accentPurple,
+                          label: 'Reports',
+                          route: '/reports',
+                        ),
+                      ],
+                    ),
+                    StreamBuilder<List<Credit>>(
+                      stream: store.watchOwedCredits(),
+                      builder: (context, snapshot) {
+                        final credits = snapshot.data ?? const <Credit>[];
+                        if (credits.isEmpty) return const SizedBox.shrink();
+                        final total = credits.fold(
+                          0,
+                          (sum, c) => sum + c.amount,
+                        );
+                        return Padding(
+                          padding: const EdgeInsets.only(top: AppShape.cardGap),
+                          child: AppCard.tinted(
+                            color: AppColors.orangeTint,
+                            borderColor: AppColors.orangeBorder,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            onTap: () =>
+                                Navigator.of(context).pushNamed('/credits'),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'OUTSTANDING CREDITS',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppText.style(
+                                          FontWeight.w700,
+                                          12,
+                                          AppColors.accentOrange,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        formatNaira(total),
+                                        style: AppText.style(
+                                          FontWeight.w800,
+                                          18,
+                                          AppColors.accentOrange,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  '${credits.length} customers →',
+                                  style: AppText.style(
+                                    FontWeight.w600,
+                                    12,
+                                    AppColors.accentOrange,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

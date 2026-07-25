@@ -18,6 +18,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 5 — Expenses.
 ///
@@ -34,8 +35,13 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  /// Bumped by the error state's "Try again" to force a fresh subscription.
+  /// Bumped to force a fresh subscription — by the error panel's "Try again"
+  /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
+
+  void _retry() {
+    if (mounted) setState(() => _retryTick++);
+  }
 
   void _openAddExpense() {
     final store = AppScope.of(context);
@@ -83,82 +89,90 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 key: ValueKey(_retryTick),
                 stream: store.watchExpenses(),
                 builder: (context, snapshot) {
+                  final Widget body;
+                  VoidCallback? onRefresh;
                   if (snapshot.hasError) {
-                    return ErrorState(
-                      onRetry: () => setState(() => _retryTick++),
+                    onRefresh = _retry;
+                    body = RefreshableViewport(
+                      child: ErrorState(onRetry: _retry),
                     );
-                  }
-                  if (!snapshot.hasData) return const _LoadingList();
-                  final expenses = snapshot.data!;
-                  if (expenses.isEmpty) {
-                    return const EmptyState(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'No expenses yet',
-                      message:
-                          'Track costs like transport, rent and '
-                          'stock here\nso your profit stays honest. '
-                          'Tap + to add one.',
-                    );
-                  }
-                  final weekStart = DateTime.now().subtract(
-                    const Duration(days: 7),
-                  );
-                  final weekTotal = expenses
-                      .where((e) => e.spentOn.isAfter(weekStart))
-                      .fold(0, (sum, e) => sum + e.amount);
-                  return ListView(
-                    padding: AppShape.screenBodyFab,
-                    children: [
-                      AppCard.tinted(
-                        color: AppColors.redTint,
-                        borderColor: AppColors.redBorder,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "THIS WEEK'S TOTAL",
-                              style: AppText.style(
-                                FontWeight.w700,
-                                12,
-                                AppColors.accentRed,
-                              ),
-                            ),
-                            const SizedBox(height: AppShape.gapXs),
-                            Text(
-                              formatNaira(weekTotal),
-                              style: AppText.style(
-                                FontWeight.w900,
-                                28,
-                                AppColors.accentRed,
-                              ),
-                            ),
-                          ],
-                        ),
+                  } else if (!snapshot.hasData) {
+                    body = const _LoadingList();
+                  } else if (snapshot.data!.isEmpty) {
+                    body = const RefreshableViewport(
+                      child: EmptyState(
+                        icon: Icons.receipt_long_outlined,
+                        title: 'No expenses yet',
+                        message:
+                            'Track costs like transport, rent and '
+                            'stock here\nso your profit stays honest. '
+                            'Tap + to add one.',
                       ),
-                      for (final expense in expenses) ...[
-                        const SizedBox(height: AppShape.cardGap),
-                        DeletableCard(
-                          itemKey: expense.id,
-                          title: 'Delete ${expense.description}?',
-                          message:
-                              'The -${formatNaira(expense.amount)} '
-                              'expense will leave your totals and reports.',
-                          onDelete: () => _deleteExpense(expense),
-                          child: _ExpenseCard(
-                            expense: expense,
-                            menu: CardOverflowMenu(
-                              title: 'Delete ${expense.description}?',
-                              message:
-                                  'The -${formatNaira(expense.amount)} '
-                                  'expense will leave your totals and '
-                                  'reports.',
-                              onDelete: () => _deleteExpense(expense),
-                            ),
+                    );
+                  } else {
+                    final expenses = snapshot.data!;
+                    final weekStart = DateTime.now().subtract(
+                      const Duration(days: 7),
+                    );
+                    final weekTotal = expenses
+                        .where((e) => e.spentOn.isAfter(weekStart))
+                        .fold(0, (sum, e) => sum + e.amount);
+                    body = ListView(
+                      padding: AppShape.screenBodyFab,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        AppCard.tinted(
+                          color: AppColors.redTint,
+                          borderColor: AppColors.redBorder,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "THIS WEEK'S TOTAL",
+                                style: AppText.style(
+                                  FontWeight.w700,
+                                  12,
+                                  AppColors.accentRed,
+                                ),
+                              ),
+                              const SizedBox(height: AppShape.gapXs),
+                              Text(
+                                formatNaira(weekTotal),
+                                style: AppText.style(
+                                  FontWeight.w900,
+                                  28,
+                                  AppColors.accentRed,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        for (final expense in expenses) ...[
+                          const SizedBox(height: AppShape.cardGap),
+                          DeletableCard(
+                            itemKey: expense.id,
+                            title: 'Delete ${expense.description}?',
+                            message:
+                                'The -${formatNaira(expense.amount)} '
+                                'expense will leave your totals and reports.',
+                            onDelete: () => _deleteExpense(expense),
+                            child: _ExpenseCard(
+                              expense: expense,
+                              menu: CardOverflowMenu(
+                                title: 'Delete ${expense.description}?',
+                                message:
+                                    'The -${formatNaira(expense.amount)} '
+                                    'expense will leave your totals and '
+                                    'reports.',
+                                onDelete: () => _deleteExpense(expense),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  );
+                    );
+                  }
+                  return PullToSync(onRefresh: onRefresh, child: body);
                 },
               ),
             ),
@@ -204,6 +218,7 @@ class _LoadingList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: AppShape.screenBodyFab,
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         AppCard.tinted(
           color: AppColors.redTint,

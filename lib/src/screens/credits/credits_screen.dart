@@ -14,6 +14,7 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 7 — Outstanding Credits.
 ///
@@ -30,8 +31,13 @@ class CreditsScreen extends StatefulWidget {
 }
 
 class _CreditsScreenState extends State<CreditsScreen> {
-  /// Bumped by the error state's "Try again" to force a fresh subscription.
+  /// Bumped to force a fresh subscription — by the error panel's "Try again"
+  /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
+
+  void _retry() {
+    if (mounted) setState(() => _retryTick++);
+  }
 
   Future<void> _markPaid(Credit credit) async {
     await AppScope.of(context).markCreditPaid(credit.saleId);
@@ -57,67 +63,75 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 key: ValueKey(_retryTick),
                 stream: store.watchOwedCredits(),
                 builder: (context, snapshot) {
+                  final Widget body;
+                  VoidCallback? onRefresh;
                   if (snapshot.hasError) {
-                    return ErrorState(
-                      onRetry: () => setState(() => _retryTick++),
+                    onRefresh = _retry;
+                    body = RefreshableViewport(
+                      child: ErrorState(onRetry: _retry),
+                    );
+                  } else if (snapshot.data == null) {
+                    body = const _LoadingList();
+                  } else if (snapshot.data!.isEmpty) {
+                    body = const RefreshableViewport(child: _EmptyState());
+                  } else {
+                    final credits = snapshot.data!;
+                    final total = credits.fold(0, (sum, c) => sum + c.amount);
+                    body = ListView(
+                      padding: AppShape.screenBody,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        AppCard.tinted(
+                          color: AppColors.orangeTint,
+                          borderColor: AppColors.orangeBorder,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'TOTAL OUTSTANDING',
+                                    style: AppText.style(
+                                      FontWeight.w700,
+                                      12,
+                                      AppColors.accentOrange,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppShape.gapXs),
+                                  Text(
+                                    formatNaira(total),
+                                    style: AppText.style(
+                                      FontWeight.w900,
+                                      24,
+                                      AppColors.accentOrange,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Icon(
+                                Icons.schedule_rounded,
+                                size: 24,
+                                color: AppColors.accentOrange,
+                              ),
+                            ],
+                          ),
+                        ),
+                        for (final credit in credits) ...[
+                          const SizedBox(height: AppShape.cardGap),
+                          _CreditCard(
+                            credit: credit,
+                            onMarkPaid: () => _markPaid(credit),
+                          ),
+                        ],
+                      ],
                     );
                   }
-                  final credits = snapshot.data;
-                  if (credits == null) return const _LoadingList();
-                  if (credits.isEmpty) return const _EmptyState();
-                  final total = credits.fold(0, (sum, c) => sum + c.amount);
-                  return ListView(
-                    padding: AppShape.screenBody,
-                    children: [
-                      AppCard.tinted(
-                        color: AppColors.orangeTint,
-                        borderColor: AppColors.orangeBorder,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'TOTAL OUTSTANDING',
-                                  style: AppText.style(
-                                    FontWeight.w700,
-                                    12,
-                                    AppColors.accentOrange,
-                                  ),
-                                ),
-                                const SizedBox(height: AppShape.gapXs),
-                                Text(
-                                  formatNaira(total),
-                                  style: AppText.style(
-                                    FontWeight.w900,
-                                    24,
-                                    AppColors.accentOrange,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Icon(
-                              Icons.schedule_rounded,
-                              size: 24,
-                              color: AppColors.accentOrange,
-                            ),
-                          ],
-                        ),
-                      ),
-                      for (final credit in credits) ...[
-                        const SizedBox(height: AppShape.cardGap),
-                        _CreditCard(
-                          credit: credit,
-                          onMarkPaid: () => _markPaid(credit),
-                        ),
-                      ],
-                    ],
-                  );
+                  return PullToSync(onRefresh: onRefresh, child: body);
                 },
               ),
             ),
@@ -162,6 +176,7 @@ class _LoadingList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: AppShape.screenBody,
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         AppCard.tinted(
           color: AppColors.orangeTint,
