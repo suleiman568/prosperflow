@@ -33,6 +33,34 @@ void main() {
       expect(taps, 1);
     });
 
+    testWidgets('the action button meets the 44dp touch-target minimum', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EmptyState(
+              icon: Icons.inventory_2_outlined,
+              title: 'No products yet',
+              message: 'Everything you sell lives here.',
+              actionLabel: 'Add product',
+              onAction: () {},
+            ),
+          ),
+        ),
+      );
+
+      final button = tester.getSize(
+        find
+            .ancestor(
+              of: find.text('Add product'),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      expect(button.height, greaterThanOrEqualTo(44));
+    });
+
     testWidgets('shows no button when no action is given', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(

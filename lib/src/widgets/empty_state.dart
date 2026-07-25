@@ -56,6 +56,11 @@ class EmptyState extends StatelessWidget {
                 onTap: onAction,
                 semanticLabel: action,
                 child: Container(
+                  // Floor the height at the project's 44dp touch-target
+                  // convention (Batch 1); symmetric padding centers the
+                  // content within it. No `alignment` — that would stretch the
+                  // pill to full width; this stays compact like ErrorState.
+                  constraints: const BoxConstraints(minHeight: 44),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 12,
