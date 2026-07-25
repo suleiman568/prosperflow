@@ -8,6 +8,7 @@ import 'screens/login/login_screen.dart';
 import 'screens/products/products_screen.dart';
 import 'screens/record_sale/record_sale_screen.dart';
 import 'screens/reports/reports_screen.dart';
+import 'theme/page_transitions.dart';
 import 'theme/tokens.dart';
 
 class ProsperFlowApp extends StatelessWidget {
@@ -27,6 +28,7 @@ class ProsperFlowApp extends StatelessWidget {
           primary: AppColors.primary,
         ),
         splashFactory: InkSparkle.splashFactory,
+        pageTransitionsTheme: appPageTransitionsTheme,
       ),
       builder: (context, child) {
         // Honour the OS "larger text" accessibility setting, but clamp the
