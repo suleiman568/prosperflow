@@ -13,8 +13,11 @@ import 'package:prosperflow/src/widgets/empty_state.dart';
 
 import 'helpers.dart';
 
-Future<void> pumpWithRoutes(WidgetTester tester, Widget home,
-    {MemoryStore? store}) async {
+Future<void> pumpWithRoutes(
+  WidgetTester tester,
+  Widget home, {
+  MemoryStore? store,
+}) async {
   await tester.pumpWidget(
     AppScope(
       store: store ?? MemoryStore(),
@@ -31,8 +34,9 @@ Future<void> pumpWithRoutes(WidgetTester tester, Widget home,
 
 void main() {
   group('Record Sale with no products (batch item 1)', () {
-    testWidgets('shows the add-a-product state, never an endless spinner',
-        (tester) async {
+    testWidgets('shows the add-a-product state, never an endless spinner', (
+      tester,
+    ) async {
       usePhoneSurface(tester);
       await pumpWithRoutes(tester, const RecordSaleScreen());
       await tester.pump();
@@ -55,23 +59,24 @@ void main() {
   });
 
   group('First-run empty states (batch item 2)', () {
-    testWidgets('Products shows guidance instead of a blank list',
-        (tester) async {
+    testWidgets('Products shows guidance instead of a blank list', (
+      tester,
+    ) async {
       usePhoneSurface(tester);
-      await pumpWithStore(tester, const ProductsScreen(),
-          store: MemoryStore());
+      await pumpWithStore(tester, const ProductsScreen(), store: MemoryStore());
       await tester.pump();
 
       expect(find.byType(EmptyState), findsOneWidget);
       expect(find.text('No products yet'), findsOneWidget);
-      expect(find.textContaining('add your first product'), findsOneWidget);
+      // The empty state now offers a direct call-to-action button.
+      expect(find.text('Add product'), findsOneWidget);
     });
 
-    testWidgets('Expenses shows guidance instead of a bare ₦0 banner',
-        (tester) async {
+    testWidgets('Expenses shows guidance instead of a bare ₦0 banner', (
+      tester,
+    ) async {
       usePhoneSurface(tester);
-      await pumpWithStore(tester, const ExpensesScreen(),
-          store: MemoryStore());
+      await pumpWithStore(tester, const ExpensesScreen(), store: MemoryStore());
       await tester.pump();
 
       expect(find.byType(EmptyState), findsOneWidget);
@@ -87,7 +92,12 @@ void main() {
       expect(find.byType(EmptyState), findsOneWidget);
 
       await store.addProduct(
-          name: 'Garri', unit: 'paints', stock: 5, buyPrice: 1, sellPrice: 2);
+        name: 'Garri',
+        unit: 'paints',
+        stock: 5,
+        buyPrice: 1,
+        sellPrice: 2,
+      );
       await tester.pumpAndSettle();
       expect(find.byType(EmptyState), findsNothing);
       expect(find.text('Garri'), findsOneWidget);
@@ -95,25 +105,36 @@ void main() {
   });
 
   group('Touch targets (batch item 3)', () {
-    testWidgets('qty steppers, three-dot menu, and back arrow are ≥ 44dp',
-        (tester) async {
+    testWidgets('qty steppers, three-dot menu, and back arrow are ≥ 44dp', (
+      tester,
+    ) async {
       usePhoneSurface(tester);
       await pumpWithStore(tester, const RecordSaleScreen());
       await tester.pump();
 
       // Stepper hit areas (the GestureDetector around each button).
       for (final icon in [Icons.remove, Icons.add]) {
-        final size = tester.getSize(find.ancestor(
-            of: find.byIcon(icon).first,
-            matching: find.byType(GestureDetector)).first);
+        final size = tester.getSize(
+          find
+              .ancestor(
+                of: find.byIcon(icon).first,
+                matching: find.byType(GestureDetector),
+              )
+              .first,
+        );
         expect(size.width, greaterThanOrEqualTo(44), reason: '$icon width');
         expect(size.height, greaterThanOrEqualTo(44), reason: '$icon height');
       }
 
       // Header back arrow.
-      final back = tester.getSize(find.ancestor(
-          of: find.byIcon(Icons.arrow_back),
-          matching: find.byType(GestureDetector)).first);
+      final back = tester.getSize(
+        find
+            .ancestor(
+              of: find.byIcon(Icons.arrow_back),
+              matching: find.byType(GestureDetector),
+            )
+            .first,
+      );
       expect(back.width, greaterThanOrEqualTo(44));
       expect(back.height, greaterThanOrEqualTo(44));
     });
@@ -125,24 +146,30 @@ void main() {
 
       // The SizedBox around the icon defines the tappable region.
       // (The visual icon itself stays 18px inside it.)
-      final region = tester.getSize(find.ancestor(
-          of: find.byIcon(Icons.more_vert).first,
-          matching: find.byType(SizedBox)).first);
+      final region = tester.getSize(
+        find
+            .ancestor(
+              of: find.byIcon(Icons.more_vert).first,
+              matching: find.byType(SizedBox),
+            )
+            .first,
+      );
       expect(region.width, greaterThanOrEqualTo(44));
       expect(region.height, greaterThanOrEqualTo(44));
     });
   });
 
   group('Sales History animation (batch item 4)', () {
-    testWidgets('expansion animates via AnimatedSize with a rotating chevron',
-        (tester) async {
+    testWidgets('expansion animates via AnimatedSize with a rotating chevron', (
+      tester,
+    ) async {
       usePhoneSurface(tester, height: 3200);
       await pumpWithStore(tester, const ReportsScreen());
       await tester.pump();
       await tester.pump();
 
-      AnimatedRotation chevron() => tester.widget<AnimatedRotation>(
-          find.byType(AnimatedRotation).first);
+      AnimatedRotation chevron() =>
+          tester.widget<AnimatedRotation>(find.byType(AnimatedRotation).first);
       expect(chevron().turns, 0);
       expect(find.byType(AnimatedSize), findsWidgets);
 

@@ -127,13 +127,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   } else if (!snapshot.hasData) {
                     body = const _LoadingList();
                   } else if (snapshot.data!.isEmpty) {
-                    body = const RefreshableViewport(
+                    body = RefreshableViewport(
                       child: EmptyState(
                         icon: Icons.inventory_2_outlined,
                         title: 'No products yet',
-                        message:
-                            'Everything you sell lives here.\n'
-                            'Tap + to add your first product.',
+                        message: 'Everything you sell lives here.',
+                        actionLabel: 'Add product',
+                        onAction: _openAddProduct,
                       ),
                     );
                   } else {

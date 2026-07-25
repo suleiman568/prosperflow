@@ -99,14 +99,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   } else if (!snapshot.hasData) {
                     body = const _LoadingList();
                   } else if (snapshot.data!.isEmpty) {
-                    body = const RefreshableViewport(
+                    body = RefreshableViewport(
                       child: EmptyState(
                         icon: Icons.receipt_long_outlined,
                         title: 'No expenses yet',
                         message:
                             'Track costs like transport, rent and '
-                            'stock here\nso your profit stays honest. '
-                            'Tap + to add one.',
+                            'stock here\nso your profit stays honest.',
+                        actionLabel: 'Add expense',
+                        onAction: _openAddExpense,
                       ),
                     );
                   } else {
