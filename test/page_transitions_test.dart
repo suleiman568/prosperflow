@@ -84,4 +84,45 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('page two'), findsOneWidget);
   });
+
+  testWidgets('reduce-motion skips the fade+slide for an instant transition', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(pageTransitionsTheme: appPageTransitionsTheme),
+        // Override disableAnimations above the Navigator, so the route's
+        // buildTransitions sees reduce-motion — mirrors the shimmer test.
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: child!,
+        ),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        const Scaffold(body: Center(child: Text('page two'))),
+                  ),
+                ),
+                child: const Text('go'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('go'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+
+    // No fade/slide wrapper — the destination is shown outright.
+    expect(find.text('page two'), findsOneWidget);
+    expect(find.byType(SlideTransition), findsNothing);
+
+    await tester.pumpAndSettle();
+  });
 }

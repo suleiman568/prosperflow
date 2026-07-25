@@ -18,6 +18,11 @@ class AppPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    // Honour the platform "reduce motion" setting: skip the fade+slide and
+    // show the destination instantly, the same way the shimmer loaders drop
+    // their animation.
+    if (MediaQuery.of(context).disableAnimations) return child;
+
     final curved = CurvedAnimation(
       parent: animation,
       curve: Curves.easeOutCubic,
