@@ -31,8 +31,11 @@ class CreditsScreen extends StatefulWidget {
 }
 
 class _CreditsScreenState extends State<CreditsScreen> {
-  /// Bumped by the error state's "Try again" to force a fresh subscription.
+  /// Bumped to force a fresh subscription — by the error panel's "Try again"
+  /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
+
+  void _retry() => setState(() => _retryTick++);
 
   Future<void> _markPaid(Credit credit) async {
     await AppScope.of(context).markCreditPaid(credit.saleId);
@@ -59,11 +62,11 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 stream: store.watchOwedCredits(),
                 builder: (context, snapshot) {
                   final Widget body;
+                  VoidCallback? onRefresh;
                   if (snapshot.hasError) {
+                    onRefresh = _retry;
                     body = RefreshableViewport(
-                      child: ErrorState(
-                        onRetry: () => setState(() => _retryTick++),
-                      ),
+                      child: ErrorState(onRetry: _retry),
                     );
                   } else if (snapshot.data == null) {
                     body = const _LoadingList();
@@ -126,7 +129,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                       ],
                     );
                   }
-                  return PullToSync(child: body);
+                  return PullToSync(onRefresh: onRefresh, child: body);
                 },
               ),
             ),

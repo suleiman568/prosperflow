@@ -37,6 +37,22 @@ class _PendingStore extends MemoryStore {
   Stream<List<Product>> watchProducts() => const Stream.empty();
 }
 
+/// Errors on the first subscription, then serves real data on the retry — to
+/// prove a pull from the error panel re-subscribes and recovers the screen.
+class _FlakyProductStore extends MemoryStore {
+  _FlakyProductStore() : super(products: fixtureProducts);
+
+  int _subscriptions = 0;
+
+  @override
+  Stream<List<Product>> watchProducts() {
+    _subscriptions++;
+    return _subscriptions == 1
+        ? Stream<List<Product>>.error(Exception('load failed'))
+        : super.watchProducts();
+  }
+}
+
 Future<void> _pullToRefresh(WidgetTester tester) async {
   await tester.fling(find.byType(RefreshIndicator), const Offset(0, 400), 1000);
   await tester.pumpAndSettle();
@@ -127,6 +143,30 @@ void main() {
     expect(find.byType(PullToSync), findsOneWidget);
     await _pullToRefresh(tester);
 
+    expect(sync.syncs, 1);
+  });
+
+  testWidgets('pull from the error state re-subscribes and recovers the screen', (
+    tester,
+  ) async {
+    usePhoneSurface(tester);
+    final sync = _RecordingSyncEngine();
+    await pumpWithStore(
+      tester,
+      const ProductsScreen(),
+      store: _FlakyProductStore(),
+      sync: sync,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ErrorState), findsOneWidget);
+
+    // Pulling must do what "Try again" does — reset the failed subscription —
+    // in addition to backing up. Otherwise the screen stays stuck on the error.
+    await _pullToRefresh(tester);
+
+    expect(find.byType(ErrorState), findsNothing);
+    expect(find.text('Palm Oil (25L)'), findsOneWidget);
     expect(sync.syncs, 1);
   });
 

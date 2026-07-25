@@ -34,8 +34,11 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  /// Bumped by the error state's "Try again" to force a fresh subscription.
+  /// Bumped to force a fresh subscription — by the error panel's "Try again"
+  /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
+
+  void _retry() => setState(() => _retryTick++);
 
   void _openAddProduct() {
     final store = AppScope.of(context);
@@ -113,11 +116,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 stream: store.watchProducts(),
                 builder: (context, snapshot) {
                   final Widget body;
+                  VoidCallback? onRefresh;
                   if (snapshot.hasError) {
+                    onRefresh = _retry;
                     body = RefreshableViewport(
-                      child: ErrorState(
-                        onRetry: () => setState(() => _retryTick++),
-                      ),
+                      child: ErrorState(onRetry: _retry),
                     );
                   } else if (!snapshot.hasData) {
                     body = const _LoadingList();
@@ -160,7 +163,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       ),
                     );
                   }
-                  return PullToSync(child: body);
+                  return PullToSync(onRefresh: onRefresh, child: body);
                 },
               ),
             ),

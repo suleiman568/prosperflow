@@ -92,15 +92,24 @@ class SyncStatusRow extends StatelessWidget {
 /// (per-table watermarks, conflict resolution, local upsert) tracked outside
 /// this widget. The gesture is deliberately framed as "sync/back up now".
 class PullToSync extends StatelessWidget {
-  const PullToSync({super.key, required this.child});
+  const PullToSync({super.key, required this.child, this.onRefresh});
 
   final Widget child;
+
+  /// Extra work to run alongside the manual sync, before it. Used from the
+  /// error panel to re-subscribe the failed stream (the same reset the
+  /// "Try again" button does) — a pull there must recover the screen, not
+  /// just back up pending changes.
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: AppColors.primary,
-      onRefresh: () => runManualSync(context),
+      onRefresh: () async {
+        onRefresh?.call();
+        await runManualSync(context);
+      },
       child: child,
     );
   }

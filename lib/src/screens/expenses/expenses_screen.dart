@@ -35,8 +35,11 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  /// Bumped by the error state's "Try again" to force a fresh subscription.
+  /// Bumped to force a fresh subscription — by the error panel's "Try again"
+  /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
+
+  void _retry() => setState(() => _retryTick++);
 
   void _openAddExpense() {
     final store = AppScope.of(context);
@@ -85,11 +88,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 stream: store.watchExpenses(),
                 builder: (context, snapshot) {
                   final Widget body;
+                  VoidCallback? onRefresh;
                   if (snapshot.hasError) {
+                    onRefresh = _retry;
                     body = RefreshableViewport(
-                      child: ErrorState(
-                        onRetry: () => setState(() => _retryTick++),
-                      ),
+                      child: ErrorState(onRetry: _retry),
                     );
                   } else if (!snapshot.hasData) {
                     body = const _LoadingList();
@@ -167,7 +170,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ],
                     );
                   }
-                  return PullToSync(child: body);
+                  return PullToSync(onRefresh: onRefresh, child: body);
                 },
               ),
             ),
