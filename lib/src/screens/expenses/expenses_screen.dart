@@ -402,8 +402,10 @@ class _AddExpenseSheet extends StatefulWidget {
 class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   final _description = TextEditingController();
   final _amount = TextEditingController();
-  ExpenseCategory _category = ExpenseCategory.delivery;
-  DateTime _date = DateTime.now();
+  static const _initialCategory = ExpenseCategory.delivery;
+  ExpenseCategory _category = _initialCategory;
+  final DateTime _initialDate = DateTime.now();
+  late DateTime _date = _initialDate;
 
   static const _categoryLabels = {
     ExpenseCategory.delivery: 'Delivery',
@@ -430,7 +432,17 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  bool get _isDirty => _description.text.isNotEmpty || _amount.text.isNotEmpty;
+  /// Dirty when any editable field departs from its initial value — the text
+  /// fields (normalized, so whitespace-only isn't "dirty"), the category, or
+  /// the date (compared by calendar day, so re-picking today is a no-op).
+  bool get _isDirty =>
+      _description.text.trim().isNotEmpty ||
+      _amount.text.trim().isNotEmpty ||
+      _category != _initialCategory ||
+      !_isSameDay(_date, _initialDate);
+
+  static bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   void _submit() {
     final description = _description.text.trim();

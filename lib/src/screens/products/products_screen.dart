@@ -362,12 +362,13 @@ class _AddProductSheetState extends State<_AddProductSheet> {
     super.dispose();
   }
 
+  // Normalized so whitespace-only input doesn't count as unsaved work.
   bool get _isDirty =>
-      _name.text.isNotEmpty ||
-      _unit.text.isNotEmpty ||
-      _buyPrice.text.isNotEmpty ||
-      _sellPrice.text.isNotEmpty ||
-      _stock.text.isNotEmpty;
+      _name.text.trim().isNotEmpty ||
+      _unit.text.trim().isNotEmpty ||
+      _buyPrice.text.trim().isNotEmpty ||
+      _sellPrice.text.trim().isNotEmpty ||
+      _stock.text.trim().isNotEmpty;
 
   void _submit() {
     final name = _name.text.trim();
@@ -545,12 +546,14 @@ class _EditProductSheetState extends State<_EditProductSheet> {
     navigator.pop();
   }
 
+  // Compare normalized values against the saved product, so re-typing the
+  // same text with stray whitespace (a no-op on save) isn't "dirty".
   bool get _isDirty =>
-      _name.text != widget.product.name ||
-      _unit.text != widget.product.unit ||
-      _buyPrice.text != '${widget.product.buyPrice}' ||
-      _sellPrice.text != '${widget.product.sellPrice}' ||
-      _threshold.text != '${widget.product.lowStockThreshold}';
+      _name.text.trim() != widget.product.name ||
+      _unit.text.trim() != widget.product.unit ||
+      _buyPrice.text.trim() != '${widget.product.buyPrice}' ||
+      _sellPrice.text.trim() != '${widget.product.sellPrice}' ||
+      _threshold.text.trim() != '${widget.product.lowStockThreshold}';
 
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
