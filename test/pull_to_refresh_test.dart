@@ -168,6 +168,9 @@ void main() {
     expect(find.byType(ErrorState), findsNothing);
     expect(find.text('Palm Oil (25L)'), findsOneWidget);
     expect(sync.syncs, 1);
+    // The sync's completion toast must survive the subscription reset — the
+    // reset re-keys the StreamBuilder, so the sync has to run first.
+    expect(find.text('✅ Everything is backed up'), findsOneWidget);
   });
 
   testWidgets('Expenses pull-to-refresh runs a manual sync', (tester) async {

@@ -35,7 +35,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
   /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
 
-  void _retry() => setState(() => _retryTick++);
+  void _retry() {
+    if (mounted) setState(() => _retryTick++);
+  }
 
   Future<void> _markPaid(Credit credit) async {
     await AppScope.of(context).markCreditPaid(credit.saleId);

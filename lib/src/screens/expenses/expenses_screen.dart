@@ -39,7 +39,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
 
-  void _retry() => setState(() => _retryTick++);
+  void _retry() {
+    if (mounted) setState(() => _retryTick++);
+  }
 
   void _openAddExpense() {
     final store = AppScope.of(context);

@@ -38,7 +38,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
   /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
 
-  void _retry() => setState(() => _retryTick++);
+  void _retry() {
+    if (mounted) setState(() => _retryTick++);
+  }
 
   void _openAddProduct() {
     final store = AppScope.of(context);

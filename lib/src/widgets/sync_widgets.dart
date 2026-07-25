@@ -96,10 +96,16 @@ class PullToSync extends StatelessWidget {
 
   final Widget child;
 
-  /// Extra work to run alongside the manual sync, before it. Used from the
-  /// error panel to re-subscribe the failed stream (the same reset the
-  /// "Try again" button does) — a pull there must recover the screen, not
-  /// just back up pending changes.
+  /// Extra work to run alongside the manual sync. Used from the error panel
+  /// to re-subscribe the failed stream (the same reset the "Try again" button
+  /// does) — a pull there must recover the screen, not just back up pending
+  /// changes.
+  ///
+  /// It runs *after* the sync, on purpose: [runManualSync] shows its
+  /// completion toast via this [context], and a reset that re-keys the
+  /// enclosing `StreamBuilder` would unmount that context first — dropping the
+  /// toast. Syncing first keeps the context alive for the toast, then the
+  /// reset recovers the view.
   final VoidCallback? onRefresh;
 
   @override
@@ -107,8 +113,8 @@ class PullToSync extends StatelessWidget {
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () async {
-        onRefresh?.call();
         await runManualSync(context);
+        onRefresh?.call();
       },
       child: child,
     );
