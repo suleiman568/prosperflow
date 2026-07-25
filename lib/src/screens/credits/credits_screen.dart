@@ -58,17 +58,21 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 key: ValueKey(_retryTick),
                 stream: store.watchOwedCredits(),
                 builder: (context, snapshot) {
+                  final Widget body;
                   if (snapshot.hasError) {
-                    return ErrorState(
-                      onRetry: () => setState(() => _retryTick++),
+                    body = RefreshableViewport(
+                      child: ErrorState(
+                        onRetry: () => setState(() => _retryTick++),
+                      ),
                     );
-                  }
-                  final credits = snapshot.data;
-                  if (credits == null) return const _LoadingList();
-                  if (credits.isEmpty) return const _EmptyState();
-                  final total = credits.fold(0, (sum, c) => sum + c.amount);
-                  return PullToSync(
-                    child: ListView(
+                  } else if (snapshot.data == null) {
+                    body = const _LoadingList();
+                  } else if (snapshot.data!.isEmpty) {
+                    body = const RefreshableViewport(child: _EmptyState());
+                  } else {
+                    final credits = snapshot.data!;
+                    final total = credits.fold(0, (sum, c) => sum + c.amount);
+                    body = ListView(
                       padding: AppShape.screenBody,
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: [
@@ -120,8 +124,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
                           ),
                         ],
                       ],
-                    ),
-                  );
+                    );
+                  }
+                  return PullToSync(child: body);
                 },
               ),
             ),
@@ -166,6 +171,7 @@ class _LoadingList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: AppShape.screenBody,
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         AppCard.tinted(
           color: AppColors.orangeTint,

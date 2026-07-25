@@ -84,31 +84,35 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 key: ValueKey(_retryTick),
                 stream: store.watchExpenses(),
                 builder: (context, snapshot) {
+                  final Widget body;
                   if (snapshot.hasError) {
-                    return ErrorState(
-                      onRetry: () => setState(() => _retryTick++),
+                    body = RefreshableViewport(
+                      child: ErrorState(
+                        onRetry: () => setState(() => _retryTick++),
+                      ),
                     );
-                  }
-                  if (!snapshot.hasData) return const _LoadingList();
-                  final expenses = snapshot.data!;
-                  if (expenses.isEmpty) {
-                    return const EmptyState(
-                      icon: Icons.receipt_long_outlined,
-                      title: 'No expenses yet',
-                      message:
-                          'Track costs like transport, rent and '
-                          'stock here\nso your profit stays honest. '
-                          'Tap + to add one.',
+                  } else if (!snapshot.hasData) {
+                    body = const _LoadingList();
+                  } else if (snapshot.data!.isEmpty) {
+                    body = const RefreshableViewport(
+                      child: EmptyState(
+                        icon: Icons.receipt_long_outlined,
+                        title: 'No expenses yet',
+                        message:
+                            'Track costs like transport, rent and '
+                            'stock here\nso your profit stays honest. '
+                            'Tap + to add one.',
+                      ),
                     );
-                  }
-                  final weekStart = DateTime.now().subtract(
-                    const Duration(days: 7),
-                  );
-                  final weekTotal = expenses
-                      .where((e) => e.spentOn.isAfter(weekStart))
-                      .fold(0, (sum, e) => sum + e.amount);
-                  return PullToSync(
-                    child: ListView(
+                  } else {
+                    final expenses = snapshot.data!;
+                    final weekStart = DateTime.now().subtract(
+                      const Duration(days: 7),
+                    );
+                    final weekTotal = expenses
+                        .where((e) => e.spentOn.isAfter(weekStart))
+                        .fold(0, (sum, e) => sum + e.amount);
+                    body = ListView(
                       padding: AppShape.screenBodyFab,
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: [
@@ -161,8 +165,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           ),
                         ],
                       ],
-                    ),
-                  );
+                    );
+                  }
+                  return PullToSync(child: body);
                 },
               ),
             ),
@@ -208,6 +213,7 @@ class _LoadingList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: AppShape.screenBodyFab,
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         AppCard.tinted(
           color: AppColors.redTint,

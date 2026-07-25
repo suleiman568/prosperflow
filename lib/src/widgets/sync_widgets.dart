@@ -82,9 +82,15 @@ class SyncStatusRow extends StatelessWidget {
   }
 }
 
-/// Wraps a scrollable list in pull-to-refresh that runs a manual sync — the
-/// same action (and toasts) as the header ↻ button, with the platform's
-/// standard refresh spinner in the app's green.
+/// Wraps a scrollable in pull-to-refresh that runs a manual sync — the same
+/// action (and toasts) as the header ↻ button, with the platform's standard
+/// refresh spinner in the app's green.
+///
+/// Note on scope: a manual sync *backs up* pending local changes (flushes the
+/// push-only outbox to Supabase). It does not yet pull remote changes down —
+/// two-way sync (server → device) is a separate, larger piece of work
+/// (per-table watermarks, conflict resolution, local upsert) tracked outside
+/// this widget. The gesture is deliberately framed as "sync/back up now".
 class PullToSync extends StatelessWidget {
   const PullToSync({super.key, required this.child});
 
@@ -96,6 +102,30 @@ class PullToSync extends StatelessWidget {
       color: AppColors.primary,
       onRefresh: () => runManualSync(context),
       child: child,
+    );
+  }
+}
+
+/// Makes non-scrolling content (an empty or error panel) fill the viewport so
+/// it can still be pulled down to sync — [RefreshIndicator] needs a scrollable
+/// child that can overscroll, which a bare centered panel isn't. Wrap this in
+/// [PullToSync] to make those states refreshable, which is exactly when a user
+/// most wants to retry a sync.
+class RefreshableViewport extends StatelessWidget {
+  const RefreshableViewport({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: child,
+        ),
+      ),
     );
   }
 }

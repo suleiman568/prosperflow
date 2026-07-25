@@ -112,24 +112,28 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 key: ValueKey(_retryTick),
                 stream: store.watchProducts(),
                 builder: (context, snapshot) {
+                  final Widget body;
                   if (snapshot.hasError) {
-                    return ErrorState(
-                      onRetry: () => setState(() => _retryTick++),
+                    body = RefreshableViewport(
+                      child: ErrorState(
+                        onRetry: () => setState(() => _retryTick++),
+                      ),
                     );
-                  }
-                  if (!snapshot.hasData) return const _LoadingList();
-                  final products = snapshot.data!;
-                  if (products.isEmpty) {
-                    return const EmptyState(
-                      icon: Icons.inventory_2_outlined,
-                      title: 'No products yet',
-                      message:
-                          'Everything you sell lives here.\n'
-                          'Tap + to add your first product.',
+                  } else if (!snapshot.hasData) {
+                    body = const _LoadingList();
+                  } else if (snapshot.data!.isEmpty) {
+                    body = const RefreshableViewport(
+                      child: EmptyState(
+                        icon: Icons.inventory_2_outlined,
+                        title: 'No products yet',
+                        message:
+                            'Everything you sell lives here.\n'
+                            'Tap + to add your first product.',
+                      ),
                     );
-                  }
-                  return PullToSync(
-                    child: ListView.separated(
+                  } else {
+                    final products = snapshot.data!;
+                    body = ListView.separated(
                       padding: AppShape.screenBodyFab,
                       physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: products.length,
@@ -154,8 +158,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           ),
                         ),
                       ),
-                    ),
-                  );
+                    );
+                  }
+                  return PullToSync(child: body);
                 },
               ),
             ),
@@ -193,6 +198,7 @@ class _LoadingList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: AppShape.screenBodyFab,
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: 5,
       separatorBuilder: (_, _) => const SizedBox(height: AppShape.cardGap),
       itemBuilder: (_, _) => const _SkeletonProductCard(),
