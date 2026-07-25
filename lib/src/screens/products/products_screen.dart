@@ -6,6 +6,7 @@ import '../../theme/tokens.dart';
 import '../../utils/haptics.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/discard_dialog.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
@@ -47,6 +48,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      // enableDrag off so a drag-dismiss can't bypass the DiscardGuard.
+      enableDrag: false,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -80,6 +83,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      // enableDrag off so a drag-dismiss can't bypass the DiscardGuard.
+      enableDrag: false,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -357,6 +362,13 @@ class _AddProductSheetState extends State<_AddProductSheet> {
     super.dispose();
   }
 
+  bool get _isDirty =>
+      _name.text.isNotEmpty ||
+      _unit.text.isNotEmpty ||
+      _buyPrice.text.isNotEmpty ||
+      _sellPrice.text.isNotEmpty ||
+      _stock.text.isNotEmpty;
+
   void _submit() {
     final name = _name.text.trim();
     final unit = _unit.text.trim();
@@ -377,77 +389,80 @@ class _AddProductSheetState extends State<_AddProductSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 18,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Add Product', style: AppText.screenTitle),
-          const SizedBox(height: AppShape.gapLg),
-          _label('PRODUCT NAME'),
-          FilledInput(
-            hint: 'Palm Oil (25L)',
-            controller: _name,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          _label('UNIT'),
-          FilledInput(
-            hint: 'bottles',
-            controller: _unit,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label('BUY PRICE (₦)'),
-                    FilledInput(
-                      hint: '6800',
-                      controller: _buyPrice,
-                      digitsOnly: true,
-                      textInputAction: TextInputAction.next,
-                    ),
-                  ],
+    return DiscardGuard(
+      isDirty: () => _isDirty,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 18,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Add Product', style: AppText.screenTitle),
+            const SizedBox(height: AppShape.gapLg),
+            _label('PRODUCT NAME'),
+            FilledInput(
+              hint: 'Palm Oil (25L)',
+              controller: _name,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            _label('UNIT'),
+            FilledInput(
+              hint: 'bottles',
+              controller: _unit,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _label('BUY PRICE (₦)'),
+                      FilledInput(
+                        hint: '6800',
+                        controller: _buyPrice,
+                        digitsOnly: true,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppShape.gridGap),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label('SELL PRICE (₦)'),
-                    FilledInput(
-                      hint: '9200',
-                      controller: _sellPrice,
-                      digitsOnly: true,
-                      textInputAction: TextInputAction.next,
-                    ),
-                  ],
+                const SizedBox(width: AppShape.gridGap),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _label('SELL PRICE (₦)'),
+                      FilledInput(
+                        hint: '9200',
+                        controller: _sellPrice,
+                        digitsOnly: true,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          _label('OPENING STOCK'),
-          FilledInput(
-            hint: '42',
-            controller: _stock,
-            digitsOnly: true,
-            textInputAction: TextInputAction.done,
-          ),
-          const SizedBox(height: 22),
-          PrimaryButton(label: 'Add Product', onPressed: _submit),
-        ],
+              ],
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            _label('OPENING STOCK'),
+            FilledInput(
+              hint: '42',
+              controller: _stock,
+              digitsOnly: true,
+              textInputAction: TextInputAction.done,
+            ),
+            const SizedBox(height: 22),
+            PrimaryButton(label: 'Add Product', onPressed: _submit),
+          ],
+        ),
       ),
     );
   }
@@ -530,6 +545,13 @@ class _EditProductSheetState extends State<_EditProductSheet> {
     navigator.pop();
   }
 
+  bool get _isDirty =>
+      _name.text != widget.product.name ||
+      _unit.text != widget.product.unit ||
+      _buyPrice.text != '${widget.product.buyPrice}' ||
+      _sellPrice.text != '${widget.product.sellPrice}' ||
+      _threshold.text != '${widget.product.lowStockThreshold}';
+
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Text(text, style: AppText.fieldLabel),
@@ -537,82 +559,85 @@ class _EditProductSheetState extends State<_EditProductSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 18,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Edit Product', style: AppText.screenTitle),
-          const SizedBox(height: AppShape.gapXs),
-          Text(
-            'Past sales keep their original prices.',
-            style: AppText.cardMeta,
-          ),
-          const SizedBox(height: AppShape.gapLg),
-          _label('PRODUCT NAME'),
-          FilledInput(
-            hint: 'Palm Oil (25L)',
-            controller: _name,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          _label('UNIT'),
-          FilledInput(
-            hint: 'bottles',
-            controller: _unit,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label('BUY PRICE (₦)'),
-                    FilledInput(
-                      hint: '6800',
-                      controller: _buyPrice,
-                      digitsOnly: true,
-                      textInputAction: TextInputAction.next,
-                    ),
-                  ],
+    return DiscardGuard(
+      isDirty: () => _isDirty,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 18,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Edit Product', style: AppText.screenTitle),
+            const SizedBox(height: AppShape.gapXs),
+            Text(
+              'Past sales keep their original prices.',
+              style: AppText.cardMeta,
+            ),
+            const SizedBox(height: AppShape.gapLg),
+            _label('PRODUCT NAME'),
+            FilledInput(
+              hint: 'Palm Oil (25L)',
+              controller: _name,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            _label('UNIT'),
+            FilledInput(
+              hint: 'bottles',
+              controller: _unit,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _label('BUY PRICE (₦)'),
+                      FilledInput(
+                        hint: '6800',
+                        controller: _buyPrice,
+                        digitsOnly: true,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppShape.gridGap),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _label('SELL PRICE (₦)'),
-                    FilledInput(
-                      hint: '9200',
-                      controller: _sellPrice,
-                      digitsOnly: true,
-                      textInputAction: TextInputAction.next,
-                    ),
-                  ],
+                const SizedBox(width: AppShape.gridGap),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _label('SELL PRICE (₦)'),
+                      FilledInput(
+                        hint: '9200',
+                        controller: _sellPrice,
+                        digitsOnly: true,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          _label('LOW-STOCK ALERT AT'),
-          FilledInput(
-            hint: '10',
-            controller: _threshold,
-            digitsOnly: true,
-            textInputAction: TextInputAction.done,
-          ),
-          const SizedBox(height: 22),
-          PrimaryButton(label: 'Save Changes', onPressed: _submit),
-        ],
+              ],
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            _label('LOW-STOCK ALERT AT'),
+            FilledInput(
+              hint: '10',
+              controller: _threshold,
+              digitsOnly: true,
+              textInputAction: TextInputAction.done,
+            ),
+            const SizedBox(height: 22),
+            PrimaryButton(label: 'Save Changes', onPressed: _submit),
+          ],
+        ),
       ),
     );
   }

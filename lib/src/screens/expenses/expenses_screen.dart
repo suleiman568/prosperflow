@@ -11,6 +11,7 @@ import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/deletable_card.dart';
+import '../../widgets/discard_dialog.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/filled_input.dart';
@@ -48,6 +49,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      // enableDrag off so a drag-dismiss can't bypass the DiscardGuard.
+      enableDrag: false,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -427,6 +430,8 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
     if (picked != null) setState(() => _date = picked);
   }
 
+  bool get _isDirty => _description.text.isNotEmpty || _amount.text.isNotEmpty;
+
   void _submit() {
     final description = _description.text.trim();
     final amount = int.tryParse(_amount.text.trim());
@@ -440,105 +445,111 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 18,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Add Expense', style: AppText.screenTitle),
-          const SizedBox(height: AppShape.gapLg),
-          _label('DESCRIPTION'),
-          FilledInput(
-            hint: 'Delivery Cost',
-            controller: _description,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          _label('AMOUNT (₦)'),
-          FilledInput(
-            hint: '8500',
-            controller: _amount,
-            digitsOnly: true,
-            textInputAction: TextInputAction.done,
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          _label('CATEGORY'),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final category in ExpenseCategory.values)
-                GestureDetector(
-                  onTap: () => setState(() => _category = category),
-                  child: Container(
-                    height: 36,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: _category == category
-                          ? AppColors.accentRed
-                          : AppColors.inputBg,
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          expenseCategoryIcon(category),
-                          size: 14,
-                          color: _category == category
-                              ? Colors.white
-                              : AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          _categoryLabels[category]!,
-                          style: AppText.style(
-                            FontWeight.w700,
-                            12,
-                            _category == category
+    return DiscardGuard(
+      isDirty: () => _isDirty,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 18,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Add Expense', style: AppText.screenTitle),
+            const SizedBox(height: AppShape.gapLg),
+            _label('DESCRIPTION'),
+            FilledInput(
+              hint: 'Delivery Cost',
+              controller: _description,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            _label('AMOUNT (₦)'),
+            FilledInput(
+              hint: '8500',
+              controller: _amount,
+              digitsOnly: true,
+              textInputAction: TextInputAction.done,
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            _label('CATEGORY'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final category in ExpenseCategory.values)
+                  GestureDetector(
+                    onTap: () => setState(() => _category = category),
+                    child: Container(
+                      height: 36,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: _category == category
+                            ? AppColors.accentRed
+                            : AppColors.inputBg,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            expenseCategoryIcon(category),
+                            size: 14,
+                            color: _category == category
                                 ? Colors.white
                                 : AppColors.textSecondary,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 5),
+                          Text(
+                            _categoryLabels[category]!,
+                            style: AppText.style(
+                              FontWeight.w700,
+                              12,
+                              _category == category
+                                  ? Colors.white
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+              ],
+            ),
+            const SizedBox(height: AppShape.cardGap),
+            _label('DATE'),
+            GestureDetector(
+              onTap: _pickDate,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
                 ),
-            ],
-          ),
-          const SizedBox(height: AppShape.cardGap),
-          _label('DATE'),
-          GestureDetector(
-            onTap: _pickDate,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.inputBg,
-                borderRadius: BorderRadius.circular(AppShape.controlRadius),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(formatWeekdayDayMonth(_date), style: AppText.input),
-                  const Icon(
-                    Icons.calendar_today_rounded,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
+                decoration: BoxDecoration(
+                  color: AppColors.inputBg,
+                  borderRadius: BorderRadius.circular(AppShape.controlRadius),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(formatWeekdayDayMonth(_date), style: AppText.input),
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 22),
-          PrimaryButton(label: 'Add Expense', onPressed: _submit),
-        ],
+            const SizedBox(height: 22),
+            PrimaryButton(label: 'Add Expense', onPressed: _submit),
+          ],
+        ),
       ),
     );
   }
