@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/motion.dart';
+
 /// Wraps a tappable control with subtle press feedback — a quick scale-down
 /// while held — so custom `GestureDetector` controls (FABs, steppers, cards,
 /// pickers) feel responsive like Material buttons do. Preserves tap
@@ -63,7 +65,7 @@ class _PressableState extends State<Pressable> {
       onTapCancel: () => _set(false),
       child: AnimatedScale(
         scale: _pressed ? widget.scale : 1.0,
-        duration: const Duration(milliseconds: 90),
+        duration: reducedMotion(context, const Duration(milliseconds: 90)),
         curve: Curves.easeOut,
         child: widget.semanticLabel == null
             ? widget.child
