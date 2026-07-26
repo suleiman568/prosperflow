@@ -336,6 +336,32 @@ typedef _AddProduct =
       int sellPrice,
     );
 
+/// Live below-cost / no-margin hint for the product forms. Returns null while
+/// either price is still blank or unparseable, or when the sell price clears
+/// the buy price. Surfaces a losing price the moment it's typed — at
+/// product-definition time — rather than only warning later at sale time.
+Widget? _marginWarning(String buyText, String sellText) {
+  final buy = int.tryParse(buyText.trim());
+  final sell = int.tryParse(sellText.trim());
+  if (buy == null || sell == null) return null;
+  final String message;
+  final Color color;
+  if (sell < buy) {
+    message =
+        '⚠ Below cost — you lose ${formatNaira(buy - sell)} on every sale';
+    color = AppColors.accentRed;
+  } else if (sell == buy) {
+    message = '⚠ No profit — this price only covers your cost';
+    color = AppColors.accentOrange;
+  } else {
+    return null;
+  }
+  return Padding(
+    padding: const EdgeInsets.only(top: AppShape.gapSm),
+    child: Text(message, style: AppText.style(FontWeight.w700, 12, color)),
+  );
+}
+
 class _AddProductSheet extends StatefulWidget {
   const _AddProductSheet({required this.onAdd});
 
@@ -431,6 +457,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                         controller: _buyPrice,
                         digitsOnly: true,
                         textInputAction: TextInputAction.next,
+                        onChanged: (_) => setState(() {}),
                       ),
                     ],
                   ),
@@ -446,12 +473,14 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                         controller: _sellPrice,
                         digitsOnly: true,
                         textInputAction: TextInputAction.next,
+                        onChanged: (_) => setState(() {}),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
+            ?_marginWarning(_buyPrice.text, _sellPrice.text),
             const SizedBox(height: AppShape.cardGap),
             _label('OPENING STOCK'),
             FilledInput(
@@ -612,6 +641,7 @@ class _EditProductSheetState extends State<_EditProductSheet> {
                         controller: _buyPrice,
                         digitsOnly: true,
                         textInputAction: TextInputAction.next,
+                        onChanged: (_) => setState(() {}),
                       ),
                     ],
                   ),
@@ -627,12 +657,14 @@ class _EditProductSheetState extends State<_EditProductSheet> {
                         controller: _sellPrice,
                         digitsOnly: true,
                         textInputAction: TextInputAction.next,
+                        onChanged: (_) => setState(() {}),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
+            ?_marginWarning(_buyPrice.text, _sellPrice.text),
             const SizedBox(height: AppShape.cardGap),
             _label('LOW-STOCK ALERT AT'),
             FilledInput(
