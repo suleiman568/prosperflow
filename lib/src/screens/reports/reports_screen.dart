@@ -12,6 +12,7 @@ import '../../export/pdf_export.dart';
 import '../../export/share_export.dart';
 import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
+import '../../utils/motion.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -560,7 +561,10 @@ class _ProductGroupCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   AnimatedRotation(
                     turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
+                    duration: reducedMotion(
+                      context,
+                      const Duration(milliseconds: 200),
+                    ),
                     curve: Curves.easeInOut,
                     child: const Icon(
                       Icons.keyboard_arrow_down_rounded,
@@ -572,9 +576,10 @@ class _ProductGroupCard extends StatelessWidget {
               ),
             ),
           ),
-          // Smoothly grows/shrinks instead of snapping open (batch item 4).
+          // Smoothly grows/shrinks instead of snapping open (batch item 4);
+          // instant when the platform asks to reduce motion.
           AnimatedSize(
-            duration: const Duration(milliseconds: 200),
+            duration: reducedMotion(context, const Duration(milliseconds: 200)),
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
             child: !expanded
