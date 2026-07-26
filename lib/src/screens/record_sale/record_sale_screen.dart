@@ -180,17 +180,27 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
     final navigator = Navigator.of(context);
     final customer = _customerController.text.trim();
     final location = _locationController.text.trim();
-    await AppScope.of(context).recordSale(
-      productId: product.id,
-      qty: _qty,
-      method: _method,
-      fulfilment: _fulfilment,
-      unitPrice: _customPrice,
-      customerName: customer.isEmpty ? null : customer,
-      location: _fulfilment == Fulfilment.delivery && location.isNotEmpty
-          ? location
-          : null,
-    );
+    try {
+      await AppScope.of(context).recordSale(
+        productId: product.id,
+        qty: _qty,
+        method: _method,
+        fulfilment: _fulfilment,
+        unitPrice: _customPrice,
+        customerName: customer.isEmpty ? null : customer,
+        location: _fulfilment == Fulfilment.delivery && location.isNotEmpty
+            ? location
+            : null,
+      );
+    } catch (_) {
+      // A failed save must release the button so the trader can retry.
+      if (mounted) {
+        setState(() => _saving = false);
+        AppHaptics.warning();
+        showAppToast(context, "⚠ Couldn't save the sale. Please try again.");
+      }
+      return;
+    }
     if (!mounted) return;
     AppHaptics.success();
     showAppToast(
@@ -539,7 +549,11 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
           ),
         ],
         const SizedBox(height: 22),
-        PrimaryButton(label: 'Record Sale', onPressed: () => _submit(product)),
+        PrimaryButton(
+          label: 'Record Sale',
+          busy: _saving,
+          onPressed: () => _submit(product),
+        ),
       ],
     );
   }

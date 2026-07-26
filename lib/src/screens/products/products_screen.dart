@@ -508,6 +508,7 @@ class _EditProductSheetState extends State<_EditProductSheet> {
   late final _threshold = TextEditingController(
     text: '${widget.product.lowStockThreshold}',
   );
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -520,6 +521,7 @@ class _EditProductSheetState extends State<_EditProductSheet> {
   }
 
   Future<void> _submit() async {
+    if (_saving) return;
     final name = _name.text.trim();
     final unit = _unit.text.trim();
     final buy = int.tryParse(_buyPrice.text.trim());
@@ -533,12 +535,14 @@ class _EditProductSheetState extends State<_EditProductSheet> {
       showAppToast(context, '⚠ Fill in every field to save changes');
       return;
     }
+    setState(() => _saving = true);
     final navigator = Navigator.of(context);
     try {
       await widget.onSave(name, unit, buy, sell, threshold);
     } catch (_) {
-      // Keep the sheet open so nothing typed is lost.
+      // Keep the sheet open so nothing typed is lost, and release the button.
       if (mounted) {
+        setState(() => _saving = false);
         showAppToast(context, '⚠ Could not save changes — please try again');
       }
       return;
@@ -638,7 +642,11 @@ class _EditProductSheetState extends State<_EditProductSheet> {
               textInputAction: TextInputAction.done,
             ),
             const SizedBox(height: 22),
-            PrimaryButton(label: 'Save Changes', onPressed: _submit),
+            PrimaryButton(
+              label: 'Save Changes',
+              busy: _saving,
+              onPressed: _submit,
+            ),
           ],
         ),
       ),
