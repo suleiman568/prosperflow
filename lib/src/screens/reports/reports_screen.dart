@@ -38,6 +38,10 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   ReportPeriod _period = ReportPeriod.week;
 
+  /// True while a report is being built and shared, so the export button
+  /// shows a spinner and a second export can't be kicked off concurrently.
+  bool _exporting = false;
+
   String get _periodWord => switch (_period) {
     ReportPeriod.week => 'week',
     ReportPeriod.month => 'month',
@@ -72,6 +76,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   };
 
   void _openExportSheet() {
+    if (_exporting) return;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -131,6 +136,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _export({required bool pdf}) async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
     final store = AppScope.of(context);
     try {
       final bundle = await store.exportBundle(_period);
@@ -165,6 +172,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       debugPrint('Report export failed: $error\n$stack');
       if (!mounted) return;
       showAppToast(context, '⚠ Export failed — please try again');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
     }
   }
 
@@ -176,7 +185,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _Header(onExport: _openExportSheet),
+            _Header(onExport: _openExportSheet, exporting: _exporting),
             Expanded(
               child: StreamBuilder<ReportData>(
                 stream: store.watchReport(_period),
@@ -656,9 +665,13 @@ class _ProductGroupCard extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.onExport});
+  const _Header({required this.onExport, this.exporting = false});
 
   final VoidCallback onExport;
+
+  /// While an export runs, the button shows a spinner and is disabled so a
+  /// second export can't start on top of it.
+  final bool exporting;
 
   @override
   Widget build(BuildContext context) {
@@ -674,13 +687,22 @@ class _Header extends StatelessWidget {
           const ScreenTitle('Reports'),
           const Spacer(),
           IconButton(
-            tooltip: 'Export report',
-            onPressed: onExport,
-            icon: const Icon(
-              Icons.ios_share_rounded,
-              size: 20,
-              color: AppColors.textPrimary,
-            ),
+            tooltip: exporting ? 'Preparing report…' : 'Export report',
+            onPressed: exporting ? null : onExport,
+            icon: exporting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : const Icon(
+                    Icons.ios_share_rounded,
+                    size: 20,
+                    color: AppColors.textPrimary,
+                  ),
           ),
         ],
       ),
