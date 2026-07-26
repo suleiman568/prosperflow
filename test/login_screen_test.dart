@@ -12,14 +12,20 @@ import 'helpers.dart';
 Future<FakeAuthService> _pumpApp(WidgetTester tester) async {
   final auth = FakeAuthService(); // signed out
   await tester.pumpWidget(
-    AppScope(store: fixtureStore(), auth: auth, sync: NoopSyncEngine(), child: const ProsperFlowApp()),
+    AppScope(
+      store: fixtureStore(),
+      auth: auth,
+      sync: NoopSyncEngine(),
+      child: const ProsperFlowApp(),
+    ),
   );
   return auth;
 }
 
 void main() {
-  testWidgets('login screen shows branding, inputs, and actions',
-      (tester) async {
+  testWidgets('login screen shows branding, inputs, and actions', (
+    tester,
+  ) async {
     await _pumpApp(tester);
 
     expect(find.text('ProsperFlow'), findsOneWidget);
@@ -44,16 +50,20 @@ void main() {
     expect(find.text('Log In'), findsOneWidget); // still on login
   });
 
-  testWidgets('signing in navigates to the dashboard with the trader name',
-      (tester) async {
+  testWidgets('signing in navigates to the dashboard with the trader name', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     final auth = await _pumpApp(tester);
 
     await tester.enterText(
-        find.widgetWithText(TextField, 'prosper@market.ng'),
-        'amina@market.ng');
+      find.widgetWithText(TextField, 'prosper@market.ng'),
+      'amina@market.ng',
+    );
     await tester.enterText(
-        find.widgetWithText(TextField, '••••••••'), 'secret123');
+      find.widgetWithText(TextField, '••••••••'),
+      'secret123',
+    );
     await tester.tap(find.byType(PrimaryButton));
     await tester.pumpAndSettle();
 
@@ -66,19 +76,23 @@ void main() {
     await _pumpApp(tester);
 
     await tester.enterText(
-        find.widgetWithText(TextField, 'prosper@market.ng'),
-        'amina@market.ng');
+      find.widgetWithText(TextField, 'prosper@market.ng'),
+      'amina@market.ng',
+    );
     await tester.enterText(find.widgetWithText(TextField, '••••••••'), 'nope');
     await tester.tap(find.byType(PrimaryButton));
     await tester.pumpAndSettle();
 
-    expect(find.text('⚠ Password must be at least 6 characters'),
-        findsOneWidget);
+    expect(
+      find.text('⚠ Password must be at least 6 characters'),
+      findsOneWidget,
+    );
     expect(find.text('Log In'), findsOneWidget); // still on login
   });
 
-  testWidgets('create account signs up and lands on the dashboard',
-      (tester) async {
+  testWidgets('create account signs up and lands on the dashboard', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     final auth = await _pumpApp(tester);
 
@@ -86,12 +100,17 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-        find.widgetWithText(TextField, 'Prosper Adeyemi'), 'Ngozi Bello');
+      find.widgetWithText(TextField, 'Prosper Adeyemi'),
+      'Ngozi Bello',
+    );
     await tester.enterText(
-        find.widgetWithText(TextField, 'prosper@market.ng').last,
-        'ngozi@market.ng');
+      find.widgetWithText(TextField, 'prosper@market.ng').last,
+      'ngozi@market.ng',
+    );
     await tester.enterText(
-        find.widgetWithText(TextField, '••••••••').last, 'secret123');
+      find.widgetWithText(TextField, '••••••••').last,
+      'secret123',
+    );
     await tester.tap(find.text('Create Account'));
     await tester.pumpAndSettle();
 
@@ -99,16 +118,18 @@ void main() {
     expect(find.text('Welcome back, Ngozi Bello 👋'), findsOneWidget);
   });
 
-  testWidgets('signing out from the dashboard returns to login',
-      (tester) async {
+  testWidgets('signing out from the dashboard returns to login', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     final auth = FakeAuthService(signedIn: true);
     await tester.pumpWidget(
       AppScope(
-          store: fixtureStore(),
-          auth: auth,
-          sync: NoopSyncEngine(),
-          child: const ProsperFlowApp()),
+        store: fixtureStore(),
+        auth: auth,
+        sync: NoopSyncEngine(),
+        child: const ProsperFlowApp(),
+      ),
     );
     await tester.pump();
 
@@ -116,6 +137,11 @@ void main() {
     expect(find.text('Welcome back, Prosper 👋'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.power_settings_new_rounded));
+    await tester.pumpAndSettle();
+
+    // Sign-out now asks to confirm first.
+    expect(find.text('Sign out?'), findsOneWidget);
+    await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
 
     expect(auth.isSignedIn, isFalse);

@@ -6,6 +6,7 @@ import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
 import '../../sync/sync_engine.dart';
@@ -310,7 +311,16 @@ class _AppBar extends StatelessWidget {
                 icon: Icons.power_settings_new_rounded,
                 onTap: () async {
                   final navigator = Navigator.of(context);
-                  await AppScope.authOf(context).signOut();
+                  final auth = AppScope.authOf(context);
+                  final confirmed = await confirmDialog(
+                    context,
+                    title: 'Sign out?',
+                    message: "You'll need to sign in again to use ProsperFlow.",
+                    confirmLabel: 'Sign out',
+                    destructive: true,
+                  );
+                  if (!confirmed) return;
+                  await auth.signOut();
                   navigator.pushReplacementNamed(LoginScreen.route);
                 },
               ),
