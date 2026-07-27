@@ -78,9 +78,18 @@ class EmptyState extends StatelessWidget {
                         color: Colors.white,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        action,
-                        style: AppText.style(FontWeight.w700, 14, Colors.white),
+                      // Flexible so a large accessibility text scale wraps the
+                      // label instead of overflowing the pill on a narrow phone.
+                      Flexible(
+                        child: Text(
+                          action,
+                          textAlign: TextAlign.center,
+                          style: AppText.style(
+                            FontWeight.w700,
+                            14,
+                            Colors.white,
+                          ),
+                        ),
                       ),
                     ],
                   ),
