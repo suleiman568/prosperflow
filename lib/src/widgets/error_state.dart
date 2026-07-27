@@ -66,9 +66,14 @@ class ErrorState extends StatelessWidget {
                       color: Colors.white,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      'Try again',
-                      style: AppText.style(FontWeight.w700, 14, Colors.white),
+                    // Flexible so a large accessibility text scale wraps the
+                    // label instead of overflowing the pill on a narrow phone.
+                    Flexible(
+                      child: Text(
+                        'Try again',
+                        textAlign: TextAlign.center,
+                        style: AppText.style(FontWeight.w700, 14, Colors.white),
+                      ),
                     ),
                   ],
                 ),
