@@ -336,6 +336,32 @@ typedef _AddProduct =
       int sellPrice,
     );
 
+/// Live below-cost / no-margin hint for the product forms. Returns null while
+/// either price is still blank or unparseable, or when the sell price clears
+/// the buy price. Surfaces a losing price the moment it's typed — at
+/// product-definition time — rather than only warning later at sale time.
+Widget? _marginWarning(String buyText, String sellText) {
+  final buy = int.tryParse(buyText.trim());
+  final sell = int.tryParse(sellText.trim());
+  if (buy == null || sell == null) return null;
+  final String message;
+  final Color color;
+  if (sell < buy) {
+    message =
+        '⚠ Below cost — you lose ${formatNaira(buy - sell)} on every sale';
+    color = AppColors.accentRed;
+  } else if (sell == buy) {
+    message = '⚠ No profit — this price only covers your cost';
+    color = AppColors.accentOrange;
+  } else {
+    return null;
+  }
+  return Padding(
+    padding: const EdgeInsets.only(top: AppShape.gapSm),
+    child: Text(message, style: AppText.style(FontWeight.w700, 12, color)),
+  );
+}
+
 class _AddProductSheet extends StatefulWidget {
   const _AddProductSheet({required this.onAdd});
 
@@ -399,70 +425,75 @@ class _AddProductSheetState extends State<_AddProductSheet> {
           top: 18,
           bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Add Product', style: AppText.screenTitle),
-            const SizedBox(height: AppShape.gapLg),
-            _label('PRODUCT NAME'),
-            FilledInput(
-              hint: 'Palm Oil (25L)',
-              controller: _name,
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: AppShape.cardGap),
-            _label('UNIT'),
-            FilledInput(
-              hint: 'bottles',
-              controller: _unit,
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: AppShape.cardGap),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label('BUY PRICE (₦)'),
-                      FilledInput(
-                        hint: '6800',
-                        controller: _buyPrice,
-                        digitsOnly: true,
-                        textInputAction: TextInputAction.next,
-                      ),
-                    ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Add Product', style: AppText.screenTitle),
+              const SizedBox(height: AppShape.gapLg),
+              _label('PRODUCT NAME'),
+              FilledInput(
+                hint: 'Palm Oil (25L)',
+                controller: _name,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppShape.cardGap),
+              _label('UNIT'),
+              FilledInput(
+                hint: 'bottles',
+                controller: _unit,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppShape.cardGap),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('BUY PRICE (₦)'),
+                        FilledInput(
+                          hint: '6800',
+                          controller: _buyPrice,
+                          digitsOnly: true,
+                          textInputAction: TextInputAction.next,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppShape.gridGap),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label('SELL PRICE (₦)'),
-                      FilledInput(
-                        hint: '9200',
-                        controller: _sellPrice,
-                        digitsOnly: true,
-                        textInputAction: TextInputAction.next,
-                      ),
-                    ],
+                  const SizedBox(width: AppShape.gridGap),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('SELL PRICE (₦)'),
+                        FilledInput(
+                          hint: '9200',
+                          controller: _sellPrice,
+                          digitsOnly: true,
+                          textInputAction: TextInputAction.next,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppShape.cardGap),
-            _label('OPENING STOCK'),
-            FilledInput(
-              hint: '42',
-              controller: _stock,
-              digitsOnly: true,
-              textInputAction: TextInputAction.done,
-            ),
-            const SizedBox(height: 22),
-            PrimaryButton(label: 'Add Product', onPressed: _submit),
-          ],
+                ],
+              ),
+              ?_marginWarning(_buyPrice.text, _sellPrice.text),
+              const SizedBox(height: AppShape.cardGap),
+              _label('OPENING STOCK'),
+              FilledInput(
+                hint: '42',
+                controller: _stock,
+                digitsOnly: true,
+                textInputAction: TextInputAction.done,
+              ),
+              const SizedBox(height: 22),
+              PrimaryButton(label: 'Add Product', onPressed: _submit),
+            ],
+          ),
         ),
       ),
     );
@@ -575,79 +606,84 @@ class _EditProductSheetState extends State<_EditProductSheet> {
           top: 18,
           bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Edit Product', style: AppText.screenTitle),
-            const SizedBox(height: AppShape.gapXs),
-            Text(
-              'Past sales keep their original prices.',
-              style: AppText.cardMeta,
-            ),
-            const SizedBox(height: AppShape.gapLg),
-            _label('PRODUCT NAME'),
-            FilledInput(
-              hint: 'Palm Oil (25L)',
-              controller: _name,
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: AppShape.cardGap),
-            _label('UNIT'),
-            FilledInput(
-              hint: 'bottles',
-              controller: _unit,
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: AppShape.cardGap),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label('BUY PRICE (₦)'),
-                      FilledInput(
-                        hint: '6800',
-                        controller: _buyPrice,
-                        digitsOnly: true,
-                        textInputAction: TextInputAction.next,
-                      ),
-                    ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Edit Product', style: AppText.screenTitle),
+              const SizedBox(height: AppShape.gapXs),
+              Text(
+                'Past sales keep their original prices.',
+                style: AppText.cardMeta,
+              ),
+              const SizedBox(height: AppShape.gapLg),
+              _label('PRODUCT NAME'),
+              FilledInput(
+                hint: 'Palm Oil (25L)',
+                controller: _name,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppShape.cardGap),
+              _label('UNIT'),
+              FilledInput(
+                hint: 'bottles',
+                controller: _unit,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppShape.cardGap),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('BUY PRICE (₦)'),
+                        FilledInput(
+                          hint: '6800',
+                          controller: _buyPrice,
+                          digitsOnly: true,
+                          textInputAction: TextInputAction.next,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppShape.gridGap),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _label('SELL PRICE (₦)'),
-                      FilledInput(
-                        hint: '9200',
-                        controller: _sellPrice,
-                        digitsOnly: true,
-                        textInputAction: TextInputAction.next,
-                      ),
-                    ],
+                  const SizedBox(width: AppShape.gridGap),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('SELL PRICE (₦)'),
+                        FilledInput(
+                          hint: '9200',
+                          controller: _sellPrice,
+                          digitsOnly: true,
+                          textInputAction: TextInputAction.next,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppShape.cardGap),
-            _label('LOW-STOCK ALERT AT'),
-            FilledInput(
-              hint: '10',
-              controller: _threshold,
-              digitsOnly: true,
-              textInputAction: TextInputAction.done,
-            ),
-            const SizedBox(height: 22),
-            PrimaryButton(
-              label: 'Save Changes',
-              busy: _saving,
-              onPressed: _submit,
-            ),
-          ],
+                ],
+              ),
+              ?_marginWarning(_buyPrice.text, _sellPrice.text),
+              const SizedBox(height: AppShape.cardGap),
+              _label('LOW-STOCK ALERT AT'),
+              FilledInput(
+                hint: '10',
+                controller: _threshold,
+                digitsOnly: true,
+                textInputAction: TextInputAction.done,
+              ),
+              const SizedBox(height: 22),
+              PrimaryButton(
+                label: 'Save Changes',
+                busy: _saving,
+                onPressed: _submit,
+              ),
+            ],
+          ),
         ),
       ),
     );
