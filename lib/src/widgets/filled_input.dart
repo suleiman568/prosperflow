@@ -15,6 +15,7 @@ class FilledInput extends StatelessWidget {
     this.keyboardType,
     this.textInputAction,
     this.onChanged,
+    this.suffixIcon,
   });
 
   final String hint;
@@ -29,6 +30,10 @@ class FilledInput extends StatelessWidget {
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
 
+  /// Optional trailing affordance inside the field (e.g. a password reveal
+  /// toggle). Left null for plain inputs.
+  final Widget? suffixIcon;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
@@ -36,8 +41,9 @@ class FilledInput extends StatelessWidget {
       obscureText: obscureText,
       onChanged: onChanged,
       keyboardType: digitsOnly ? TextInputType.number : keyboardType,
-      inputFormatters:
-          digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
+      inputFormatters: digitsOnly
+          ? [FilteringTextInputFormatter.digitsOnly]
+          : null,
       textInputAction: textInputAction,
       style: AppText.input,
       cursorColor: AppColors.primary,
@@ -47,8 +53,11 @@ class FilledInput extends StatelessWidget {
         filled: true,
         fillColor: AppColors.inputBg,
         isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        suffixIcon: suffixIcon,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppShape.controlRadius),
           borderSide: BorderSide.none,
