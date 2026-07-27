@@ -684,8 +684,9 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           const HeaderBackButton(),
-          const ScreenTitle('Reports'),
-          const Spacer(),
+          const Expanded(
+            child: ScreenTitle('Reports', overflow: TextOverflow.ellipsis),
+          ),
           IconButton(
             tooltip: exporting ? 'Preparing report…' : 'Export report',
             onPressed: exporting ? null : onExport,
