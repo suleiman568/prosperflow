@@ -5,6 +5,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/brand_logo.dart';
 import '../../widgets/filled_input.dart';
+import '../../widgets/password_input.dart';
 import '../../widgets/primary_button.dart';
 import '../dashboard/dashboard_screen.dart';
 
@@ -128,10 +129,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: AppShape.gapMd),
-                FilledInput(
-                  hint: '••••••••',
+                PasswordInput(
                   controller: _passwordController,
-                  obscureText: true,
                   textInputAction: TextInputAction.done,
                 ),
                 Align(
@@ -277,10 +276,8 @@ class _CreateAccountSheetState extends State<_CreateAccountSheet> {
             padding: const EdgeInsets.only(bottom: 6),
             child: Text('PASSWORD', style: AppText.fieldLabel),
           ),
-          FilledInput(
-            hint: '••••••••',
+          PasswordInput(
             controller: _password,
-            obscureText: true,
             textInputAction: TextInputAction.done,
           ),
           const SizedBox(height: 22),
