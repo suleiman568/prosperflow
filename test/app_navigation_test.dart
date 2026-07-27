@@ -13,17 +13,20 @@ import 'helpers.dart';
 /// that single-screen tests can't (e.g. "Stream has already been listened
 /// to" from re-listening to a cached single-subscription stream).
 void main() {
-  testWidgets('navigating between all screens repeatedly never crashes',
-      (tester) async {
+  testWidgets('navigating between all screens repeatedly never crashes', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     final store = fixtureStore();
 
-    await tester.pumpWidget(AppScope(
-      store: store,
-      auth: FakeAuthService(signedIn: true),
-      sync: NoopSyncEngine(lastSyncAt: DateTime.now()),
-      child: const ProsperFlowApp(),
-    ));
+    await tester.pumpWidget(
+      AppScope(
+        store: store,
+        auth: FakeAuthService(signedIn: true),
+        sync: NoopSyncEngine(lastSyncAt: DateTime.now()),
+        child: const ProsperFlowApp(),
+      ),
+    );
     await tester.pump();
 
     Future<void> goTab(String label) async {

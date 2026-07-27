@@ -40,29 +40,32 @@ Sale _todaySale(
 
 void main() {
   group('buildTodayHistory', () {
-    test('profit math: (sell − cost) × qty per sale, summed per group',
-        () async {
-      final history = buildTodayHistory(
-        sales: [
-          _todaySale('a', palm, 2, unitCost: 6800), // (9200−6800)×2 = 4800
-          _todaySale('b', palm, 1, unitCost: 6800), // 2400
-          _todaySale('c', yam, 4, unitCost: 1200), // (2500−1200)×4 = 5200
-        ],
-        paidCreditSaleIds: {},
-        now: DateTime.now(),
-      );
+    test(
+      'profit math: (sell − cost) × qty per sale, summed per group',
+      () async {
+        final history = buildTodayHistory(
+          sales: [
+            _todaySale('a', palm, 2, unitCost: 6800), // (9200−6800)×2 = 4800
+            _todaySale('b', palm, 1, unitCost: 6800), // 2400
+            _todaySale('c', yam, 4, unitCost: 1200), // (2500−1200)×4 = 5200
+          ],
+          paidCreditSaleIds: {},
+          now: DateTime.now(),
+        );
 
-      expect(history.revenue, 3 * 9200 + 4 * 2500);
-      expect(history.profit, 4800 + 2400 + 5200);
-      expect(history.missingCostCount, 0);
+        expect(history.revenue, 3 * 9200 + 4 * 2500);
+        expect(history.profit, 4800 + 2400 + 5200);
+        expect(history.missingCostCount, 0);
 
-      final palmGroup =
-          history.groups.firstWhere((g) => g.productId == palm.id);
-      expect(palmGroup.qty, 3);
-      expect(palmGroup.revenue, 3 * 9200);
-      expect(palmGroup.profit, 7200);
-      expect(palmGroup.profitIsPartial, isFalse);
-    });
+        final palmGroup = history.groups.firstWhere(
+          (g) => g.productId == palm.id,
+        );
+        expect(palmGroup.qty, 3);
+        expect(palmGroup.revenue, 3 * 9200);
+        expect(palmGroup.profit, 7200);
+        expect(palmGroup.profitIsPartial, isFalse);
+      },
+    );
 
     test('NULL-cost sales stay in revenue but leave the profit sum', () {
       final history = buildTodayHistory(
@@ -80,8 +83,9 @@ void main() {
       expect(history.profit, 4800);
       expect(history.missingCostCount, 2);
 
-      final palmGroup =
-          history.groups.firstWhere((g) => g.productId == palm.id);
+      final palmGroup = history.groups.firstWhere(
+        (g) => g.productId == palm.id,
+      );
       expect(palmGroup.profit, 4800);
       expect(palmGroup.profitIsPartial, isTrue); // mixed group → flagged
 
@@ -110,19 +114,34 @@ void main() {
       );
 
       expect(history.groups, hasLength(2));
-      expect(history.groups.map((g) => g.productId).toSet(),
-          {palm.id, otherPalm.id});
-      expect(history.groups.map((g) => g.productName).toSet(),
-          {'Palm Oil (25L)'});
+      expect(history.groups.map((g) => g.productId).toSet(), {
+        palm.id,
+        otherPalm.id,
+      });
+      expect(history.groups.map((g) => g.productName).toSet(), {
+        'Palm Oil (25L)',
+      });
     });
 
     test('collected credit sales are flagged; open ones are not', () {
       final history = buildTodayHistory(
         sales: [
-          _todaySale('paid-sale', palm, 1,
-              unitCost: 6800, method: PaymentMethod.credit, customer: 'A'),
-          _todaySale('open-sale', palm, 1,
-              unitCost: 6800, method: PaymentMethod.credit, customer: 'B'),
+          _todaySale(
+            'paid-sale',
+            palm,
+            1,
+            unitCost: 6800,
+            method: PaymentMethod.credit,
+            customer: 'A',
+          ),
+          _todaySale(
+            'open-sale',
+            palm,
+            1,
+            unitCost: 6800,
+            method: PaymentMethod.credit,
+            customer: 'B',
+          ),
           _todaySale('cash-sale', palm, 1, unitCost: 6800),
         ],
         paidCreditSaleIds: {'paid-sale'},
@@ -131,18 +150,17 @@ void main() {
 
       final entries = history.groups.single.entries;
       expect(
-          entries.where((e) => e.method == PaymentMethod.credit && e.collected),
-          hasLength(1));
+        entries.where((e) => e.method == PaymentMethod.credit && e.collected),
+        hasLength(1),
+      );
       expect(
-          entries
-              .where((e) => e.method == PaymentMethod.credit && !e.collected),
-          hasLength(1));
+        entries.where((e) => e.method == PaymentMethod.credit && !e.collected),
+        hasLength(1),
+      );
       expect(
-          entries
-              .where((e) => e.method == PaymentMethod.cash)
-              .single
-              .collected,
-          isFalse);
+        entries.where((e) => e.method == PaymentMethod.cash).single.collected,
+        isFalse,
+      );
     });
 
     test('yesterday’s sales are excluded (startOfToday boundary)', () {
@@ -157,8 +175,11 @@ void main() {
         total: palm.sellPrice,
         method: PaymentMethod.cash,
         fulfilment: Fulfilment.walkIn,
-        soldAt: DateTime(now.year, now.month, now.day)
-            .subtract(const Duration(minutes: 1)),
+        soldAt: DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(minutes: 1)),
       );
       final history = buildTodayHistory(
         sales: [yesterday, _todaySale('t', palm, 1, unitCost: 6800)],
@@ -182,66 +203,78 @@ void main() {
 
     tearDown(() => db.close());
 
-    test('recordSale stores unitCost and the outbox payload includes it',
-        () async {
-      final palmRow = (await store.watchProducts().first)
-          .firstWhere((p) => p.name == 'Palm Oil (25L)');
+    test(
+      'recordSale stores unitCost and the outbox payload includes it',
+      () async {
+        final palmRow = (await store.watchProducts().first).firstWhere(
+          (p) => p.name == 'Palm Oil (25L)',
+        );
 
-      await store.recordSale(
-        productId: palmRow.id,
-        qty: 2,
-        method: PaymentMethod.cash,
-        fulfilment: Fulfilment.walkIn,
-      );
+        await store.recordSale(
+          productId: palmRow.id,
+          qty: 2,
+          method: PaymentMethod.cash,
+          fulfilment: Fulfilment.walkIn,
+        );
 
-      // The freshly recorded sale is the only unsynced one.
-      final row = await (db.select(db.sales)
-            ..where((s) => s.synced.equals(false)))
-          .getSingle();
-      expect(row.unitCost, palmRow.buyPrice);
+        // The freshly recorded sale is the only unsynced one.
+        final row = await (db.select(
+          db.sales,
+        )..where((s) => s.synced.equals(false))).getSingle();
+        expect(row.unitCost, palmRow.buyPrice);
 
-      final outbox = await db.select(db.outbox).get();
-      final salePush = outbox.firstWhere((o) => o.entity == 'sale');
-      expect(salePush.payloadJson, contains('"unit_cost":6800'));
-    });
+        final outbox = await db.select(db.outbox).get();
+        final salePush = outbox.firstWhere((o) => o.entity == 'sale');
+        expect(salePush.payloadJson, contains('"unit_cost":6800'));
+      },
+    );
 
-    test('a deleted product still resolves its name in today’s history',
-        () async {
-      final palmRow = (await store.watchProducts().first)
-          .firstWhere((p) => p.name == 'Palm Oil (25L)');
+    test(
+      'a deleted product still resolves its name in today’s history',
+      () async {
+        final palmRow = (await store.watchProducts().first).firstWhere(
+          (p) => p.name == 'Palm Oil (25L)',
+        );
 
-      await store.recordSale(
-        productId: palmRow.id,
-        qty: 1,
-        method: PaymentMethod.cash,
-        fulfilment: Fulfilment.walkIn,
-      );
-      await store.deleteProduct(palmRow.id);
+        await store.recordSale(
+          productId: palmRow.id,
+          qty: 1,
+          method: PaymentMethod.cash,
+          fulfilment: Fulfilment.walkIn,
+        );
+        await store.deleteProduct(palmRow.id);
 
-      final history = await store.watchTodayHistory().first;
-      final group =
-          history.groups.firstWhere((g) => g.productId == palmRow.id);
-      expect(group.productName, 'Palm Oil (25L)');
-    });
+        final history = await store.watchTodayHistory().first;
+        final group = history.groups.firstWhere(
+          (g) => g.productId == palmRow.id,
+        );
+        expect(group.productName, 'Palm Oil (25L)');
+      },
+    );
 
     test('legacy NULL-cost rows show in revenue, not profit', () async {
       final now = DateTime.now();
-      await db.into(db.sales).insert(SalesCompanion.insert(
-            id: '00000000-0000-4000-8000-000000008888',
-            productId: '00000000-0000-4000-8000-000000000001',
-            qty: 1,
-            unitPrice: 9200,
-            total: 9200,
-            method: PaymentMethod.cash,
-            fulfilment: Fulfilment.walkIn,
-            soldAt: DateTime(now.year, now.month, now.day, 7),
-            synced: const Value(true),
-            // unitCost deliberately absent — a pre-v3 row.
-          ));
+      await db
+          .into(db.sales)
+          .insert(
+            SalesCompanion.insert(
+              id: '00000000-0000-4000-8000-000000008888',
+              productId: '00000000-0000-4000-8000-000000000001',
+              qty: 1,
+              unitPrice: 9200,
+              total: 9200,
+              method: PaymentMethod.cash,
+              fulfilment: Fulfilment.walkIn,
+              soldAt: DateTime(now.year, now.month, now.day, 7),
+              synced: const Value(true),
+              // unitCost deliberately absent — a pre-v3 row.
+            ),
+          );
 
       final history = await store.watchTodayHistory().first;
-      final palmGroup = history.groups
-          .firstWhere((g) => g.productId.endsWith('000000000001'));
+      final palmGroup = history.groups.firstWhere(
+        (g) => g.productId.endsWith('000000000001'),
+      );
       expect(palmGroup.missingCostCount, greaterThan(0));
       expect(history.revenue, greaterThanOrEqualTo(9200));
     });
@@ -263,16 +296,16 @@ void main() {
       expect(fromMemory.profit, fromDrift.profit);
       expect(fromMemory.missingCostCount, fromDrift.missingCostCount);
       List<(String, int, int, int?)> shape(TodayHistory h) => [
-            for (final g in h.groups)
-              (g.productId, g.qty, g.revenue, g.profit),
-          ];
+        for (final g in h.groups) (g.productId, g.qty, g.revenue, g.profit),
+      ];
       expect(shape(fromMemory), shape(fromDrift));
     });
   });
 
   group('Reports UI', () {
-    testWidgets('shows day summary, groups, and expandable detail',
-        (tester) async {
+    testWidgets('shows day summary, groups, and expandable detail', (
+      tester,
+    ) async {
       usePhoneSurface(tester, height: 3200);
       await pumpWithStore(tester, const ReportsScreen());
       await tester.pump();
@@ -300,33 +333,40 @@ void main() {
     });
 
     testWidgets(
-        'expand/collapse reuses the same stream — no resubscribe, no blank '
-        'frame', (tester) async {
-      usePhoneSurface(tester, height: 3200);
-      await pumpWithStore(tester, const ReportsScreen());
-      await tester.pump();
-      await tester.pump();
+      'expand/collapse reuses the same stream — no resubscribe, no blank '
+      'frame',
+      (tester) async {
+        usePhoneSurface(tester, height: 3200);
+        await pumpWithStore(tester, const ReportsScreen());
+        await tester.pump();
+        await tester.pump();
 
-      Stream<TodayHistory> currentStream() => tester
-          .widget<StreamBuilder<TodayHistory>>(
-              find.byWidgetPredicate((w) => w is StreamBuilder<TodayHistory>))
-          .stream!;
-      final before = currentStream();
+        Stream<TodayHistory> currentStream() => tester
+            .widget<StreamBuilder<TodayHistory>>(
+              find.byWidgetPredicate((w) => w is StreamBuilder<TodayHistory>),
+            )
+            .stream!;
+        final before = currentStream();
 
-      // Expand: pump exactly one frame. With a recreated stream the
-      // builder's snapshot would reset and the section would blank out.
-      await tester.tap(find.text('+₦4,800 profit'));
-      await tester.pump();
+        // Expand: pump exactly one frame. With a recreated stream the
+        // builder's snapshot would reset and the section would blank out.
+        await tester.tap(find.text('+₦4,800 profit'));
+        await tester.pump();
 
-      expect(identical(currentStream(), before), isTrue,
-          reason: 'watchTodayHistory() must not be re-called on setState');
-      expect(find.text("TODAY'S REVENUE"), findsOneWidget);
-      expect(find.text('₦28,400'), findsOneWidget);
-      expect(find.text('2 × ₦9,200'), findsOneWidget); // expansion applied
-    });
+        expect(
+          identical(currentStream(), before),
+          isTrue,
+          reason: 'watchTodayHistory() must not be re-called on setState',
+        );
+        expect(find.text("TODAY'S REVENUE"), findsOneWidget);
+        expect(find.text('₦28,400'), findsOneWidget);
+        expect(find.text('2 × ₦9,200'), findsOneWidget); // expansion applied
+      },
+    );
 
-    testWidgets('collected credit sales read "Credit → Collected"',
-        (tester) async {
+    testWidgets('collected credit sales read "Credit → Collected"', (
+      tester,
+    ) async {
       usePhoneSurface(tester, height: 3200);
       final store = fixtureStore();
       await store.recordSale(
@@ -336,8 +376,9 @@ void main() {
         fulfilment: Fulfilment.walkIn,
         customerName: 'Ngozi',
       );
-      final credit = (await store.watchOwedCredits().first)
-          .firstWhere((c) => c.customerName == 'Ngozi');
+      final credit = (await store.watchOwedCredits().first).firstWhere(
+        (c) => c.customerName == 'Ngozi',
+      );
       await store.markCreditPaid(credit.saleId);
 
       await pumpWithStore(tester, const ReportsScreen(), store: store);
@@ -349,11 +390,13 @@ void main() {
       expect(find.textContaining('Credit → Collected'), findsOneWidget);
     });
 
-    testWidgets('empty state when nothing has been sold today',
-        (tester) async {
+    testWidgets('empty state when nothing has been sold today', (tester) async {
       usePhoneSurface(tester, height: 2400);
-      await pumpWithStore(tester, const ReportsScreen(),
-          store: MemoryStore(products: fixtureProducts));
+      await pumpWithStore(
+        tester,
+        const ReportsScreen(),
+        store: MemoryStore(products: fixtureProducts),
+      );
       await tester.pump();
       await tester.pump(); // history stream's first emission
 

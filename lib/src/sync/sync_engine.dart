@@ -89,11 +89,11 @@ class DriftSyncEngine implements SyncEngine {
 
   @override
   SyncState get state => SyncState(
-        online: _online,
-        pendingSales: _pendingSales,
-        pendingTotal: _pendingTotal,
-        lastSyncAt: _lastSyncAt,
-      );
+    online: _online,
+    pendingSales: _pendingSales,
+    pendingTotal: _pendingTotal,
+    lastSyncAt: _lastSyncAt,
+  );
 
   @override
   Stream<SyncState> watchState() {
@@ -155,10 +155,11 @@ class DriftSyncEngine implements SyncEngine {
     var pushedSales = 0;
     try {
       while (true) {
-        final rows = await (_db.select(_db.outbox)
-              ..orderBy([(o) => OrderingTerm.asc(o.seq)])
-              ..limit(_batchSize))
-            .get();
+        final rows =
+            await (_db.select(_db.outbox)
+                  ..orderBy([(o) => OrderingTerm.asc(o.seq)])
+                  ..limit(_batchSize))
+                .get();
         if (rows.isEmpty) break;
         for (final row in rows) {
           await _backend.apply(
@@ -168,9 +169,9 @@ class DriftSyncEngine implements SyncEngine {
           );
           if (row.entity == 'sale') pushedSales++;
           await _db.transaction(() async {
-            await (_db.delete(_db.outbox)
-                  ..where((o) => o.seq.equals(row.seq)))
-                .go();
+            await (_db.delete(
+              _db.outbox,
+            )..where((o) => o.seq.equals(row.seq))).go();
             await _markSynced(row.entity, row.entityId);
           });
         }
@@ -199,8 +200,7 @@ class DriftSyncEngine implements SyncEngine {
         await (_db.update(_db.expenses)..where((e) => e.id.equals(entityId)))
             .write(const ExpensesCompanion(synced: Value(true)));
       case 'credit':
-        await (_db.update(_db.credits)
-              ..where((c) => c.saleId.equals(entityId)))
+        await (_db.update(_db.credits)..where((c) => c.saleId.equals(entityId)))
             .write(const CreditsCompanion(synced: Value(true)));
     }
   }
@@ -224,11 +224,11 @@ class NoopSyncEngine implements SyncEngine {
 
   @override
   SyncState get state => SyncState(
-        online: true,
-        pendingSales: 0,
-        pendingTotal: 0,
-        lastSyncAt: _lastSyncAt,
-      );
+    online: true,
+    pendingSales: 0,
+    pendingTotal: 0,
+    lastSyncAt: _lastSyncAt,
+  );
 
   @override
   Stream<SyncState> watchState() =>

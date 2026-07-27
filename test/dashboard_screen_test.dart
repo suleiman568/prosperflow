@@ -6,8 +6,9 @@ import 'package:prosperflow/src/screens/dashboard/dashboard_screen.dart';
 import 'helpers.dart';
 
 void main() {
-  testWidgets('dashboard streams greeting, stats, alerts, and credits',
-      (tester) async {
+  testWidgets('dashboard streams greeting, stats, alerts, and credits', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const DashboardScreen());
     await tester.pump();

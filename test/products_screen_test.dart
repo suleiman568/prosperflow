@@ -7,8 +7,9 @@ import 'package:prosperflow/src/widgets/primary_button.dart';
 import 'helpers.dart';
 
 void main() {
-  testWidgets('products list shows cards with prices and stock badges',
-      (tester) async {
+  testWidgets('products list shows cards with prices and stock badges', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const ProductsScreen());
     await tester.pump();
@@ -22,8 +23,7 @@ void main() {
     expect(find.text('LOW'), findsNWidgets(2));
   });
 
-  testWidgets('FAB opens Add Product sheet and adds a product',
-      (tester) async {
+  testWidgets('FAB opens Add Product sheet and adds a product', (tester) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const ProductsScreen());
     await tester.pump();
@@ -33,7 +33,9 @@ void main() {
     expect(find.text('Add Product'), findsNWidgets(2)); // title + button
 
     await tester.enterText(
-        find.widgetWithText(TextField, 'Palm Oil (25L)'), 'Garri (paint)');
+      find.widgetWithText(TextField, 'Palm Oil (25L)'),
+      'Garri (paint)',
+    );
     await tester.enterText(find.widgetWithText(TextField, 'bottles'), 'paints');
     await tester.enterText(find.widgetWithText(TextField, '6800'), '1500');
     await tester.enterText(find.widgetWithText(TextField, '9200'), '2200');
@@ -46,8 +48,9 @@ void main() {
     expect(find.text('₦1,500 → ₦2,200'), findsOneWidget);
   });
 
-  testWidgets('incomplete Add Product form is rejected with a toast',
-      (tester) async {
+  testWidgets('incomplete Add Product form is rejected with a toast', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const ProductsScreen());
     await tester.pump();
@@ -61,8 +64,9 @@ void main() {
     expect(find.text('PRODUCT NAME'), findsOneWidget); // sheet stays open
   });
 
-  testWidgets('swipe-to-delete confirms and removes the product',
-      (tester) async {
+  testWidgets('swipe-to-delete confirms and removes the product', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     final store = fixtureStore();
     await pumpWithStore(tester, const ProductsScreen(), store: store);
@@ -88,8 +92,9 @@ void main() {
     expect(products.any((p) => p.name == 'Palm Oil (25L)'), isFalse);
   });
 
-  testWidgets('long-press also offers delete (mouse-friendly fallback)',
-      (tester) async {
+  testWidgets('long-press also offers delete (mouse-friendly fallback)', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     final store = fixtureStore();
     await pumpWithStore(tester, const ProductsScreen(), store: store);

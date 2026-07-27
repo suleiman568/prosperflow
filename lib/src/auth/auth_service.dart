@@ -25,8 +25,8 @@ abstract class AuthService {
 /// In-memory auth used on the web preview and in widget tests.
 class FakeAuthService implements AuthService {
   FakeAuthService({bool signedIn = false, String name = 'Prosper'})
-      : _signedIn = signedIn,
-        _name = name;
+    : _signedIn = signedIn,
+      _name = name;
 
   bool _signedIn;
   String _name;

@@ -29,7 +29,10 @@ class SupabaseSyncBackend implements SyncBackend {
 
   @override
   Future<void> apply(
-      String entity, String op, Map<String, dynamic> payload) async {
+    String entity,
+    String op,
+    Map<String, dynamic> payload,
+  ) async {
     final table = _tables[entity]!;
     final pk = entity == 'credit' ? 'sale_id' : 'id';
     final row = {...payload, 'trader_id': _client.auth.currentUser!.id};

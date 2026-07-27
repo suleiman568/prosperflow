@@ -5,8 +5,9 @@ import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 import 'helpers.dart';
 
 void main() {
-  testWidgets('week report computes profit, totals, and breakdowns',
-      (tester) async {
+  testWidgets('week report computes profit, totals, and breakdowns', (
+    tester,
+  ) async {
     usePhoneSurface(tester, height: 1700);
     await pumpWithStore(tester, const ReportsScreen());
     await tester.pump();
@@ -32,8 +33,9 @@ void main() {
     expect(find.text('₦69,400'), findsOneWidget); // credit
   });
 
-  testWidgets('collected credits count as cash in the breakdown',
-      (tester) async {
+  testWidgets('collected credits count as cash in the breakdown', (
+    tester,
+  ) async {
     usePhoneSurface(tester, height: 1700);
     final store = fixtureStore();
     await store.markCreditPaid('c1'); // ₦18,400 collected

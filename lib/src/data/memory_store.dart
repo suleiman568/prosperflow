@@ -15,10 +15,10 @@ class MemoryStore implements DataStore {
     List<Sale>? sales,
     List<Expense>? expenses,
     List<Credit>? credits,
-  })  : _products = List.of(products ?? const []),
-        _sales = List.of(sales ?? const []),
-        _expenses = List.of(expenses ?? const []),
-        _credits = List.of(credits ?? const []);
+  }) : _products = List.of(products ?? const []),
+       _sales = List.of(sales ?? const []),
+       _expenses = List.of(expenses ?? const []),
+       _credits = List.of(credits ?? const []);
 
   final List<Product> _products;
   final List<Sale> _sales;
@@ -38,8 +38,7 @@ class MemoryStore implements DataStore {
   /// Sales resolve product names at read time (like DriftStore), so a
   /// product rename relabels history identically on device and web.
   Sale _withCurrentName(Sale sale) {
-    final product =
-        _products.where((p) => p.id == sale.productId).firstOrNull;
+    final product = _products.where((p) => p.id == sale.productId).firstOrNull;
     if (product == null || product.name == sale.productName) return sale;
     return Sale(
       id: sale.id,
@@ -58,8 +57,9 @@ class MemoryStore implements DataStore {
     );
   }
 
-  List<Sale> get _salesWithCurrentNames =>
-      [for (final sale in _sales) _withCurrentName(sale)];
+  List<Sale> get _salesWithCurrentNames => [
+    for (final sale in _sales) _withCurrentName(sale),
+  ];
 
   /// Emits the current value immediately, then again on every change.
   /// Multi-listen safe: each listener runs its own generator, so re-listening
@@ -75,7 +75,11 @@ class MemoryStore implements DataStore {
 
   @override
   Stream<List<Product>> watchProducts() => _watch(
-      () => [for (final p in _products) if (!_deletedIds.contains(p.id)) p]);
+    () => [
+      for (final p in _products)
+        if (!_deletedIds.contains(p.id)) p,
+    ],
+  );
 
   @override
   Future<void> addProduct({
@@ -85,14 +89,16 @@ class MemoryStore implements DataStore {
     required int buyPrice,
     required int sellPrice,
   }) async {
-    _products.add(Product(
-      id: _uuid.v4(),
-      name: name,
-      unit: unit,
-      stock: stock,
-      buyPrice: buyPrice,
-      sellPrice: sellPrice,
-    ));
+    _products.add(
+      Product(
+        id: _uuid.v4(),
+        name: name,
+        unit: unit,
+        stock: stock,
+        buyPrice: buyPrice,
+        sellPrice: sellPrice,
+      ),
+    );
     _notify();
   }
 
@@ -144,7 +150,8 @@ class MemoryStore implements DataStore {
 
   @override
   Stream<SalesStats> watchWeekStats() => _watch(
-      () => _statsSince(DateTime.now().subtract(const Duration(days: 7))));
+    () => _statsSince(DateTime.now().subtract(const Duration(days: 7))),
+  );
 
   @override
   Future<void> recordSale({
@@ -164,21 +171,23 @@ class MemoryStore implements DataStore {
     final total = qty * price;
     final saleId = _uuid.v4();
 
-    _sales.add(Sale(
-      id: saleId,
-      productId: productId,
-      productName: product.name,
-      qty: qty,
-      unitPrice: price,
-      unitCost: product.buyPrice,
-      listPrice: listPrice,
-      total: total,
-      method: method,
-      fulfilment: fulfilment,
-      customerName: customerName,
-      location: location,
-      soldAt: now,
-    ));
+    _sales.add(
+      Sale(
+        id: saleId,
+        productId: productId,
+        productName: product.name,
+        qty: qty,
+        unitPrice: price,
+        unitCost: product.buyPrice,
+        listPrice: listPrice,
+        total: total,
+        method: method,
+        fulfilment: fulfilment,
+        customerName: customerName,
+        location: location,
+        soldAt: now,
+      ),
+    );
     _products[index] = Product(
       id: product.id,
       name: product.name,
@@ -189,24 +198,26 @@ class MemoryStore implements DataStore {
       lowStockThreshold: product.lowStockThreshold,
     );
     if (method == PaymentMethod.credit) {
-      _credits.add(Credit(
-        saleId: saleId,
-        customerName: customerName ?? '',
-        amount: total,
-        product: '${product.name} × $qty',
-        status: CreditStatus.owed,
-        soldAt: now,
-      ));
+      _credits.add(
+        Credit(
+          saleId: saleId,
+          customerName: customerName ?? '',
+          amount: total,
+          product: '${product.name} × $qty',
+          status: CreditStatus.owed,
+          soldAt: now,
+        ),
+      );
     }
     _notify();
   }
 
   @override
   Stream<List<Expense>> watchExpenses() => _watch(() {
-        final sorted = List.of(_expenses)
-          ..sort((a, b) => b.spentOn.compareTo(a.spentOn));
-        return sorted;
-      });
+    final sorted = List.of(_expenses)
+      ..sort((a, b) => b.spentOn.compareTo(a.spentOn));
+    return sorted;
+  });
 
   @override
   Future<void> addExpense({
@@ -215,13 +226,15 @@ class MemoryStore implements DataStore {
     required ExpenseCategory category,
     required DateTime spentOn,
   }) async {
-    _expenses.add(Expense(
-      id: _uuid.v4(),
-      description: description,
-      amount: amount,
-      category: category,
-      spentOn: spentOn,
-    ));
+    _expenses.add(
+      Expense(
+        id: _uuid.v4(),
+        description: description,
+        amount: amount,
+        category: category,
+        spentOn: spentOn,
+      ),
+    );
     _notify();
   }
 
@@ -233,12 +246,10 @@ class MemoryStore implements DataStore {
 
   @override
   Stream<List<Credit>> watchOwedCredits() => _watch(() {
-        final owed = _credits
-            .where((c) => c.status == CreditStatus.owed)
-            .toList()
-          ..sort((a, b) => b.soldAt.compareTo(a.soldAt));
-        return owed;
-      });
+    final owed = _credits.where((c) => c.status == CreditStatus.owed).toList()
+      ..sort((a, b) => b.soldAt.compareTo(a.soldAt));
+    return owed;
+  });
 
   @override
   Future<void> markCreditPaid(String saleId) async {
@@ -258,14 +269,16 @@ class MemoryStore implements DataStore {
   }
 
   @override
-  Stream<TodayHistory> watchTodayHistory() => _watch(() => buildTodayHistory(
-        sales: _salesWithCurrentNames,
-        paidCreditSaleIds: {
-          for (final c in _credits)
-            if (c.status == CreditStatus.paid) c.saleId,
-        },
-        now: DateTime.now(),
-      ));
+  Stream<TodayHistory> watchTodayHistory() => _watch(
+    () => buildTodayHistory(
+      sales: _salesWithCurrentNames,
+      paidCreditSaleIds: {
+        for (final c in _credits)
+          if (c.status == CreditStatus.paid) c.saleId,
+      },
+      now: DateTime.now(),
+    ),
+  );
 
   @override
   Future<ExportBundle> exportBundle(ReportPeriod period) async =>
@@ -282,21 +295,21 @@ class MemoryStore implements DataStore {
 
   @override
   Stream<ReportData> watchReport(ReportPeriod period) => _watch(() {
-        final since = periodStart(period, DateTime.now());
-        final all = _salesWithCurrentNames;
-        final sales = since == null
-            ? all
-            : all.where((s) => s.soldAt.isAfter(since)).toList();
-        final expenses = since == null
-            ? _expenses
-            : _expenses.where((e) => e.spentOn.isAfter(since)).toList();
-        return buildReport(
-          sales: sales,
-          expenses: expenses,
-          paidCreditSaleIds: {
-            for (final c in _credits)
-              if (c.status == CreditStatus.paid) c.saleId,
-          },
-        );
-      });
+    final since = periodStart(period, DateTime.now());
+    final all = _salesWithCurrentNames;
+    final sales = since == null
+        ? all
+        : all.where((s) => s.soldAt.isAfter(since)).toList();
+    final expenses = since == null
+        ? _expenses
+        : _expenses.where((e) => e.spentOn.isAfter(since)).toList();
+    return buildReport(
+      sales: sales,
+      expenses: expenses,
+      paidCreditSaleIds: {
+        for (final c in _credits)
+          if (c.status == CreditStatus.paid) c.saleId,
+      },
+    );
+  });
 }
