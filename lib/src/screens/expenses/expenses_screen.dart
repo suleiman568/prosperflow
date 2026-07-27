@@ -207,7 +207,12 @@ class _Header extends StatelessWidget {
       ),
       padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
       child: Row(
-        children: [const HeaderBackButton(), const ScreenTitle('Expenses')],
+        children: [
+          const HeaderBackButton(),
+          const Expanded(
+            child: ScreenTitle('Expenses', overflow: TextOverflow.ellipsis),
+          ),
+        ],
       ),
     );
   }

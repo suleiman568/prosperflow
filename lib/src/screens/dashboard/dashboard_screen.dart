@@ -296,9 +296,12 @@ class _AppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          ScreenTitle(
-            'ProsperFlow',
-            style: AppText.style(FontWeight.w800, 18, AppColors.textPrimary),
+          Flexible(
+            child: ScreenTitle(
+              'ProsperFlow',
+              style: AppText.style(FontWeight.w800, 18, AppColors.textPrimary),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           Row(
             children: [

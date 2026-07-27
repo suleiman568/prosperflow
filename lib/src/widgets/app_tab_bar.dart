@@ -34,38 +34,47 @@ class AppTabBar extends StatelessWidget {
           height: 64,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                for (final (tab, icon, label, route) in _tabs)
-                  InkWell(
-                    onTap: tab == active
-                        ? null
-                        : () =>
-                            Navigator.of(context).pushReplacementNamed(route),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(icon,
+            // Cap how far the tiny tab labels scale so accessibility text
+            // sizes can't overflow the fixed-height bar (the labels stay a
+            // wayfinding aid; the screen bodies scale fully).
+            child: MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  for (final (tab, icon, label, route) in _tabs)
+                    InkWell(
+                      onTap: tab == active
+                          ? null
+                          : () => Navigator.of(
+                              context,
+                            ).pushReplacementNamed(route),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            icon,
                             size: 22,
                             color: tab == active
                                 ? AppColors.primary
-                                : AppColors.placeholder),
-                        const SizedBox(height: 3),
-                        Text(
-                          label,
-                          style: AppText.style(
-                            FontWeight.w600,
-                            10,
-                            tab == active
-                                ? AppColors.primary
                                 : AppColors.placeholder,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 3),
+                          Text(
+                            label,
+                            style: AppText.style(
+                              FontWeight.w600,
+                              10,
+                              tab == active
+                                  ? AppColors.primary
+                                  : AppColors.placeholder,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
