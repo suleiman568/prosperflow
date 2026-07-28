@@ -78,6 +78,35 @@ void main() {
     expect(label.style?.color, AppColors.accentRed);
   });
 
+  testWidgets('the age label rolls over at midnight while left mounted', (
+    tester,
+  ) async {
+    usePhoneSurface(tester);
+    var now = DateTime(2026, 7, 28, 23, 59, 55);
+    final store = MemoryStore(
+      credits: [
+        Credit(
+          saleId: 'c',
+          customerName: 'Ada Obi',
+          amount: 1000,
+          product: 'Garri (paint) × 1',
+          status: CreditStatus.owed,
+          soldAt: DateTime(2026, 7, 25, 10), // 3 days before the 28th
+        ),
+      ],
+    );
+    await pumpWithStore(tester, CreditsScreen(clock: () => now), store: store);
+    await tester.pump();
+    expect(find.text('Owed for 3 days'), findsOneWidget);
+
+    // Cross midnight into the 29th; the rollover timer should recompute the age
+    // without any new data arriving.
+    now = DateTime(2026, 7, 29, 0, 0, 5);
+    await tester.pump(const Duration(seconds: 10));
+    expect(find.text('Owed for 4 days'), findsOneWidget);
+    expect(find.text('Owed for 3 days'), findsNothing);
+  });
+
   testWidgets('collecting every credit shows the empty state', (tester) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const CreditsScreen());
