@@ -16,21 +16,35 @@ fi
 FLUTTER_VERSION="3.38.5"
 INSTALL_DIR="$HOME/flutter"
 
-# Locate an existing Flutter (PATH or a known cached location), else install one.
+# True only if the Flutter at $1/flutter reports exactly the pinned version, so
+# a cached SDK of a different version is never silently used (it would drift
+# from CI and the format check).
+version_ok() {
+  "$1/flutter" --version 2>/dev/null | grep -qF "Flutter $FLUTTER_VERSION "
+}
+
+# Reuse an existing Flutter only if it's the pinned version; check PATH first,
+# then our managed dir, then common cache locations.
 flutter_bin=""
+candidates=()
 if command -v flutter >/dev/null 2>&1; then
-  flutter_bin="$(dirname "$(command -v flutter)")"
-else
-  for d in "$INSTALL_DIR" /tmp/claude-0/flutter /opt/flutter /usr/local/flutter; do
-    if [ -x "$d/bin/flutter" ]; then
-      flutter_bin="$d/bin"
-      break
-    fi
-  done
+  candidates+=("$(dirname "$(command -v flutter)")")
 fi
+for d in "$INSTALL_DIR" /tmp/claude-0/flutter /opt/flutter /usr/local/flutter; do
+  candidates+=("$d/bin")
+done
+for c in "${candidates[@]}"; do
+  if [ -x "$c/flutter" ] && version_ok "$c"; then
+    flutter_bin="$c"
+    break
+  fi
+done
 
 if [ -z "$flutter_bin" ]; then
   echo "Installing Flutter $FLUTTER_VERSION ..."
+  # Clear the target first so a partial/aborted earlier install can't make the
+  # clone fail on a non-empty directory.
+  rm -rf "$INSTALL_DIR"
   git clone --depth 1 --branch "$FLUTTER_VERSION" \
     https://github.com/flutter/flutter.git "$INSTALL_DIR"
   flutter_bin="$INSTALL_DIR/bin"
