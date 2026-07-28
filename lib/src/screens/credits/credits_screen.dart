@@ -303,6 +303,19 @@ class _CreditCard extends StatelessWidget {
                             'Sold: ${formatDayMonthYear(credit.soldAt)}',
                             style: AppText.caption,
                           ),
+                          const SizedBox(height: 2),
+                          // Debt age at a glance — turns red once a credit has
+                          // been outstanding long enough to chase (30+ days).
+                          Text(
+                            owedLabel(credit.soldAt),
+                            style: AppText.style(
+                              FontWeight.w700,
+                              11,
+                              creditIsStale(credit.soldAt)
+                                  ? AppColors.accentRed
+                                  : AppColors.accentOrange,
+                            ),
+                          ),
                         ],
                       ),
                     ),

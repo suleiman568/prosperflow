@@ -34,3 +34,38 @@ String formatAgo(DateTime time, {DateTime? now}) {
   if (elapsed.inDays < 1) return '${elapsed.inHours} h ago';
   return '${elapsed.inDays} d ago';
 }
+
+/// Whole calendar days between two moments, ignoring the time of day (and DST,
+/// by comparing UTC-normalized dates). A sale yesterday afternoon and a check
+/// this morning is "1 day", not a fractional 24-hour count.
+int _calendarDaysBetween(DateTime from, DateTime to) => DateTime.utc(
+  to.year,
+  to.month,
+  to.day,
+).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
+
+/// "Owed today" / "Owed for 5 days" / "Owed for 2 weeks" / "Owed for 3 months"
+/// — how long a credit has gone uncollected, coarsened to the largest natural
+/// unit so a market trader sees the age of a debt at a glance.
+String owedLabel(DateTime soldAt, {DateTime? now}) {
+  final days = _calendarDaysBetween(soldAt, now ?? DateTime.now());
+  if (days <= 0) return 'Owed today';
+  final String span;
+  if (days < 7) {
+    span = days == 1 ? '1 day' : '$days days';
+  } else if (days < 30) {
+    final weeks = days ~/ 7;
+    span = weeks == 1 ? '1 week' : '$weeks weeks';
+  } else if (days < 365) {
+    final months = days ~/ 30;
+    span = months == 1 ? '1 month' : '$months months';
+  } else {
+    final years = days ~/ 365;
+    span = years == 1 ? '1 year' : '$years years';
+  }
+  return 'Owed for $span';
+}
+
+/// A credit outstanding long enough to flag as overdue (30+ calendar days).
+bool creditIsStale(DateTime soldAt, {DateTime? now}) =>
+    _calendarDaysBetween(soldAt, now ?? DateTime.now()) >= 30;
