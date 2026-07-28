@@ -42,12 +42,20 @@ done
 
 if [ -z "$flutter_bin" ]; then
   echo "Installing Flutter $FLUTTER_VERSION ..."
-  # Clear the target first so a partial/aborted earlier install can't make the
-  # clone fail on a non-empty directory.
-  rm -rf "$INSTALL_DIR"
-  git clone --depth 1 --branch "$FLUTTER_VERSION" \
-    https://github.com/flutter/flutter.git "$INSTALL_DIR"
-  flutter_bin="$INSTALL_DIR/bin"
+  # Clone into a scratch dir and only swap it into place on success, so a
+  # failed (e.g. network-interrupted) download never destroys an existing
+  # install or leaves a half-populated one behind.
+  tmp_dir="$(mktemp -d "${INSTALL_DIR}.XXXXXX")"
+  if git clone --depth 1 --branch "$FLUTTER_VERSION" \
+       https://github.com/flutter/flutter.git "$tmp_dir"; then
+    rm -rf "$INSTALL_DIR"
+    mv "$tmp_dir" "$INSTALL_DIR"
+    flutter_bin="$INSTALL_DIR/bin"
+  else
+    rm -rf "$tmp_dir"
+    echo "Flutter install failed; left any existing SDK untouched." >&2
+    exit 1
+  fi
 fi
 
 export PATH="$flutter_bin:$PATH"
