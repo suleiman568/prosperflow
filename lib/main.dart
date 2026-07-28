@@ -45,8 +45,9 @@ Future<void> main() async {
       sync = DriftSyncEngine(
         db,
         SupabaseSyncBackend(client),
-        connectivity: connectivity.onConnectivityChanged
-            .map((results) => !results.contains(ConnectivityResult.none)),
+        connectivity: connectivity.onConnectivityChanged.map(
+          (results) => !results.contains(ConnectivityResult.none),
+        ),
         initiallyOnline: !initial.contains(ConnectivityResult.none),
       );
     } catch (_) {
@@ -54,10 +55,12 @@ Future<void> main() async {
     }
   }
 
-  runApp(AppScope(
-    store: store,
-    auth: auth,
-    sync: sync,
-    child: const ProsperFlowApp(),
-  ));
+  runApp(
+    AppScope(
+      store: store,
+      auth: auth,
+      sync: sync,
+      child: const ProsperFlowApp(),
+    ),
+  );
 }

@@ -43,10 +43,10 @@ class ExportBundle {
   int get missingCostCount => sales.where((s) => s.unitCost == null).length;
 
   String get periodLabel => switch (period) {
-        ReportPeriod.week => 'This Week',
-        ReportPeriod.month => 'This Month',
-        ReportPeriod.all => 'All Time',
-      };
+    ReportPeriod.week => 'This Week',
+    ReportPeriod.month => 'This Month',
+    ReportPeriod.all => 'All Time',
+  };
 }
 
 class ReportData {
@@ -162,10 +162,10 @@ abstract class DataStore {
 DateTime startOfToday(DateTime now) => DateTime(now.year, now.month, now.day);
 
 DateTime? periodStart(ReportPeriod period, DateTime now) => switch (period) {
-      ReportPeriod.week => now.subtract(const Duration(days: 7)),
-      ReportPeriod.month => now.subtract(const Duration(days: 30)),
-      ReportPeriod.all => null,
-    };
+  ReportPeriod.week => now.subtract(const Duration(days: 7)),
+  ReportPeriod.month => now.subtract(const Duration(days: 30)),
+  ReportPeriod.all => null,
+};
 
 /// Shared aggregation used by both store implementations, so reports behave
 /// identically on every platform.
@@ -183,14 +183,16 @@ ExportBundle buildExportBundle({
   required DateTime now,
 }) {
   final since = periodStart(period, now);
-  final periodSales = (since == null
-      ? List.of(sales)
-      : sales.where((s) => s.soldAt.isAfter(since)).toList())
-    ..sort((a, b) => b.soldAt.compareTo(a.soldAt));
-  final periodExpenses = (since == null
-      ? List.of(expenses)
-      : expenses.where((e) => e.spentOn.isAfter(since)).toList())
-    ..sort((a, b) => b.spentOn.compareTo(a.spentOn));
+  final periodSales =
+      (since == null
+            ? List.of(sales)
+            : sales.where((s) => s.soldAt.isAfter(since)).toList())
+        ..sort((a, b) => b.soldAt.compareTo(a.soldAt));
+  final periodExpenses =
+      (since == null
+            ? List.of(expenses)
+            : expenses.where((e) => e.spentOn.isAfter(since)).toList())
+        ..sort((a, b) => b.spentOn.compareTo(a.spentOn));
 
   return ExportBundle(
     period: period,
@@ -256,7 +258,8 @@ TodayHistory buildTodayHistory({
               profit: sale.profit,
               soldAt: sale.soldAt,
               method: sale.method,
-              collected: sale.method == PaymentMethod.credit &&
+              collected:
+                  sale.method == PaymentMethod.credit &&
                   paidCreditSaleIds.contains(sale.id),
             ),
         ],
@@ -281,9 +284,10 @@ ReportData buildReport({
   final byMethod = {for (final m in PaymentMethod.values) m: 0};
   for (final sale in sales) {
     final bucket =
-        sale.method == PaymentMethod.credit && paidCreditSaleIds.contains(sale.id)
-            ? PaymentMethod.cash
-            : sale.method;
+        sale.method == PaymentMethod.credit &&
+            paidCreditSaleIds.contains(sale.id)
+        ? PaymentMethod.cash
+        : sale.method;
     byMethod[bucket] = byMethod[bucket]! + sale.total;
   }
 

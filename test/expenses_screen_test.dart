@@ -7,8 +7,9 @@ import 'package:prosperflow/src/widgets/primary_button.dart';
 import 'helpers.dart';
 
 void main() {
-  testWidgets('expenses list shows weekly total banner and expense cards',
-      (tester) async {
+  testWidgets('expenses list shows weekly total banner and expense cards', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const ExpensesScreen());
     await tester.pump();
@@ -24,8 +25,9 @@ void main() {
     expect(find.text('Stall Rent'), findsOneWidget);
   });
 
-  testWidgets('FAB opens Add Expense sheet and adds an expense',
-      (tester) async {
+  testWidgets('FAB opens Add Expense sheet and adds an expense', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const ExpensesScreen());
     await tester.pump();
@@ -35,7 +37,9 @@ void main() {
     expect(find.text('Add Expense'), findsNWidgets(2)); // title + button
 
     await tester.enterText(
-        find.widgetWithText(TextField, 'Delivery Cost'), 'Generator fuel');
+      find.widgetWithText(TextField, 'Delivery Cost'),
+      'Generator fuel',
+    );
     await tester.enterText(find.widgetWithText(TextField, '8500'), '3200');
     await tester.tap(find.text('Transport'));
     await tester.pump();
@@ -48,8 +52,9 @@ void main() {
     expect(find.text('₦45,500'), findsOneWidget);
   });
 
-  testWidgets('incomplete Add Expense form is rejected with a toast',
-      (tester) async {
+  testWidgets('incomplete Add Expense form is rejected with a toast', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const ExpensesScreen());
     await tester.pump();
@@ -63,8 +68,9 @@ void main() {
     expect(find.text('DESCRIPTION'), findsOneWidget); // sheet stays open
   });
 
-  testWidgets('swipe-to-delete removes the expense and updates the total',
-      (tester) async {
+  testWidgets('swipe-to-delete removes the expense and updates the total', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     final store = fixtureStore();
     await pumpWithStore(tester, const ExpensesScreen(), store: store);
@@ -82,8 +88,9 @@ void main() {
     expect(find.text('₦32,300'), findsOneWidget);
   });
 
-  testWidgets('long-press also offers delete (mouse-friendly fallback)',
-      (tester) async {
+  testWidgets('long-press also offers delete (mouse-friendly fallback)', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const ExpensesScreen());
     await tester.pump();

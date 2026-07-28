@@ -199,8 +199,7 @@ class ProductSalesGroup {
   /// Newest first.
   final List<SaleHistoryEntry> entries;
 
-  bool get profitIsPartial =>
-      profit != null && missingCostCount > 0;
+  bool get profitIsPartial => profit != null && missingCostCount > 0;
 }
 
 /// The "Sales History for Today" payload: day totals + per-product groups.

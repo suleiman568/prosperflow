@@ -19,66 +19,73 @@ class DriftStore implements DataStore {
   // ---------------------------------------------------------------- mapping
 
   Product _product(ProductRow row) => Product(
-        id: row.id,
-        name: row.name,
-        unit: row.unit,
-        stock: row.stock,
-        buyPrice: row.buyPrice,
-        sellPrice: row.sellPrice,
-        lowStockThreshold: row.lowStockThreshold,
-      );
+    id: row.id,
+    name: row.name,
+    unit: row.unit,
+    stock: row.stock,
+    buyPrice: row.buyPrice,
+    sellPrice: row.sellPrice,
+    lowStockThreshold: row.lowStockThreshold,
+  );
 
   Sale _sale(SaleRow row, Map<String, String> productNames) => Sale(
-        id: row.id,
-        productId: row.productId,
-        productName: productNames[row.productId] ?? 'Unknown product',
-        qty: row.qty,
-        unitPrice: row.unitPrice,
-        unitCost: row.unitCost,
-        listPrice: row.listPrice,
-        total: row.total,
-        method: row.method,
-        fulfilment: row.fulfilment,
-        customerName: row.customerName,
-        location: row.location,
-        soldAt: row.soldAt,
-      );
+    id: row.id,
+    productId: row.productId,
+    productName: productNames[row.productId] ?? 'Unknown product',
+    qty: row.qty,
+    unitPrice: row.unitPrice,
+    unitCost: row.unitCost,
+    listPrice: row.listPrice,
+    total: row.total,
+    method: row.method,
+    fulfilment: row.fulfilment,
+    customerName: row.customerName,
+    location: row.location,
+    soldAt: row.soldAt,
+  );
 
   Expense _expense(ExpenseRow row) => Expense(
-        id: row.id,
-        description: row.description,
-        amount: row.amount,
-        category: row.category,
-        spentOn: row.spentOn,
-      );
+    id: row.id,
+    description: row.description,
+    amount: row.amount,
+    category: row.category,
+    spentOn: row.spentOn,
+  );
 
   Credit _credit(CreditRow row) => Credit(
-        saleId: row.saleId,
-        customerName: row.customerName,
-        amount: row.amount,
-        product: row.product,
-        status: row.status,
-        soldAt: row.soldAt,
-        paidAt: row.paidAt,
-      );
+    saleId: row.saleId,
+    customerName: row.customerName,
+    amount: row.amount,
+    product: row.product,
+    status: row.status,
+    soldAt: row.soldAt,
+    paidAt: row.paidAt,
+  );
 
-  Future<void> _appendOutbox(String entity, String entityId, String op,
-      Map<String, Object?> payload) {
-    return db.into(db.outbox).insert(OutboxCompanion.insert(
-          entity: entity,
-          entityId: entityId,
-          op: op,
-          payloadJson: jsonEncode(payload),
-          createdAt: DateTime.now(),
-        ));
+  Future<void> _appendOutbox(
+    String entity,
+    String entityId,
+    String op,
+    Map<String, Object?> payload,
+  ) {
+    return db
+        .into(db.outbox)
+        .insert(
+          OutboxCompanion.insert(
+            entity: entity,
+            entityId: entityId,
+            op: op,
+            payloadJson: jsonEncode(payload),
+            createdAt: DateTime.now(),
+          ),
+        );
   }
 
   // -------------------------------------------------------------- products
 
   @override
   Stream<List<Product>> watchProducts() {
-    final query = db.select(db.products)
-      ..where((p) => p.deleted.equals(false));
+    final query = db.select(db.products)..where((p) => p.deleted.equals(false));
     return query.watch().map((rows) => rows.map(_product).toList());
   }
 
@@ -93,15 +100,19 @@ class DriftStore implements DataStore {
     final id = _uuid.v4();
     final now = DateTime.now();
     await db.transaction(() async {
-      await db.into(db.products).insert(ProductsCompanion.insert(
-            id: id,
-            name: name,
-            unit: unit,
-            stock: stock,
-            buyPrice: buyPrice,
-            sellPrice: sellPrice,
-            updatedAt: now,
-          ));
+      await db
+          .into(db.products)
+          .insert(
+            ProductsCompanion.insert(
+              id: id,
+              name: name,
+              unit: unit,
+              stock: stock,
+              buyPrice: buyPrice,
+              sellPrice: sellPrice,
+              updatedAt: now,
+            ),
+          );
       await _appendOutbox('product', id, 'create', {
         'id': id,
         'name': name,
@@ -125,16 +136,17 @@ class DriftStore implements DataStore {
   }) async {
     final now = DateTime.now();
     await db.transaction(() async {
-      await (db.update(db.products)..where((p) => p.id.equals(id)))
-          .write(ProductsCompanion(
-        name: Value(name),
-        unit: Value(unit),
-        buyPrice: Value(buyPrice),
-        sellPrice: Value(sellPrice),
-        lowStockThreshold: Value(lowStockThreshold),
-        updatedAt: Value(now),
-        synced: const Value(false),
-      ));
+      await (db.update(db.products)..where((p) => p.id.equals(id))).write(
+        ProductsCompanion(
+          name: Value(name),
+          unit: Value(unit),
+          buyPrice: Value(buyPrice),
+          sellPrice: Value(sellPrice),
+          lowStockThreshold: Value(lowStockThreshold),
+          updatedAt: Value(now),
+          synced: const Value(false),
+        ),
+      );
       await _appendOutbox('product', id, 'update', {
         'id': id,
         'name': name,
@@ -151,12 +163,13 @@ class DriftStore implements DataStore {
   Future<void> deleteProduct(String id) async {
     final now = DateTime.now();
     await db.transaction(() async {
-      await (db.update(db.products)..where((p) => p.id.equals(id)))
-          .write(ProductsCompanion(
-        deleted: const Value(true),
-        updatedAt: Value(now),
-        synced: const Value(false),
-      ));
+      await (db.update(db.products)..where((p) => p.id.equals(id))).write(
+        ProductsCompanion(
+          deleted: const Value(true),
+          updatedAt: Value(now),
+          synced: const Value(false),
+        ),
+      );
       await _appendOutbox('product', id, 'update', {
         'id': id,
         'deleted': true,
@@ -202,9 +215,9 @@ class DriftStore implements DataStore {
     String? location,
   }) async {
     await db.transaction(() async {
-      final product = await (db.select(db.products)
-            ..where((p) => p.id.equals(productId)))
-          .getSingle();
+      final product = await (db.select(
+        db.products,
+      )..where((p) => p.id.equals(productId))).getSingle();
       final saleId = _uuid.v4();
       final now = DateTime.now();
       final price = unitPrice ?? product.sellPrice;
@@ -212,20 +225,24 @@ class DriftStore implements DataStore {
       final listPrice = price == product.sellPrice ? null : product.sellPrice;
       final total = qty * price;
 
-      await db.into(db.sales).insert(SalesCompanion.insert(
-            id: saleId,
-            productId: productId,
-            qty: qty,
-            unitPrice: price,
-            unitCost: Value(product.buyPrice),
-            listPrice: Value(listPrice),
-            total: total,
-            method: method,
-            fulfilment: fulfilment,
-            customerName: Value(customerName),
-            location: Value(location),
-            soldAt: now,
-          ));
+      await db
+          .into(db.sales)
+          .insert(
+            SalesCompanion.insert(
+              id: saleId,
+              productId: productId,
+              qty: qty,
+              unitPrice: price,
+              unitCost: Value(product.buyPrice),
+              listPrice: Value(listPrice),
+              total: total,
+              method: method,
+              fulfilment: fulfilment,
+              customerName: Value(customerName),
+              location: Value(location),
+              soldAt: now,
+            ),
+          );
       await _appendOutbox('sale', saleId, 'create', {
         'id': saleId,
         'product_id': productId,
@@ -242,12 +259,15 @@ class DriftStore implements DataStore {
       });
 
       final newStock = (product.stock - qty).clamp(0, 1 << 31);
-      await (db.update(db.products)..where((p) => p.id.equals(productId)))
-          .write(ProductsCompanion(
-        stock: Value(newStock),
-        updatedAt: Value(now),
-        synced: const Value(false),
-      ));
+      await (db.update(
+        db.products,
+      )..where((p) => p.id.equals(productId))).write(
+        ProductsCompanion(
+          stock: Value(newStock),
+          updatedAt: Value(now),
+          synced: const Value(false),
+        ),
+      );
       await _appendOutbox('product', productId, 'update', {
         'id': productId,
         'stock': newStock,
@@ -255,15 +275,19 @@ class DriftStore implements DataStore {
       });
 
       if (method == PaymentMethod.credit) {
-        await db.into(db.credits).insert(CreditsCompanion.insert(
-              saleId: saleId,
-              customerName: customerName ?? '',
-              amount: total,
-              product: '${product.name} × $qty',
-              status: CreditStatus.owed,
-              soldAt: now,
-              updatedAt: now,
-            ));
+        await db
+            .into(db.credits)
+            .insert(
+              CreditsCompanion.insert(
+                saleId: saleId,
+                customerName: customerName ?? '',
+                amount: total,
+                product: '${product.name} × $qty',
+                status: CreditStatus.owed,
+                soldAt: now,
+                updatedAt: now,
+              ),
+            );
         await _appendOutbox('credit', saleId, 'create', {
           'sale_id': saleId,
           'customer_name': customerName,
@@ -297,14 +321,18 @@ class DriftStore implements DataStore {
     final id = _uuid.v4();
     final now = DateTime.now();
     await db.transaction(() async {
-      await db.into(db.expenses).insert(ExpensesCompanion.insert(
-            id: id,
-            description: description,
-            amount: amount,
-            category: category,
-            spentOn: spentOn,
-            updatedAt: now,
-          ));
+      await db
+          .into(db.expenses)
+          .insert(
+            ExpensesCompanion.insert(
+              id: id,
+              description: description,
+              amount: amount,
+              category: category,
+              spentOn: spentOn,
+              updatedAt: now,
+            ),
+          );
       await _appendOutbox('expense', id, 'create', {
         'id': id,
         'description': description,
@@ -320,12 +348,13 @@ class DriftStore implements DataStore {
   Future<void> deleteExpense(String id) async {
     final now = DateTime.now();
     await db.transaction(() async {
-      await (db.update(db.expenses)..where((e) => e.id.equals(id)))
-          .write(ExpensesCompanion(
-        deleted: const Value(true),
-        updatedAt: Value(now),
-        synced: const Value(false),
-      ));
+      await (db.update(db.expenses)..where((e) => e.id.equals(id))).write(
+        ExpensesCompanion(
+          deleted: const Value(true),
+          updatedAt: Value(now),
+          synced: const Value(false),
+        ),
+      );
       await _appendOutbox('expense', id, 'update', {
         'id': id,
         'deleted': true,
@@ -348,13 +377,16 @@ class DriftStore implements DataStore {
   Future<void> markCreditPaid(String saleId) async {
     final now = DateTime.now();
     await db.transaction(() async {
-      await (db.update(db.credits)..where((c) => c.saleId.equals(saleId)))
-          .write(CreditsCompanion(
-        status: const Value(CreditStatus.paid),
-        paidAt: Value(now),
-        updatedAt: Value(now),
-        synced: const Value(false),
-      ));
+      await (db.update(
+        db.credits,
+      )..where((c) => c.saleId.equals(saleId))).write(
+        CreditsCompanion(
+          status: const Value(CreditStatus.paid),
+          paidAt: Value(now),
+          updatedAt: Value(now),
+          synced: const Value(false),
+        ),
+      );
       await _appendOutbox('credit', saleId, 'update', {
         'sale_id': saleId,
         'status': 'paid',
@@ -396,13 +428,13 @@ class DriftStore implements DataStore {
     final productRows = await db.select(db.products).get();
     final names = {for (final p in productRows) p.id: p.name};
 
-    final saleRows = await (db.select(db.sales)
-          ..where((s) => s.soldAt.isBiggerOrEqualValue(startOfToday(now))))
-        .get();
+    final saleRows = await (db.select(
+      db.sales,
+    )..where((s) => s.soldAt.isBiggerOrEqualValue(startOfToday(now)))).get();
 
-    final paidRows = await (db.select(db.credits)
-          ..where((c) => c.status.equalsValue(CreditStatus.paid)))
-        .get();
+    final paidRows = await (db.select(
+      db.credits,
+    )..where((c) => c.status.equalsValue(CreditStatus.paid))).get();
 
     return buildTodayHistory(
       sales: saleRows.map((row) => _sale(row, names)).toList(),
@@ -438,9 +470,9 @@ class DriftStore implements DataStore {
     }
     final expenseRows = await expensesQuery.get();
 
-    final paidRows = await (db.select(db.credits)
-          ..where((c) => c.status.equalsValue(CreditStatus.paid)))
-        .get();
+    final paidRows = await (db.select(
+      db.credits,
+    )..where((c) => c.status.equalsValue(CreditStatus.paid))).get();
 
     return buildExportBundle(
       period: period,
@@ -461,8 +493,9 @@ class DriftStore implements DataStore {
     if (since != null) {
       salesQuery = salesQuery..where((s) => s.soldAt.isBiggerThanValue(since));
     }
-    final sales =
-        (await salesQuery.get()).map((row) => _sale(row, names)).toList();
+    final sales = (await salesQuery.get())
+        .map((row) => _sale(row, names))
+        .toList();
 
     var expensesQuery = db.select(db.expenses)
       ..where((e) => e.deleted.equals(false));
@@ -472,9 +505,9 @@ class DriftStore implements DataStore {
     }
     final expenses = (await expensesQuery.get()).map(_expense).toList();
 
-    final paidRows = await (db.select(db.credits)
-          ..where((c) => c.status.equalsValue(CreditStatus.paid)))
-        .get();
+    final paidRows = await (db.select(
+      db.credits,
+    )..where((c) => c.status.equalsValue(CreditStatus.paid))).get();
 
     return buildReport(
       sales: sales,

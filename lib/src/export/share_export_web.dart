@@ -5,11 +5,11 @@ import 'package:web/web.dart' as web;
 
 /// Web path: hand the bytes to the browser as a download.
 Future<void> shareExportFile(
-    Uint8List bytes, String filename, String mimeType) async {
-  final blob = web.Blob(
-    [bytes.toJS].toJS,
-    web.BlobPropertyBag(type: mimeType),
-  );
+  Uint8List bytes,
+  String filename,
+  String mimeType,
+) async {
+  final blob = web.Blob([bytes.toJS].toJS, web.BlobPropertyBag(type: mimeType));
   final url = web.URL.createObjectURL(blob);
   final anchor = web.HTMLAnchorElement()
     ..href = url

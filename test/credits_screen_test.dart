@@ -5,8 +5,9 @@ import 'package:prosperflow/src/screens/credits/credits_screen.dart';
 import 'helpers.dart';
 
 void main() {
-  testWidgets('credits list shows total banner and per-customer cards',
-      (tester) async {
+  testWidgets('credits list shows total banner and per-customer cards', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const CreditsScreen());
     await tester.pump();
@@ -21,8 +22,9 @@ void main() {
     expect(find.text('Mark as Paid'), findsNWidgets(3));
   });
 
-  testWidgets('mark as paid removes the card and updates the total',
-      (tester) async {
+  testWidgets('mark as paid removes the card and updates the total', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     await pumpWithStore(tester, const CreditsScreen());
     await tester.pump();

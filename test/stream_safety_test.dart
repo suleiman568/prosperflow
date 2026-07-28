@@ -24,46 +24,48 @@ class _NoopBackend implements SyncBackend {
 /// than once — a second listener on a single-subscription stream throws
 /// "Bad state: Stream has already been listened to" and red-screens the app.
 void main() {
-  test('MemoryStore watch streams accept multiple simultaneous listeners',
-      () async {
-    final store = fixtureStore();
-    final stream = store.watchExpenses();
+  test(
+    'MemoryStore watch streams accept multiple simultaneous listeners',
+    () async {
+      final store = fixtureStore();
+      final stream = store.watchExpenses();
 
-    final a = <List<Expense>>[];
-    final b = <List<Expense>>[];
-    final subA = stream.listen(a.add);
-    final subB = stream.listen(b.add);
-    await pumpEventQueue();
+      final a = <List<Expense>>[];
+      final b = <List<Expense>>[];
+      final subA = stream.listen(a.add);
+      final subB = stream.listen(b.add);
+      await pumpEventQueue();
 
-    // Both listeners got the initial snapshot.
-    expect(a.single, hasLength(5));
-    expect(b.single, hasLength(5));
+      // Both listeners got the initial snapshot.
+      expect(a.single, hasLength(5));
+      expect(b.single, hasLength(5));
 
-    // Both listeners see subsequent changes.
-    await store.addExpense(
-      description: 'Second listener check',
-      amount: 700,
-      category: ExpenseCategory.other,
-      spentOn: DateTime.now(),
-    );
-    await pumpEventQueue();
-    expect(a.last, hasLength(6));
-    expect(b.last, hasLength(6));
+      // Both listeners see subsequent changes.
+      await store.addExpense(
+        description: 'Second listener check',
+        amount: 700,
+        category: ExpenseCategory.other,
+        spentOn: DateTime.now(),
+      );
+      await pumpEventQueue();
+      expect(a.last, hasLength(6));
+      expect(b.last, hasLength(6));
 
-    // Cancelling one listener leaves the other working.
-    await subA.cancel();
-    await store.deleteExpense(a.last.first.id);
-    await pumpEventQueue();
-    expect(b.last, hasLength(5));
-    await subB.cancel();
+      // Cancelling one listener leaves the other working.
+      await subA.cancel();
+      await store.deleteExpense(a.last.first.id);
+      await pumpEventQueue();
+      expect(b.last, hasLength(5));
+      await subB.cancel();
 
-    // A cancelled-and-re-listened stream also works (the crash scenario).
-    final again = <List<Expense>>[];
-    final subC = stream.listen(again.add);
-    await pumpEventQueue();
-    expect(again.single, hasLength(5));
-    await subC.cancel();
-  });
+      // A cancelled-and-re-listened stream also works (the crash scenario).
+      final again = <List<Expense>>[];
+      final subC = stream.listen(again.add);
+      await pumpEventQueue();
+      expect(again.single, hasLength(5));
+      await subC.cancel();
+    },
+  );
 
   test('watchReport tolerates re-listening across period switches', () async {
     final store = fixtureStore();
@@ -75,33 +77,35 @@ void main() {
   });
 
   testWidgets(
-      're-inflated StreamBuilder re-listens to the same stream instance '
-      'without crashing (the _SelectionKeepAlive / reparent scenario)',
-      (tester) async {
-    final store = fixtureStore();
+    're-inflated StreamBuilder re-listens to the same stream instance '
+    'without crashing (the _SelectionKeepAlive / reparent scenario)',
+    (tester) async {
+      final store = fixtureStore();
 
-    // Built once — like a ListView child from an earlier frame that
-    // _SelectionKeepAlive (or a GlobalKey move) later re-inflates.
-    final child = StreamBuilder<List<Product>>(
-      stream: store.watchProducts(),
-      builder: (_, snapshot) => Text('${snapshot.data?.length ?? '-'}',
-          textDirection: TextDirection.ltr),
-    );
+      // Built once — like a ListView child from an earlier frame that
+      // _SelectionKeepAlive (or a GlobalKey move) later re-inflates.
+      final child = StreamBuilder<List<Product>>(
+        stream: store.watchProducts(),
+        builder: (_, snapshot) => Text(
+          '${snapshot.data?.length ?? '-'}',
+          textDirection: TextDirection.ltr,
+        ),
+      );
 
-    await tester.pumpWidget(Center(child: child));
-    await tester.pump();
-    expect(find.text('4'), findsOneWidget);
+      await tester.pumpWidget(Center(child: child));
+      await tester.pump();
+      expect(find.text('4'), findsOneWidget);
 
-    // Swapping the parent type destroys the old element and inflates the
-    // SAME widget again: a fresh StreamBuilder state calls initState and
-    // listens to the already-listened stream instance. Before
-    // MultiListenStream this threw "Stream has already been listened to".
-    await tester.pumpWidget(
-        Padding(padding: EdgeInsets.zero, child: child));
-    await tester.pump();
-    expect(tester.takeException(), isNull);
-    expect(find.text('4'), findsOneWidget);
-  });
+      // Swapping the parent type destroys the old element and inflates the
+      // SAME widget again: a fresh StreamBuilder state calls initState and
+      // listens to the already-listened stream instance. Before
+      // MultiListenStream this threw "Stream has already been listened to".
+      await tester.pumpWidget(Padding(padding: EdgeInsets.zero, child: child));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.text('4'), findsOneWidget);
+    },
+  );
 
   test('NoopSyncEngine.watchState accepts multiple listeners', () async {
     final sync = NoopSyncEngine(lastSyncAt: DateTime.now());

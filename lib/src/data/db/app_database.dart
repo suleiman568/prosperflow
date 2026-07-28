@@ -15,7 +15,8 @@ class Products extends Table {
   IntColumn get stock => integer()();
   IntColumn get buyPrice => integer()();
   IntColumn get sellPrice => integer()();
-  IntColumn get lowStockThreshold => integer().withDefault(const Constant(10))();
+  IntColumn get lowStockThreshold =>
+      integer().withDefault(const Constant(10))();
   DateTimeColumn get updatedAt => dateTime()();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
@@ -104,19 +105,19 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            // v2: expenses become soft-deletable, like products.
-            await m.addColumn(expenses, expenses.deleted);
-          }
-          if (from < 3) {
-            // v3: sales snapshot the buy price for profit reporting.
-            await m.addColumn(sales, sales.unitCost);
-          }
-          if (from < 4) {
-            // v4: discounted sales keep the normal price for display.
-            await m.addColumn(sales, sales.listPrice);
-          }
-        },
-      );
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // v2: expenses become soft-deletable, like products.
+        await m.addColumn(expenses, expenses.deleted);
+      }
+      if (from < 3) {
+        // v3: sales snapshot the buy price for profit reporting.
+        await m.addColumn(sales, sales.unitCost);
+      }
+      if (from < 4) {
+        // v4: discounted sales keep the normal price for display.
+        await m.addColumn(sales, sales.listPrice);
+      }
+    },
+  );
 }

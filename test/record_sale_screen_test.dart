@@ -31,25 +31,31 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 
-  testWidgets('credit payment shows the customer-name warning and blocks save',
-      (tester) async {
-    usePhoneSurface(tester);
-    await pumpWithStore(tester, const RecordSaleScreen());
-    await tester.pump();
+  testWidgets(
+    'credit payment shows the customer-name warning and blocks save',
+    (tester) async {
+      usePhoneSurface(tester);
+      await pumpWithStore(tester, const RecordSaleScreen());
+      await tester.pump();
 
-    expect(
-        find.text('⚠ Customer name is required for credit sales'), findsNothing);
+      expect(
+        find.text('⚠ Customer name is required for credit sales'),
+        findsNothing,
+      );
 
-    await tester.tap(find.text('Credit'));
-    await tester.pump();
-    expect(find.text('⚠ Customer name is required for credit sales'),
-        findsOneWidget);
+      await tester.tap(find.text('Credit'));
+      await tester.pump();
+      expect(
+        find.text('⚠ Customer name is required for credit sales'),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.byType(PrimaryButton));
-    await tester.pump();
-    expect(find.byType(RecordSaleScreen), findsOneWidget);
-    expect(find.byType(SnackBar), findsOneWidget);
-  });
+      await tester.tap(find.byType(PrimaryButton));
+      await tester.pump();
+      expect(find.byType(RecordSaleScreen), findsOneWidget);
+      expect(find.byType(SnackBar), findsOneWidget);
+    },
+  );
 
   testWidgets('delivery toggle reveals the location field', (tester) async {
     usePhoneSurface(tester);
@@ -78,8 +84,9 @@ void main() {
     expect(find.text('₦2,500'), findsNWidgets(2));
   });
 
-  testWidgets('saving a sale writes to the store and decrements stock',
-      (tester) async {
+  testWidgets('saving a sale writes to the store and decrements stock', (
+    tester,
+  ) async {
     usePhoneSurface(tester);
     final store = fixtureStore();
     await tester.pumpWidget(

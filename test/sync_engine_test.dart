@@ -20,7 +20,10 @@ class RecordingBackend implements SyncBackend {
 
   @override
   Future<void> apply(
-      String entity, String op, Map<String, dynamic> payload) async {
+    String entity,
+    String op,
+    Map<String, dynamic> payload,
+  ) async {
     if (failNext) {
       failNext = false;
       throw Exception('network down');
@@ -51,12 +54,12 @@ void main() {
   });
 
   DriftSyncEngine makeEngine({bool online = true}) => DriftSyncEngine(
-        db,
-        backend,
-        connectivity: connectivity.stream,
-        initiallyOnline: online,
-        writeDebounce: const Duration(milliseconds: 10),
-      );
+    db,
+    backend,
+    connectivity: connectivity.stream,
+    initiallyOnline: online,
+    writeDebounce: const Duration(milliseconds: 10),
+  );
 
   Future<String> firstProductId() async =>
       (await store.watchProducts().first).first.id;
