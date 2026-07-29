@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../data/app_scope.dart';
@@ -22,7 +24,11 @@ import '../../widgets/sync_widgets.dart';
 /// orange amount, green "Mark as Paid" button that removes the card); empty
 /// state "All credits collected!" once nothing is owed.
 class CreditsScreen extends StatefulWidget {
-  const CreditsScreen({super.key});
+  const CreditsScreen({super.key, this.clock = DateTime.now});
+
+  /// Injectable "now" so the day-rollover behaviour can be tested; production
+  /// uses the wall clock.
+  final DateTime Function() clock;
 
   static const route = '/credits';
 
@@ -34,6 +40,35 @@ class _CreditsScreenState extends State<CreditsScreen> {
   /// Bumped to force a fresh subscription — by the error panel's "Try again"
   /// and by a pull-to-refresh made from that panel.
   int _retryTick = 0;
+
+  /// Fires at the next local midnight to recompute the debt-age labels, so a
+  /// screen left mounted overnight doesn't keep showing yesterday's day count.
+  Timer? _dayRolloverTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleDayRollover();
+  }
+
+  void _scheduleDayRollover() {
+    final now = widget.clock();
+    final nextMidnight = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).add(const Duration(days: 1));
+    _dayRolloverTimer = Timer(nextMidnight.difference(now), () {
+      if (mounted) setState(() {}); // recompute ages for the new day
+      _scheduleDayRollover();
+    });
+  }
+
+  @override
+  void dispose() {
+    _dayRolloverTimer?.cancel();
+    super.dispose();
+  }
 
   void _retry() {
     if (mounted) setState(() => _retryTick++);
@@ -126,6 +161,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                           _CreditCard(
                             credit: credit,
                             onMarkPaid: () => _markPaid(credit),
+                            clock: widget.clock,
                           ),
                         ],
                       ],
@@ -259,10 +295,15 @@ class _SkeletonCreditCard extends StatelessWidget {
 }
 
 class _CreditCard extends StatelessWidget {
-  const _CreditCard({required this.credit, required this.onMarkPaid});
+  const _CreditCard({
+    required this.credit,
+    required this.onMarkPaid,
+    required this.clock,
+  });
 
   final Credit credit;
   final VoidCallback onMarkPaid;
+  final DateTime Function() clock;
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +343,19 @@ class _CreditCard extends StatelessWidget {
                           Text(
                             'Sold: ${formatDayMonthYear(credit.soldAt)}',
                             style: AppText.caption,
+                          ),
+                          const SizedBox(height: 2),
+                          // Debt age at a glance — turns red once a credit has
+                          // been outstanding long enough to chase (30+ days).
+                          Text(
+                            owedLabel(credit.soldAt, now: clock()),
+                            style: AppText.style(
+                              FontWeight.w700,
+                              11,
+                              creditIsStale(credit.soldAt, now: clock())
+                                  ? AppColors.accentRed
+                                  : AppColors.accentOrange,
+                            ),
                           ),
                         ],
                       ),
