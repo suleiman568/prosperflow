@@ -464,8 +464,8 @@ class _DaySummaryCard extends StatelessWidget {
                   style: AppText.style(FontWeight.w700, 11, AppColors.primary),
                 ),
                 const SizedBox(height: AppShape.gapXs),
-                Text(
-                  formatNaira(history.revenue),
+                MoneyText(
+                  history.revenue,
                   style: AppText.style(
                     FontWeight.w900,
                     20,
@@ -484,7 +484,7 @@ class _DaySummaryCard extends StatelessWidget {
                   style: AppText.style(FontWeight.w700, 11, AppColors.primary),
                 ),
                 const SizedBox(height: AppShape.gapXs),
-                Text(
+                MoneyText.raw(
                   history.profit == null
                       ? '—'
                       : '${_profitText(history.profit)}'

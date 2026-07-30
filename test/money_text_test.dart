@@ -135,6 +135,9 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('₦123,456,789,000'), findsWidgets);
+    // The today-history banner's signed profit (total − ₦100 cost) stays a
+    // single intact string too.
+    expect(find.text('+₦123,456,788,900'), findsOneWidget);
     for (final money in find.byType(MoneyText).evaluate().map((e) => e.size!)) {
       // statValue is 20px (line ≈ 28px) and moneyHero 32px (line ≈ 45px);
       // anything two-line would be 56px+.

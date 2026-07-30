@@ -13,9 +13,15 @@ import '../utils/naira.dart';
 /// The slot must be width-bounded for the scaling to engage — inside an
 /// unbounded [Row] child, wrap the parent in [Expanded] or [Flexible].
 class MoneyText extends StatelessWidget {
-  const MoneyText(this.amount, {super.key, required this.style});
+  MoneyText(int amount, {super.key, required this.style})
+    : text = formatNaira(amount);
 
-  final int amount;
+  /// For pre-composed money strings a plain amount can't express — a signed
+  /// profit ("+₦4,800"), a footnote marker ("₦12,000*"), or the "—" of an
+  /// unknown value. Same single-line, scale-down rendering.
+  const MoneyText.raw(this.text, {super.key, required this.style});
+
+  final String text;
   final TextStyle style;
 
   @override
@@ -23,7 +29,7 @@ class MoneyText extends StatelessWidget {
     return FittedBox(
       fit: BoxFit.scaleDown,
       alignment: AlignmentDirectional.centerStart,
-      child: Text(formatNaira(amount), maxLines: 1, style: style),
+      child: Text(text, maxLines: 1, style: style),
     );
   }
 }
