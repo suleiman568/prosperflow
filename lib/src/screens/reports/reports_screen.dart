@@ -14,6 +14,7 @@ import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
 import '../../utils/motion.dart';
 import '../../utils/naira.dart';
+import '../../utils/plural.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
@@ -280,7 +281,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 label: 'SALES',
                 labelColor: AppColors.primary,
                 amount: report.salesTotal,
-                caption: '${report.salesCount} transactions',
+                caption: countNoun(report.salesCount, 'transaction'),
               ),
             ),
             const SizedBox(width: AppShape.gridGap),
@@ -289,7 +290,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 label: 'EXPENSES',
                 labelColor: AppColors.accentRed,
                 amount: report.expensesTotal,
-                caption: '${report.expensesCount} items',
+                caption: countNoun(report.expensesCount, 'item'),
               ),
             ),
           ],
@@ -426,8 +427,8 @@ class _SalesHistorySectionState extends State<_SalesHistorySection> {
             if (history.missingCostCount > 0) ...[
               const SizedBox(height: 6),
               Text(
-                '* profit excludes ${history.missingCostCount} '
-                'sale${history.missingCostCount == 1 ? '' : 's'} recorded '
+                '* profit excludes '
+                '${countNoun(history.missingCostCount, 'sale')} recorded '
                 'before cost tracking',
                 style: AppText.style(
                   FontWeight.w600,
@@ -540,8 +541,7 @@ class _ProductGroupCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           '${group.qty} sold · '
-                          '${group.entries.length} '
-                          'sale${group.entries.length == 1 ? '' : 's'}',
+                          '${countNoun(group.entries.length, 'sale')}',
                           style: AppText.caption,
                         ),
                       ],

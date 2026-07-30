@@ -1,10 +1,53 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:prosperflow/src/data/memory_store.dart';
+import 'package:prosperflow/src/data/models.dart';
 import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 
 import 'helpers.dart';
 
 void main() {
+  testWidgets('single counts read in the singular across the report', (
+    tester,
+  ) async {
+    usePhoneSurface(tester, height: 1700);
+    final now = DateTime.now();
+    final store = MemoryStore(
+      products: fixtureProducts,
+      sales: [
+        Sale(
+          id: 's1',
+          productId: palm.id,
+          productName: palm.name,
+          qty: 1,
+          unitPrice: palm.sellPrice,
+          unitCost: palm.buyPrice,
+          total: palm.sellPrice,
+          method: PaymentMethod.cash,
+          fulfilment: Fulfilment.walkIn,
+          soldAt: now,
+        ),
+      ],
+      expenses: [
+        Expense(
+          id: 'e1',
+          description: 'Delivery Cost',
+          amount: 500,
+          category: ExpenseCategory.delivery,
+          spentOn: now,
+        ),
+      ],
+    );
+    await pumpWithStore(tester, const ReportsScreen(), store: store);
+    await tester.pump();
+    await tester.pump();
+
+    // Not "1 transactions" / "1 items" / "1 sales".
+    expect(find.text('1 transaction'), findsOneWidget);
+    expect(find.text('1 item'), findsOneWidget);
+    expect(find.textContaining('1 sold · 1 sale'), findsOneWidget);
+  });
+
   testWidgets('week report computes profit, totals, and breakdowns', (
     tester,
   ) async {

@@ -33,8 +33,14 @@ class Product {
   bool get isLow => stock <= lowStockThreshold;
 
   /// "Vegetable Oil — 3 bottles left" (parenthetical size stripped).
-  String get lowStockLine =>
-      '${name.replaceAll(RegExp(r'\s*\(.*\)'), '')} — $stock $unit left';
+  ///
+  /// At exactly one the unit is dropped ("— 1 left") rather than printed as
+  /// "1 bottles left": [unit] is trader-entered free text, so there's no safe
+  /// way to singularize it (naive s-stripping turns "glass" into "glas").
+  String get lowStockLine {
+    final product = name.replaceAll(RegExp(r'\s*\(.*\)'), '');
+    return '$product — ${stock == 1 ? '1' : '$stock $unit'} left';
+  }
 }
 
 class Sale {

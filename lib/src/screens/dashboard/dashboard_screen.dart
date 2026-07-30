@@ -4,6 +4,7 @@ import '../../data/app_scope.dart';
 import '../../data/models.dart';
 import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
+import '../../utils/plural.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/money_text.dart';
@@ -76,7 +77,8 @@ class DashboardScreen extends StatelessWidget {
                                 color: AppColors.primary,
                                 tint: AppColors.mintTint,
                                 amount: stats.total,
-                                caption: '${stats.count} sales today',
+                                caption:
+                                    '${countNoun(stats.count, 'sale')} today',
                                 loading: !snapshot.hasData,
                               );
                             },
@@ -96,7 +98,7 @@ class DashboardScreen extends StatelessWidget {
                                 color: AppColors.accentBlue,
                                 tint: AppColors.blueTint,
                                 amount: stats.total,
-                                caption: '${stats.count} sales',
+                                caption: countNoun(stats.count, 'sale'),
                                 loading: !snapshot.hasData,
                               );
                             },
@@ -262,7 +264,7 @@ class DashboardScreen extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  '${credits.length} customers →',
+                                  '${countNoun(credits.length, 'customer')} →',
                                   style: AppText.style(
                                     FontWeight.w600,
                                     12,
