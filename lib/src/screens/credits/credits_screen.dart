@@ -9,6 +9,7 @@ import '../../utils/dates.dart';
 import '../../utils/haptics.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/money_text.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/header_back_button.dart';
@@ -126,27 +127,32 @@ class _CreditsScreenState extends State<CreditsScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'TOTAL OUTSTANDING',
-                                    style: AppText.style(
-                                      FontWeight.w700,
-                                      12,
-                                      AppColors.accentOrange,
+                              // Expanded bounds the column so an extreme total
+                              // scales down in MoneyText instead of pushing
+                              // the row past its edge.
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'TOTAL OUTSTANDING',
+                                      style: AppText.style(
+                                        FontWeight.w700,
+                                        12,
+                                        AppColors.accentOrange,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: AppShape.gapXs),
-                                  Text(
-                                    formatNaira(total),
-                                    style: AppText.style(
-                                      FontWeight.w900,
-                                      24,
-                                      AppColors.accentOrange,
+                                    const SizedBox(height: AppShape.gapXs),
+                                    MoneyText(
+                                      total,
+                                      style: AppText.style(
+                                        FontWeight.w900,
+                                        24,
+                                        AppColors.accentOrange,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                               const Icon(
                                 Icons.schedule_rounded,

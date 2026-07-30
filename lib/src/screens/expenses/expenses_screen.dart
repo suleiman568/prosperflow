@@ -7,6 +7,7 @@ import '../../utils/dates.dart';
 import '../../utils/haptics.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/money_text.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
 import '../../widgets/app_toast.dart';
@@ -140,8 +141,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 ),
                               ),
                               const SizedBox(height: AppShape.gapXs),
-                              Text(
-                                formatNaira(weekTotal),
+                              MoneyText(
+                                weekTotal,
                                 style: AppText.style(
                                   FontWeight.w900,
                                   28,

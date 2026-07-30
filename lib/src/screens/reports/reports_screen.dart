@@ -17,6 +17,7 @@ import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
+import '../../widgets/money_text.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/app_toast.dart';
 
@@ -256,7 +257,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
               ),
               const SizedBox(height: AppShape.gapXs),
-              Text(formatNaira(profit.abs()), style: AppText.moneyHero),
+              MoneyText(profit.abs(), style: AppText.moneyHero),
               const SizedBox(height: 6),
               Text(
                 profit >= 0
@@ -463,8 +464,8 @@ class _DaySummaryCard extends StatelessWidget {
                   style: AppText.style(FontWeight.w700, 11, AppColors.primary),
                 ),
                 const SizedBox(height: AppShape.gapXs),
-                Text(
-                  formatNaira(history.revenue),
+                MoneyText(
+                  history.revenue,
                   style: AppText.style(
                     FontWeight.w900,
                     20,
@@ -483,7 +484,7 @@ class _DaySummaryCard extends StatelessWidget {
                   style: AppText.style(FontWeight.w700, 11, AppColors.primary),
                 ),
                 const SizedBox(height: AppShape.gapXs),
-                Text(
+                MoneyText.raw(
                   history.profit == null
                       ? '—'
                       : '${_profitText(history.profit)}'
@@ -769,7 +770,7 @@ class _TotalsCard extends StatelessWidget {
         children: [
           Text(label, style: AppText.style(FontWeight.w700, 11, labelColor)),
           const SizedBox(height: AppShape.gapXs),
-          Text(formatNaira(amount), style: AppText.statValue),
+          MoneyText(amount, style: AppText.statValue),
           const SizedBox(height: AppShape.gapXs),
           Text(caption, style: AppText.caption),
         ],
