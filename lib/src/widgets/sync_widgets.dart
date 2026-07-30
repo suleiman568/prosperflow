@@ -4,6 +4,7 @@ import '../data/app_scope.dart';
 import '../sync/sync_engine.dart';
 import '../theme/tokens.dart';
 import '../utils/dates.dart';
+import '../utils/plural.dart';
 import 'app_card.dart';
 import 'app_toast.dart';
 
@@ -44,7 +45,7 @@ class SyncStatusRow extends StatelessWidget {
     if (state.hasPending) {
       final n = state.pendingSales;
       text = n > 0
-          ? '🕓 $n sale${n > 1 ? 's' : ''} waiting to sync'
+          ? '🕓 ${countNoun(n, 'sale')} waiting to sync'
           : '🕓 Changes waiting to sync';
     } else if (!state.online) {
       text = '📴 Offline — sales save on your phone';
@@ -158,7 +159,7 @@ Future<void> runManualSync(BuildContext context) async {
     showAppToast(context, '⚠ Backup didn\'t finish — will retry shortly');
   } else if (result.pushedSales > 0) {
     final n = result.pushedSales;
-    showAppToast(context, '✅ $n sale${n > 1 ? 's' : ''} backed up');
+    showAppToast(context, '✅ ${countNoun(n, 'sale')} backed up');
   } else {
     showAppToast(context, '✅ Everything is backed up');
   }
