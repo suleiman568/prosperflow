@@ -6,6 +6,7 @@ import '../../sync/sync_engine.dart';
 import '../../theme/tokens.dart';
 import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/money_text.dart';
 import '../../widgets/app_tab_bar.dart';
 import '../../widgets/header_back_button.dart';
 import '../../utils/haptics.dart';
@@ -457,20 +458,24 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TOTAL',
-                    style: AppText.style(
-                      FontWeight.w700,
-                      11,
-                      Colors.white.withValues(alpha: 0.9),
+              // Expanded bounds the column's width so a huge total scales
+              // down inside MoneyText instead of overflowing the row.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOTAL',
+                      style: AppText.style(
+                        FontWeight.w700,
+                        11,
+                        Colors.white.withValues(alpha: 0.9),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppShape.gapXs),
-                  Text(formatNaira(total), style: AppText.moneyHero),
-                ],
+                    const SizedBox(height: AppShape.gapXs),
+                    MoneyText(total, style: AppText.moneyHero),
+                  ],
+                ),
               ),
               const Icon(
                 Icons.account_balance_wallet_rounded,

@@ -4,9 +4,9 @@ import '../../data/app_scope.dart';
 import '../../data/models.dart';
 import '../../theme/tokens.dart';
 import '../../utils/dates.dart';
-import '../../utils/naira.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../widgets/money_text.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
 import '../../sync/sync_engine.dart';
@@ -250,8 +250,8 @@ class DashboardScreen extends StatelessWidget {
                                         ),
                                       ),
                                       const SizedBox(height: 2),
-                                      Text(
-                                        formatNaira(total),
+                                      MoneyText(
+                                        total,
                                         style: AppText.style(
                                           FontWeight.w800,
                                           18,
@@ -411,8 +411,8 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 6),
             const Skeleton(width: 60, height: 11),
           ] else ...[
-            Text(
-              formatNaira(amount),
+            MoneyText(
+              amount,
               style: AppText.style(FontWeight.w900, 24, AppColors.textPrimary),
             ),
             const SizedBox(height: 2),
