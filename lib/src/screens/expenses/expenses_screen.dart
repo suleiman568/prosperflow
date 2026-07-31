@@ -452,7 +452,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
 
   void _submit() {
     final description = _description.text.trim();
-    final amount = int.tryParse(_amount.text.trim());
+    final amount = parseAmount(_amount.text);
     if (description.isEmpty || amount == null) {
       showAppToast(context, '⚠ Enter a description and amount');
       return;
@@ -487,9 +487,9 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
             const SizedBox(height: AppShape.cardGap),
             _label('AMOUNT (₦)'),
             FilledInput(
-              hint: '8500',
+              hint: '8,500',
               controller: _amount,
-              digitsOnly: true,
+              groupThousands: true,
               textInputAction: TextInputAction.done,
             ),
             const SizedBox(height: AppShape.cardGap),

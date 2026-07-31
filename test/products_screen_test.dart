@@ -37,8 +37,8 @@ void main() {
       'Garri (paint)',
     );
     await tester.enterText(find.widgetWithText(TextField, 'bottles'), 'paints');
-    await tester.enterText(find.widgetWithText(TextField, '6800'), '1500');
-    await tester.enterText(find.widgetWithText(TextField, '9200'), '2200');
+    await tester.enterText(find.widgetWithText(TextField, '6,800'), '1500');
+    await tester.enterText(find.widgetWithText(TextField, '9,200'), '2200');
     await tester.enterText(find.widgetWithText(TextField, '42'), '30');
     await tester.tap(find.byType(PrimaryButton));
     await tester.pumpAndSettle();

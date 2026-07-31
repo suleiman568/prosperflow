@@ -346,8 +346,8 @@ typedef _AddProduct =
 /// the buy price. Surfaces a losing price the moment it's typed — at
 /// product-definition time — rather than only warning later at sale time.
 Widget? _marginWarning(String buyText, String sellText) {
-  final buy = int.tryParse(buyText.trim());
-  final sell = int.tryParse(sellText.trim());
+  final buy = parseAmount(buyText);
+  final sell = parseAmount(sellText);
   if (buy == null || sell == null) return null;
   final String message;
   final Color color;
@@ -404,8 +404,8 @@ class _AddProductSheetState extends State<_AddProductSheet> {
   void _submit() {
     final name = _name.text.trim();
     final unit = _unit.text.trim();
-    final buy = int.tryParse(_buyPrice.text.trim());
-    final sell = int.tryParse(_sellPrice.text.trim());
+    final buy = parseAmount(_buyPrice.text);
+    final sell = parseAmount(_sellPrice.text);
     final stock = int.tryParse(_stock.text.trim());
     if (name.isEmpty ||
         unit.isEmpty ||
@@ -459,9 +459,9 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                       children: [
                         _label('BUY PRICE (₦)'),
                         FilledInput(
-                          hint: '6800',
+                          hint: '6,800',
                           controller: _buyPrice,
-                          digitsOnly: true,
+                          groupThousands: true,
                           textInputAction: TextInputAction.next,
                           onChanged: (_) => setState(() {}),
                         ),
@@ -475,9 +475,9 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                       children: [
                         _label('SELL PRICE (₦)'),
                         FilledInput(
-                          hint: '9200',
+                          hint: '9,200',
                           controller: _sellPrice,
-                          digitsOnly: true,
+                          groupThousands: true,
                           textInputAction: TextInputAction.next,
                           onChanged: (_) => setState(() {}),
                         ),
@@ -535,11 +535,13 @@ class _EditProductSheet extends StatefulWidget {
 class _EditProductSheetState extends State<_EditProductSheet> {
   late final _name = TextEditingController(text: widget.product.name);
   late final _unit = TextEditingController(text: widget.product.unit);
+  // Seeded already grouped: input formatters only run on typed edits, so a
+  // raw seed would sit ungrouped until the trader touched the field.
   late final _buyPrice = TextEditingController(
-    text: '${widget.product.buyPrice}',
+    text: groupDigits('${widget.product.buyPrice}'),
   );
   late final _sellPrice = TextEditingController(
-    text: '${widget.product.sellPrice}',
+    text: groupDigits('${widget.product.sellPrice}'),
   );
   late final _threshold = TextEditingController(
     text: '${widget.product.lowStockThreshold}',
@@ -560,8 +562,8 @@ class _EditProductSheetState extends State<_EditProductSheet> {
     if (_saving) return;
     final name = _name.text.trim();
     final unit = _unit.text.trim();
-    final buy = int.tryParse(_buyPrice.text.trim());
-    final sell = int.tryParse(_sellPrice.text.trim());
+    final buy = parseAmount(_buyPrice.text);
+    final sell = parseAmount(_sellPrice.text);
     final threshold = int.tryParse(_threshold.text.trim());
     if (name.isEmpty ||
         unit.isEmpty ||
@@ -591,8 +593,10 @@ class _EditProductSheetState extends State<_EditProductSheet> {
   bool get _isDirty =>
       _name.text.trim() != widget.product.name ||
       _unit.text.trim() != widget.product.unit ||
-      _buyPrice.text.trim() != '${widget.product.buyPrice}' ||
-      _sellPrice.text.trim() != '${widget.product.sellPrice}' ||
+      // Money fields carry separators, so compare parsed values — "6,800"
+      // and "6800" are the same amount and must not read as an edit.
+      parseAmount(_buyPrice.text) != widget.product.buyPrice ||
+      parseAmount(_sellPrice.text) != widget.product.sellPrice ||
       _threshold.text.trim() != '${widget.product.lowStockThreshold}';
 
   Widget _label(String text) => Padding(
@@ -645,9 +649,9 @@ class _EditProductSheetState extends State<_EditProductSheet> {
                       children: [
                         _label('BUY PRICE (₦)'),
                         FilledInput(
-                          hint: '6800',
+                          hint: '6,800',
                           controller: _buyPrice,
-                          digitsOnly: true,
+                          groupThousands: true,
                           textInputAction: TextInputAction.next,
                           onChanged: (_) => setState(() {}),
                         ),
@@ -661,9 +665,9 @@ class _EditProductSheetState extends State<_EditProductSheet> {
                       children: [
                         _label('SELL PRICE (₦)'),
                         FilledInput(
-                          hint: '9200',
+                          hint: '9,200',
                           controller: _sellPrice,
-                          digitsOnly: true,
+                          groupThousands: true,
                           textInputAction: TextInputAction.next,
                           onChanged: (_) => setState(() {}),
                         ),
