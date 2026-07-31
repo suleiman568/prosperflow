@@ -33,8 +33,8 @@ void main() {
       // No warning before any prices are entered.
       expect(find.textContaining('Below cost'), findsNothing);
 
-      await tester.enterText(find.widgetWithText(TextField, '6800'), '6800');
-      await tester.enterText(find.widgetWithText(TextField, '9200'), '6000');
+      await tester.enterText(find.widgetWithText(TextField, '6,800'), '6800');
+      await tester.enterText(find.widgetWithText(TextField, '9,200'), '6000');
       await tester.pump();
 
       expect(find.textContaining('Below cost'), findsOneWidget);
@@ -51,8 +51,8 @@ void main() {
       await tester.tap(find.byIcon(Icons.add));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.widgetWithText(TextField, '6800'), '5000');
-      await tester.enterText(find.widgetWithText(TextField, '9200'), '5000');
+      await tester.enterText(find.widgetWithText(TextField, '6,800'), '5000');
+      await tester.enterText(find.widgetWithText(TextField, '9,200'), '5000');
       await tester.pump();
 
       expect(find.textContaining('No profit'), findsOneWidget);
@@ -69,8 +69,8 @@ void main() {
       await tester.tap(find.byIcon(Icons.add));
       await tester.pumpAndSettle();
 
-      final buy = find.widgetWithText(TextField, '6800');
-      final sell = find.widgetWithText(TextField, '9200');
+      final buy = find.widgetWithText(TextField, '6,800');
+      final sell = find.widgetWithText(TextField, '9,200');
       await tester.enterText(buy, '6800');
       await tester.enterText(sell, '6000');
       await tester.pump();
@@ -165,8 +165,8 @@ void main() {
           find.widgetWithText(TextField, 'bottles'),
           'paints',
         );
-        await tester.enterText(find.widgetWithText(TextField, '6800'), '6800');
-        await tester.enterText(find.widgetWithText(TextField, '9200'), '6000');
+        await tester.enterText(find.widgetWithText(TextField, '6,800'), '6800');
+        await tester.enterText(find.widgetWithText(TextField, '9,200'), '6000');
         await tester.enterText(find.widgetWithText(TextField, '42'), '5');
         await tester.pump();
         expect(find.textContaining('Below cost'), findsOneWidget);

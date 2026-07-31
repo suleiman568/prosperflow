@@ -397,7 +397,7 @@ void main() {
         tester.widget<TextField>(fields.at(0)).controller!.text,
         'Palm Oil (25L)',
       );
-      expect(tester.widget<TextField>(fields.at(3)).controller!.text, '9200');
+      expect(tester.widget<TextField>(fields.at(3)).controller!.text, '9,200');
 
       await tester.enterText(fields.at(0), 'Red Oil (25L)');
       await tester.enterText(fields.at(3), '9500');

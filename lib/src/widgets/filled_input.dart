@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/tokens.dart';
+import 'digit_group_formatter.dart';
 
 /// Filled input per the component inventory: inputBg fill, 12px radius,
 /// 16px vertical / 18px horizontal padding, 500 · 15px text, #999 placeholder.
@@ -12,6 +13,7 @@ class FilledInput extends StatelessWidget {
     this.controller,
     this.obscureText = false,
     this.digitsOnly = false,
+    this.groupThousands = false,
     this.keyboardType,
     this.textInputAction,
     this.onChanged,
@@ -27,6 +29,11 @@ class FilledInput extends StatelessWidget {
   /// digit filtering, per the "amounts are integers" rule.
   final bool digitsOnly;
 
+  /// Money fields: show thousands separators as the amount is typed. Implies
+  /// [digitsOnly]. Left off for counts and percentages, where grouping is
+  /// noise or meaningless.
+  final bool groupThousands;
+
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
 
@@ -40,10 +47,12 @@ class FilledInput extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       onChanged: onChanged,
-      keyboardType: digitsOnly ? TextInputType.number : keyboardType,
-      inputFormatters: digitsOnly
-          ? [FilteringTextInputFormatter.digitsOnly]
-          : null,
+      keyboardType: (digitsOnly || groupThousands)
+          ? TextInputType.number
+          : keyboardType,
+      inputFormatters: groupThousands
+          ? const [DigitGroupFormatter()]
+          : (digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null),
       textInputAction: textInputAction,
       style: AppText.input,
       cursorColor: AppColors.primary,

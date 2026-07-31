@@ -40,7 +40,7 @@ void main() {
       find.widgetWithText(TextField, 'Delivery Cost'),
       'Generator fuel',
     );
-    await tester.enterText(find.widgetWithText(TextField, '8500'), '3200');
+    await tester.enterText(find.widgetWithText(TextField, '8,500'), '3200');
     await tester.tap(find.text('Transport'));
     await tester.pump();
     await tester.tap(find.byType(PrimaryButton));

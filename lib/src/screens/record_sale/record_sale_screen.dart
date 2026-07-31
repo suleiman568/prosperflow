@@ -781,7 +781,7 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
   @override
   void initState() {
     super.initState();
-    _price = TextEditingController(text: '${widget.currentPrice}');
+    _price = TextEditingController(text: groupDigits('${widget.currentPrice}'));
   }
 
   @override
@@ -793,7 +793,7 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
   }
 
   void _fromPrice(String text) {
-    final value = int.tryParse(text.trim());
+    final value = parseAmount(text);
     if (value == null || value < 0) return;
     setState(() {
       _final = value;
@@ -807,17 +807,18 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
     if (pct == null || pct < 0 || pct > 100) return;
     setState(() {
       _final = widget.listPrice - (widget.listPrice * pct / 100).round();
-      _price.text = '$_final';
+      // Grouped explicitly: formatters don't run on programmatic writes.
+      _price.text = groupDigits('$_final');
       _amount.clear();
     });
   }
 
   void _fromAmount(String text) {
-    final off = int.tryParse(text.trim());
+    final off = parseAmount(text);
     if (off == null || off < 0 || off > widget.listPrice) return;
     setState(() {
       _final = widget.listPrice - off;
-      _price.text = '$_final';
+      _price.text = groupDigits('$_final');
       _percent.clear();
     });
   }
@@ -855,9 +856,9 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
           const SizedBox(height: AppShape.gapLg),
           label('CUSTOM PRICE (₦)'),
           FilledInput(
-            hint: '${widget.listPrice}',
+            hint: groupDigits('${widget.listPrice}'),
             controller: _price,
-            digitsOnly: true,
+            groupThousands: true,
             onChanged: _fromPrice,
           ),
           const SizedBox(height: AppShape.cardGap),
@@ -886,7 +887,7 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
                     FilledInput(
                       hint: '500',
                       controller: _amount,
-                      digitsOnly: true,
+                      groupThousands: true,
                       onChanged: _fromAmount,
                     ),
                   ],
