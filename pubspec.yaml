@@ -49,3 +49,11 @@ flutter:
           weight: 800
         - asset: assets/fonts/Inter-Black.ttf
           weight: 900
+
+    # The brand face (Identity Spec §03). SIL Open Font License 1.1 —
+    # see assets/fonts/FamiljenGrotesk-OFL.txt. One weight only: the spec
+    # forbids splitting the wordmark across weights.
+    - family: FamiljenGrotesk
+      fonts:
+        - asset: assets/fonts/FamiljenGrotesk-SemiBold.ttf
+          weight: 600
