@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#17150F</color>
+    <!-- Launch-screen ground: bone, the brand's light-mode ground. -->
+    <color name="brand_bone">#FAF7F0</color>
+</resources>

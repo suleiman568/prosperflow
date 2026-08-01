@@ -1,0 +1,7 @@
+<!-- App icon (Identity Spec 05): ink tile, marigold glyph at 0.64 x tile, corner radius 0.25 x tile. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="256" ry="256" fill="#17150F"/>
+  <g transform="translate(184.32 184.32) scale(6.553600)">
+    <g stroke="#E5A21C" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M27 86 L27 14"/><path d="M27 14 H51 C65.5 14 73 22.4 73 34 C73 45.6 65.5 54 51 54 H27"/></g>
+  </g>
+</svg>

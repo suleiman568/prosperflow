@@ -1,11 +1,11 @@
 {
-    "name": "prosperflow",
-    "short_name": "prosperflow",
+    "name": "ProsperFlow",
+    "short_name": "ProsperFlow",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#17150F",
+    "theme_color": "#E5A21C",
+    "description": "Your digital sales ledger.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

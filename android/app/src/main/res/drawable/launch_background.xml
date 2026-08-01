@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+<!-- Launch screen: bone ground with the monogram centred.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
+     Ink on bone rather than the app icon's marigold-on-ink, because this hands
+     straight over to the app's light first screen and a dark splash would
+     flash on every cold start. Worth revisiting with the palette migration. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/brand_bone" />
+    <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+            android:src="@drawable/splash_mark" />
+    </item>
 </layer-list>
