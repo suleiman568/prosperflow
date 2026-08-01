@@ -34,13 +34,35 @@
 </head>
 <body>
   <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+    The web build is a design preview: it keeps data in memory and exists to
+    show the build that was just deployed. Flutter's generated service worker
+    is cache-first for main.dart.js, and the worker controlling a page is
+    always the one registered on the *previous* visit — so the first load after
+    a deploy serves the previous bundle, and only the load after that picks up
+    the new one. That made a shipped change (thousands separators while typing
+    a price) look like it had never landed.
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
+    So: don't register the service worker, and clear anything an earlier visit
+    left behind — a registration from before this change would otherwise keep
+    serving its cached bundle indefinitely.
   -->
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) registration.unregister();
+      });
+    }
+    if (window.caches) {
+      caches.keys().then((keys) => {
+        for (const key of keys) caches.delete(key);
+      });
+    }
+  </script>
+  <script>
+    {{flutter_js}}
+    {{flutter_build_config}}
+    // Loading without serviceWorkerSettings skips registration entirely.
+    _flutter.loader.load();
+  </script>
 </body>
 </html>
