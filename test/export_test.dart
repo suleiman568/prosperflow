@@ -284,6 +284,7 @@ void main() {
         bundle,
         regularFont: ttf('Inter-Regular.ttf'),
         boldFont: ttf('Inter-Bold.ttf'),
+        brandFont: ttf('FamiljenGrotesk-SemiBold.ttf'),
       );
 
       expect(bytes.length, greaterThan(10 * 1024)); // embedded fonts

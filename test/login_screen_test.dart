@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:prosperflow/src/app.dart';
 import 'package:prosperflow/src/auth/auth_service.dart';
+import 'package:prosperflow/src/brand/brand_lockup.dart';
 import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/primary_button.dart';
@@ -28,7 +29,8 @@ void main() {
   ) async {
     await _pumpApp(tester);
 
-    expect(find.text('ProsperFlow'), findsOneWidget);
+    // The name is drawn as the stacked lockup now, not set as text.
+    expect(find.byType(BrandLockup), findsOneWidget);
     expect(find.text('Your digital sales ledger'), findsOneWidget);
     expect(find.text('prosper@market.ng'), findsOneWidget);
     expect(find.text('Forgot password?'), findsOneWidget);

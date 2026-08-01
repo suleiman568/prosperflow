@@ -154,6 +154,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
           bundle,
           regularFont: await rootBundle.load('assets/fonts/Inter-Regular.ttf'),
           boldFont: await rootBundle.load('assets/fonts/Inter-Bold.ttf'),
+          brandFont: await rootBundle.load(
+            'assets/fonts/FamiljenGrotesk-SemiBold.ttf',
+          ),
         );
         await shareExportFile(bytes, '$name.pdf', 'application/pdf');
       } else {

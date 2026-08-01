@@ -114,14 +114,20 @@ void main() {
   });
 
   group('Screen-title header semantics (item 3)', () {
+    // A heading is either text inside a header node, or — where the title is
+    // drawn rather than set, as the dashboard's brand lockup is — a header
+    // node carrying the title as its own label. Both reach a screen reader
+    // the same way.
     bool titleIsHeader(WidgetTester tester, String title) => tester
         .widgetList<Semantics>(find.byType(Semantics))
         .where((s) => s.properties.header == true)
         .any(
-          (s) => find
-              .descendant(of: find.byWidget(s), matching: find.text(title))
-              .evaluate()
-              .isNotEmpty,
+          (s) =>
+              s.properties.label == title ||
+              find
+                  .descendant(of: find.byWidget(s), matching: find.text(title))
+                  .evaluate()
+                  .isNotEmpty,
         );
 
     // One test per screen so a regression on any single screen's heading

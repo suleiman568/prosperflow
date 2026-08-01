@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../brand/brand_lockup.dart';
 import '../../data/app_scope.dart';
 import '../../data/models.dart';
 import '../../theme/tokens.dart';
@@ -8,7 +9,6 @@ import '../../utils/plural.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/money_text.dart';
-import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
 import '../../sync/sync_engine.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -298,12 +298,8 @@ class _AppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(
-            child: ScreenTitle(
-              'ProsperFlow',
-              style: AppText.style(FontWeight.w800, 18, AppColors.textPrimary),
-              overflow: TextOverflow.ellipsis,
-            ),
+          const Flexible(
+            child: BrandLockup.horizontal(fontSize: 18, isHeader: true),
           ),
           Row(
             children: [

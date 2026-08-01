@@ -31,6 +31,7 @@ class BrandLockup extends StatelessWidget {
     required this.markColor,
     required this.crossbarColor,
     required this.showCrossbar,
+    required this.isHeader,
   });
 
   /// Mark above wordmark, left-aligned on the mark's stem axis.
@@ -41,8 +42,10 @@ class BrandLockup extends StatelessWidget {
     Color? markColor,
     Color crossbarColor = BrandColors.marigold,
     bool showCrossbar = true,
+    bool isHeader = false,
   }) : this._(
          key: key,
+         isHeader: isHeader,
          variant: BrandLockupVariant.stacked,
          fontSize: fontSize,
          color: color,
@@ -59,8 +62,10 @@ class BrandLockup extends StatelessWidget {
     Color? markColor,
     Color crossbarColor = BrandColors.marigold,
     bool showCrossbar = true,
+    bool isHeader = false,
   }) : this._(
          key: key,
+         isHeader: isHeader,
          variant: BrandLockupVariant.horizontal,
          fontSize: fontSize,
          color: color,
@@ -80,6 +85,15 @@ class BrandLockup extends StatelessWidget {
 
   final Color crossbarColor;
   final bool showCrossbar;
+
+  /// True where the lockup stands in for a screen heading, as it does in the
+  /// dashboard's app bar. Keeps the heading in the semantics tree even though
+  /// the title is now drawn rather than set as text.
+  final bool isHeader;
+
+  /// The lockup is a picture of the app's name, so it carries that name as its
+  /// label — a screen reader should hear "ProsperFlow", not silence.
+  static const String semanticLabel = 'ProsperFlow';
 
   /// Stacked mark: 3.2 × cap height.
   static const double stackedIconRatio = 2.08;
@@ -120,20 +134,25 @@ class BrandLockup extends StatelessWidget {
     );
     final wordmarkSize = BrandWordmark.layOut(fontSize, color).size;
 
-    return switch (variant) {
-      BrandLockupVariant.stacked => _stacked(
-        mark,
-        wordmark,
-        iconSize,
-        wordmarkSize,
-      ),
-      BrandLockupVariant.horizontal => _horizontal(
-        mark,
-        wordmark,
-        iconSize,
-        wordmarkSize,
-      ),
-    };
+    return Semantics(
+      label: semanticLabel,
+      image: true,
+      header: isHeader,
+      child: switch (variant) {
+        BrandLockupVariant.stacked => _stacked(
+          mark,
+          wordmark,
+          iconSize,
+          wordmarkSize,
+        ),
+        BrandLockupVariant.horizontal => _horizontal(
+          mark,
+          wordmark,
+          iconSize,
+          wordmarkSize,
+        ),
+      },
+    );
   }
 
   /// The mark hangs [BrandMark.stemInset] to the left of the box so the box's
