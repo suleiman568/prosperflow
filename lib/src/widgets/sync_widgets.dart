@@ -54,10 +54,10 @@ class SyncStatusRow extends StatelessWidget {
     } else {
       text = '✅ Saved on this phone';
     }
-    final fg = pendingOrOffline ? AppColors.offlineFg : AppColors.primary;
+    final fg = pendingOrOffline ? AppColors.offlineFg : AppColors.positive;
 
     return AppCard.tinted(
-      color: pendingOrOffline ? AppColors.offlineBg : AppColors.mintTint,
+      color: pendingOrOffline ? AppColors.offlineBg : AppColors.positiveTint,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       onTap: () => runManualSync(context),
       child: Row(
@@ -112,7 +112,7 @@ class PullToSync extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: AppColors.textPrimary,
       onRefresh: () async {
         await runManualSync(context);
         onRefresh?.call();

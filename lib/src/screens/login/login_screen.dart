@@ -143,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: AppText.style(
                           FontWeight.w600,
                           12,
-                          AppColors.primary,
+                          AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: AppText.style(
                             FontWeight.w700,
                             13,
-                            AppColors.primary,
+                            AppColors.textPrimary,
                           ),
                         ),
                       ],

@@ -58,7 +58,7 @@ Future<bool> confirmDiscard(BuildContext context) async {
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(
             'Discard',
-            style: AppText.style(FontWeight.w700, 14, AppColors.accentRed),
+            style: AppText.style(FontWeight.w700, 14, AppColors.negative),
           ),
         ),
       ],

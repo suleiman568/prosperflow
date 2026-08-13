@@ -28,15 +28,15 @@ class PrimaryButton extends StatelessWidget {
       height: 52,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppShape.controlRadius),
-        boxShadow: AppShape.glow(AppColors.primary, alpha: 0.30),
+        boxShadow: AppShape.glow(AppColors.action, alpha: 0.30),
       ),
       child: FilledButton(
         onPressed: busy ? null : onPressed,
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.pressed)
-                ? AppColors.primaryDark
-                : AppColors.primary,
+                ? AppColors.actionPressed
+                : AppColors.action,
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
@@ -51,19 +51,23 @@ class PrimaryButton extends StatelessWidget {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Colors.white,
+                  color: AppColors.onAction,
                 ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 18, color: Colors.white),
+                    Icon(icon, size: 18, color: AppColors.onAction),
                     const SizedBox(width: 8),
                   ],
                   Text(
                     label,
-                    style: AppText.style(FontWeight.w700, 15, Colors.white),
+                    style: AppText.style(
+                      FontWeight.w700,
+                      15,
+                      AppColors.onAction,
+                    ),
                   ),
                 ],
               ),

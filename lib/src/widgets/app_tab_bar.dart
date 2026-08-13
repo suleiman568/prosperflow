@@ -56,7 +56,7 @@ class AppTabBar extends StatelessWidget {
                             icon,
                             size: 22,
                             color: tab == active
-                                ? AppColors.primary
+                                ? AppColors.textPrimary
                                 : AppColors.placeholder,
                           ),
                           const SizedBox(height: 3),
@@ -66,7 +66,7 @@ class AppTabBar extends StatelessWidget {
                               FontWeight.w600,
                               10,
                               tab == active
-                                  ? AppColors.primary
+                                  ? AppColors.textPrimary
                                   : AppColors.placeholder,
                             ),
                           ),

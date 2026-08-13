@@ -66,7 +66,7 @@ class EmptyState extends StatelessWidget {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: AppColors.action,
                     borderRadius: BorderRadius.circular(AppShape.controlRadius),
                   ),
                   child: Row(
@@ -75,7 +75,7 @@ class EmptyState extends StatelessWidget {
                       const Icon(
                         Icons.add_rounded,
                         size: 18,
-                        color: Colors.white,
+                        color: AppColors.onAction,
                       ),
                       const SizedBox(width: 8),
                       // Flexible so a large accessibility text scale wraps the
@@ -87,7 +87,7 @@ class EmptyState extends StatelessWidget {
                           style: AppText.style(
                             FontWeight.w700,
                             14,
-                            Colors.white,
+                            AppColors.onAction,
                           ),
                         ),
                       ),

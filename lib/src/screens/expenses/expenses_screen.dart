@@ -127,8 +127,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: [
                         AppCard.tinted(
-                          color: AppColors.redTint,
-                          borderColor: AppColors.redBorder,
+                          color: AppColors.negativeTint,
+                          borderColor: AppColors.negativeBorder,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -137,7 +137,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 style: AppText.style(
                                   FontWeight.w700,
                                   12,
-                                  AppColors.accentRed,
+                                  AppColors.negative,
                                 ),
                               ),
                               const SizedBox(height: AppShape.gapXs),
@@ -146,7 +146,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 style: AppText.style(
                                   FontWeight.w900,
                                   28,
-                                  AppColors.accentRed,
+                                  AppColors.negative,
                                 ),
                               ),
                             ],
@@ -231,8 +231,8 @@ class _LoadingList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         AppCard.tinted(
-          color: AppColors.redTint,
-          borderColor: AppColors.redBorder,
+          color: AppColors.negativeTint,
+          borderColor: AppColors.negativeBorder,
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -313,7 +313,7 @@ class _ExpenseCard extends StatelessWidget {
             left: 0,
             child: SizedBox(
               width: 4,
-              child: ColoredBox(color: AppColors.accentRed),
+              child: ColoredBox(color: AppColors.negative),
             ),
           ),
           Padding(
@@ -325,12 +325,12 @@ class _ExpenseCard extends StatelessWidget {
                   height: 42,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.redTint,
+                    color: AppColors.negativeTint,
                   ),
                   child: Icon(
                     expenseCategoryIcon(expense.category),
                     size: 18,
-                    color: AppColors.accentRed,
+                    color: AppColors.negative,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -349,11 +349,7 @@ class _ExpenseCard extends StatelessWidget {
                 ),
                 Text(
                   '-${formatNaira(expense.amount)}',
-                  style: AppText.style(
-                    FontWeight.w700,
-                    13,
-                    AppColors.accentRed,
-                  ),
+                  style: AppText.style(FontWeight.w700, 13, AppColors.negative),
                 ),
                 if (menu != null) ...[const SizedBox(width: 2), menu!],
               ],
@@ -380,8 +376,8 @@ class _Fab extends StatelessWidget {
         height: 56,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: AppColors.accentRed,
-        ).copyWith(boxShadow: AppShape.glow(AppColors.accentRed)),
+          color: AppColors.negative,
+        ).copyWith(boxShadow: AppShape.glow(AppColors.negative)),
         child: const Icon(Icons.add, size: 24, color: Colors.white),
       ),
     );
@@ -506,7 +502,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
                         color: _category == category
-                            ? AppColors.accentRed
+                            ? AppColors.negative
                             : AppColors.inputBg,
                         borderRadius: BorderRadius.circular(100),
                       ),

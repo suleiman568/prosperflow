@@ -91,10 +91,10 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                 ),
                 trailing: Text(
                   '${product.stock} in stock',
-                  style: AppText.style(FontWeight.w600, 12, AppColors.primary),
+                  style: AppText.style(FontWeight.w600, 12, AppColors.positive),
                 ),
                 selected: product.id == _productId,
-                selectedTileColor: AppColors.mintTint,
+                selectedTileColor: AppColors.positiveTint,
               ),
             const SizedBox(height: AppShape.gapSm),
           ],
@@ -168,7 +168,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: Text(
                 'Sell anyway',
-                style: AppText.style(FontWeight.w700, 13, AppColors.accentRed),
+                style: AppText.style(FontWeight.w700, 13, AppColors.negative),
               ),
             ),
           ],
@@ -300,13 +300,13 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
                       style: AppText.style(
                         FontWeight.w600,
                         12,
-                        AppColors.primary,
+                        AppColors.positive,
                       ),
                     ),
                     const Icon(
                       Icons.arrow_drop_down,
                       size: 18,
-                      color: AppColors.primary,
+                      color: AppColors.textSecondary,
                     ),
                   ],
                 ),
@@ -441,7 +441,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
           Text(
             '⚠ Below cost — this sale loses '
             '${formatNaira((product.buyPrice - price) * qty)}',
-            style: AppText.style(FontWeight.w700, 12, AppColors.accentRed),
+            style: AppText.style(FontWeight.w700, 12, AppColors.negative),
           ),
         ],
         const SizedBox(height: AppShape.cardGap),
@@ -449,11 +449,7 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppShape.cardRadius),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primary, AppColors.primaryDark],
-            ),
+            color: AppColors.positive,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -506,12 +502,12 @@ class _RecordSaleScreenState extends State<RecordSaleScreen> {
         if (_method == PaymentMethod.credit) ...[
           const SizedBox(height: AppShape.cardGap),
           AppCard.tinted(
-            color: AppColors.orangeTint,
-            borderColor: AppColors.orangeBorder,
+            color: AppColors.creditTint,
+            borderColor: AppColors.creditBorder,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Text(
               '⚠ Customer name is required for credit sales',
-              style: AppText.style(FontWeight.w700, 12, AppColors.accentOrange),
+              style: AppText.style(FontWeight.w700, 12, AppColors.credit),
             ),
           ),
         ],
@@ -652,26 +648,26 @@ class _PaymentPill extends StatelessWidget {
     PaymentMethod.cash: (
       Icons.payments_rounded,
       'Cash',
-      AppColors.primary,
-      AppColors.mintTint,
+      AppColors.positive,
+      AppColors.positiveTint,
     ),
     PaymentMethod.transfer: (
       Icons.account_balance_rounded,
       'Transfer',
-      AppColors.accentBlue,
-      AppColors.blueTint,
+      AppColors.transfer,
+      AppColors.transferTint,
     ),
     PaymentMethod.pos: (
       Icons.credit_card_rounded,
       'POS',
-      AppColors.accentPurple,
-      AppColors.purpleTint,
+      AppColors.pos,
+      AppColors.posTint,
     ),
     PaymentMethod.credit: (
       Icons.schedule_rounded,
       'Credit',
-      AppColors.accentOrange,
-      AppColors.orangeBorder,
+      AppColors.credit,
+      AppColors.creditBorder,
     ),
   };
 
@@ -727,7 +723,7 @@ class _FulfilmentPill extends StatelessWidget {
       child: Container(
         height: 40,
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.inputBg,
+          color: selected ? AppColors.textPrimary : AppColors.inputBg,
           borderRadius: BorderRadius.circular(100),
         ),
         child: Row(
@@ -736,7 +732,7 @@ class _FulfilmentPill extends StatelessWidget {
             Icon(
               icon,
               size: 16,
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? AppColors.appBg : AppColors.textSecondary,
             ),
             const SizedBox(width: 6),
             Text(
@@ -744,7 +740,7 @@ class _FulfilmentPill extends StatelessWidget {
               style: AppText.style(
                 FontWeight.w700,
                 13,
-                selected ? Colors.white : AppColors.textSecondary,
+                selected ? AppColors.appBg : AppColors.textSecondary,
               ),
             ),
           ],
@@ -907,7 +903,7 @@ class _AdjustPriceSheetState extends State<_AdjustPriceSheet> {
             Text(
               '⚠ Below cost (${formatNaira(widget.buyPrice)}) — '
               'you will make a loss',
-              style: AppText.style(FontWeight.w700, 12, AppColors.accentRed),
+              style: AppText.style(FontWeight.w700, 12, AppColors.negative),
             ),
           ],
           const SizedBox(height: 18),

@@ -118,8 +118,8 @@ class _CreditsScreenState extends State<CreditsScreen> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: [
                         AppCard.tinted(
-                          color: AppColors.orangeTint,
-                          borderColor: AppColors.orangeBorder,
+                          color: AppColors.creditTint,
+                          borderColor: AppColors.creditBorder,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 14,
@@ -139,7 +139,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                                       style: AppText.style(
                                         FontWeight.w700,
                                         12,
-                                        AppColors.accentOrange,
+                                        AppColors.credit,
                                       ),
                                     ),
                                     const SizedBox(height: AppShape.gapXs),
@@ -148,7 +148,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                                       style: AppText.style(
                                         FontWeight.w900,
                                         24,
-                                        AppColors.accentOrange,
+                                        AppColors.credit,
                                       ),
                                     ),
                                   ],
@@ -157,7 +157,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                               const Icon(
                                 Icons.schedule_rounded,
                                 size: 24,
-                                color: AppColors.accentOrange,
+                                color: AppColors.credit,
                               ),
                             ],
                           ),
@@ -221,8 +221,8 @@ class _LoadingList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         AppCard.tinted(
-          color: AppColors.orangeTint,
-          borderColor: AppColors.orangeBorder,
+          color: AppColors.creditTint,
+          borderColor: AppColors.creditBorder,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -263,7 +263,7 @@ class _SkeletonCreditCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(width: 4, height: 96, color: AppColors.orangeTint),
+          Container(width: 4, height: 96, color: AppColors.creditTint),
           const Expanded(
             child: Padding(
               padding: EdgeInsets.fromLTRB(12, 14, 16, 14),
@@ -324,7 +324,7 @@ class _CreditCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(width: 4, color: AppColors.accentOrange),
+            Container(width: 4, color: AppColors.credit),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 14, 16, 14),
@@ -359,8 +359,8 @@ class _CreditCard extends StatelessWidget {
                               FontWeight.w700,
                               11,
                               creditIsStale(credit.soldAt, now: clock())
-                                  ? AppColors.accentRed
-                                  : AppColors.accentOrange,
+                                  ? AppColors.negative
+                                  : AppColors.credit,
                             ),
                           ),
                         ],
@@ -374,7 +374,7 @@ class _CreditCard extends StatelessWidget {
                           style: AppText.style(
                             FontWeight.w800,
                             14,
-                            AppColors.accentOrange,
+                            AppColors.credit,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -387,7 +387,7 @@ class _CreditCard extends StatelessWidget {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primary,
+                              color: AppColors.positive,
                               borderRadius: BorderRadius.circular(
                                 AppShape.controlRadius,
                               ),
@@ -440,12 +440,12 @@ class _EmptyState extends StatelessWidget {
             height: 72,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.mintTint,
+              color: AppColors.positiveTint,
             ),
             child: const Icon(
               Icons.check_circle_rounded,
               size: 44,
-              color: AppColors.primary,
+              color: AppColors.positive,
             ),
           ),
           const SizedBox(height: 14),

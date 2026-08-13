@@ -550,9 +550,9 @@ void main() {
 
       // Loss text is red; a profitable group's text is green.
       final lossText = tester.widget<Text>(find.text('-₦200').last);
-      expect(lossText.style?.color, AppColors.accentRed);
+      expect(lossText.style?.color, AppColors.negative);
       final gainText = tester.widget<Text>(find.text('+₦4,800 profit').first);
-      expect(gainText.style?.color, AppColors.primary);
+      expect(gainText.style?.color, AppColors.positive);
     });
   });
 }

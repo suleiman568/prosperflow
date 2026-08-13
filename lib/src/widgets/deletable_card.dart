@@ -32,7 +32,7 @@ Future<bool?> showDeleteConfirmDialog(
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.accentRed,
+            backgroundColor: AppColors.negative,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppShape.controlRadius),
             ),
@@ -115,12 +115,12 @@ class CardOverflowMenu extends StatelessWidget {
               const Icon(
                 Icons.delete_rounded,
                 size: 16,
-                color: AppColors.accentRed,
+                color: AppColors.negative,
               ),
               const SizedBox(width: 8),
               Text(
                 'Delete',
-                style: AppText.style(FontWeight.w700, 13, AppColors.accentRed),
+                style: AppText.style(FontWeight.w700, 13, AppColors.negative),
               ),
             ],
           ),
@@ -184,7 +184,7 @@ class DeletableCard extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppColors.accentRed,
+          color: AppColors.negative,
           borderRadius: BorderRadius.circular(AppShape.cardRadius),
         ),
         child: const Icon(Icons.delete_rounded, size: 24, color: Colors.white),

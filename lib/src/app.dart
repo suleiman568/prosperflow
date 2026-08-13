@@ -24,8 +24,8 @@ class ProsperFlowApp extends StatelessWidget {
         fontFamily: 'Inter',
         scaffoldBackgroundColor: AppColors.appBg,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          primary: AppColors.primary,
+          seedColor: AppColors.action,
+          primary: AppColors.action,
         ),
         splashFactory: InkSparkle.splashFactory,
         pageTransitionsTheme: appPageTransitionsTheme,

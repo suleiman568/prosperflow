@@ -37,7 +37,7 @@ Future<bool> confirmDialog(
             style: AppText.style(
               FontWeight.w700,
               14,
-              destructive ? AppColors.accentRed : AppColors.primary,
+              destructive ? AppColors.negative : AppColors.textPrimary,
             ),
           ),
         ),

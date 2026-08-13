@@ -54,7 +54,7 @@ class ErrorState extends StatelessWidget {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
+                  color: AppColors.action,
                   borderRadius: BorderRadius.circular(AppShape.controlRadius),
                 ),
                 child: Row(
@@ -63,7 +63,7 @@ class ErrorState extends StatelessWidget {
                     const Icon(
                       Icons.refresh_rounded,
                       size: 18,
-                      color: Colors.white,
+                      color: AppColors.onAction,
                     ),
                     const SizedBox(width: 8),
                     // Flexible so a large accessibility text scale wraps the
@@ -72,7 +72,11 @@ class ErrorState extends StatelessWidget {
                       child: Text(
                         'Try again',
                         textAlign: TextAlign.center,
-                        style: AppText.style(FontWeight.w700, 14, Colors.white),
+                        style: AppText.style(
+                          FontWeight.w700,
+                          14,
+                          AppColors.onAction,
+                        ),
                       ),
                     ),
                   ],

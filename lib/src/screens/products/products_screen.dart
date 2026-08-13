@@ -287,8 +287,8 @@ class _ProductCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
                   color: product.isLow
-                      ? AppColors.orangeTint
-                      : AppColors.mintTint,
+                      ? AppColors.creditTint
+                      : AppColors.positiveTint,
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Text(
@@ -296,7 +296,7 @@ class _ProductCard extends StatelessWidget {
                   style: AppText.style(
                     FontWeight.w800,
                     10,
-                    product.isLow ? AppColors.accentOrange : AppColors.primary,
+                    product.isLow ? AppColors.credit : AppColors.positive,
                   ),
                 ),
               ),
@@ -324,9 +324,9 @@ class _Fab extends StatelessWidget {
         height: 56,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: AppColors.primary,
-        ).copyWith(boxShadow: AppShape.glow(AppColors.primary)),
-        child: const Icon(Icons.add, size: 24, color: Colors.white),
+          color: AppColors.action,
+        ).copyWith(boxShadow: AppShape.glow(AppColors.action)),
+        child: const Icon(Icons.add, size: 24, color: AppColors.onAction),
       ),
     );
   }
@@ -354,10 +354,10 @@ Widget? _marginWarning(String buyText, String sellText) {
   if (sell < buy) {
     message =
         '⚠ Below cost — you lose ${formatNaira(buy - sell)} on every sale';
-    color = AppColors.accentRed;
+    color = AppColors.negative;
   } else if (sell == buy) {
     message = '⚠ No profit — this price only covers your cost';
-    color = AppColors.accentOrange;
+    color = AppColors.credit;
   } else {
     return null;
   }

@@ -54,26 +54,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
     PaymentMethod.cash: (
       Icons.payments_rounded,
       'Cash',
-      AppColors.primary,
-      AppColors.mintTint,
+      AppColors.positive,
+      AppColors.positiveTint,
     ),
     PaymentMethod.transfer: (
       Icons.account_balance_rounded,
       'Transfer',
-      AppColors.accentBlue,
-      AppColors.blueTint,
+      AppColors.transfer,
+      AppColors.transferTint,
     ),
     PaymentMethod.pos: (
       Icons.credit_card_rounded,
       'POS',
-      AppColors.accentPurple,
-      AppColors.purpleTint,
+      AppColors.pos,
+      AppColors.posTint,
     ),
     PaymentMethod.credit: (
       Icons.schedule_rounded,
       'Credit',
-      AppColors.accentOrange,
-      AppColors.orangeTint,
+      AppColors.credit,
+      AppColors.creditTint,
     ),
   };
 
@@ -97,7 +97,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ListTile(
               leading: const Icon(
                 Icons.picture_as_pdf_rounded,
-                color: AppColors.accentRed,
+                color: AppColors.negative,
               ),
               title: Text(
                 'PDF report',
@@ -115,7 +115,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ListTile(
               leading: const Icon(
                 Icons.table_chart_rounded,
-                color: AppColors.primary,
+                color: AppColors.positive,
               ),
               title: Text(
                 'CSV spreadsheet',
@@ -241,13 +241,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppShape.cardRadius),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: profit >= 0
-                  ? const [AppColors.primary, AppColors.primaryDark]
-                  : const [AppColors.accentRed, AppColors.lossRed],
-            ),
+            color: profit >= 0 ? AppColors.positive : AppColors.negative,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,7 +276,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             Expanded(
               child: _TotalsCard(
                 label: 'SALES',
-                labelColor: AppColors.primary,
+                labelColor: AppColors.positive,
                 amount: report.salesTotal,
                 caption: countNoun(report.salesCount, 'transaction'),
               ),
@@ -291,7 +285,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             Expanded(
               child: _TotalsCard(
                 label: 'EXPENSES',
-                labelColor: AppColors.accentRed,
+                labelColor: AppColors.negative,
                 amount: report.expensesTotal,
                 caption: countNoun(report.expensesCount, 'item'),
               ),
@@ -357,7 +351,7 @@ String _profitText(int? profit) {
 /// Green for profit, red for a loss, muted for unknown ("—").
 Color _profitColor(int? profit) {
   if (profit == null) return AppColors.textSecondary;
-  return profit < 0 ? AppColors.accentRed : AppColors.primary;
+  return profit < 0 ? AppColors.negative : AppColors.positive;
 }
 
 /// Today's sales grouped per product, expandable into individual sales.
@@ -455,8 +449,8 @@ class _DaySummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard.tinted(
-      color: AppColors.mintTint,
-      borderColor: AppColors.primary,
+      color: AppColors.positiveTint,
+      borderColor: AppColors.positive,
       child: Row(
         children: [
           Expanded(
@@ -465,7 +459,7 @@ class _DaySummaryCard extends StatelessWidget {
               children: [
                 Text(
                   "TODAY'S REVENUE",
-                  style: AppText.style(FontWeight.w700, 11, AppColors.primary),
+                  style: AppText.style(FontWeight.w700, 11, AppColors.positive),
                 ),
                 const SizedBox(height: AppShape.gapXs),
                 MoneyText(
@@ -485,7 +479,7 @@ class _DaySummaryCard extends StatelessWidget {
               children: [
                 Text(
                   'PROFIT',
-                  style: AppText.style(FontWeight.w700, 11, AppColors.primary),
+                  style: AppText.style(FontWeight.w700, 11, AppColors.positive),
                 ),
                 const SizedBox(height: AppShape.gapXs),
                 MoneyText.raw(
@@ -700,7 +694,7 @@ class _Header extends StatelessWidget {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.2,
-                      color: AppColors.primary,
+                      color: AppColors.textPrimary,
                     ),
                   )
                 : const Icon(
@@ -735,7 +729,7 @@ class _PeriodPill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.inputBg,
+          color: selected ? AppColors.textPrimary : AppColors.inputBg,
           borderRadius: BorderRadius.circular(100),
         ),
         child: Text(
@@ -743,7 +737,7 @@ class _PeriodPill extends StatelessWidget {
           style: AppText.style(
             FontWeight.w700,
             13,
-            selected ? Colors.white : AppColors.textSecondary,
+            selected ? AppColors.appBg : AppColors.textSecondary,
           ),
         ),
       ),
@@ -835,8 +829,8 @@ class _TopProductCard extends StatelessWidget {
           const SizedBox(height: 6),
           _ProgressBar(
             fraction: fraction,
-            color: AppColors.primary,
-            tint: AppColors.mintTint,
+            color: AppColors.positive,
+            tint: AppColors.positiveTint,
           ),
           const SizedBox(height: AppShape.gapXs),
           Text(
