@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/app_scope.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_toast.dart';
-import '../../widgets/brand_logo.dart';
+import '../../brand/brand_lockup.dart';
 import '../../widgets/filled_input.dart';
 import '../../widgets/password_input.dart';
 import '../../widgets/primary_button.dart';
@@ -102,16 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const BrandLogo(),
-                const SizedBox(height: 18),
-                Text(
-                  'ProsperFlow',
-                  style: AppText.style(
-                    FontWeight.w900,
-                    26,
-                    AppColors.textPrimary,
-                  ),
-                ),
+                const BrandLockup.stacked(fontSize: 26),
                 const SizedBox(height: AppShape.gapSm),
                 Text(
                   'Your digital sales ledger',
@@ -152,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: AppText.style(
                           FontWeight.w600,
                           12,
-                          AppColors.primary,
+                          AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -173,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: AppText.style(
                             FontWeight.w700,
                             13,
-                            AppColors.primary,
+                            AppColors.textPrimary,
                           ),
                         ),
                       ],

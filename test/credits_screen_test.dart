@@ -54,7 +54,7 @@ void main() {
     expect(find.text('Owed for 5 days'), findsOneWidget);
     expect(find.text('Owed for 6 days'), findsOneWidget);
     final recent = tester.widget<Text>(find.text('Owed for 3 days'));
-    expect(recent.style?.color, AppColors.accentOrange);
+    expect(recent.style?.color, AppColors.credit);
   });
 
   testWidgets('a long-overdue credit is flagged in red', (tester) async {
@@ -75,7 +75,7 @@ void main() {
     await tester.pump();
 
     final label = tester.widget<Text>(find.text('Owed for 1 month'));
-    expect(label.style?.color, AppColors.accentRed);
+    expect(label.style?.color, AppColors.negative);
   });
 
   testWidgets('the age label rolls over at midnight while left mounted', (

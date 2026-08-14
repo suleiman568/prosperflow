@@ -30,6 +30,27 @@ dev_dependencies:
   sqlite3: ^2.9.4
   drift_dev: 2.26.1
   build_runner: 2.4.15
+  flutter_launcher_icons: ^0.14.4
+
+# App icons, generated from assets/brand/*.svg via
+# `node tool/render_brand_icons.js && dart run flutter_launcher_icons`.
+flutter_launcher_icons:
+  image_path: assets/brand/app_icon.png
+  android: true
+  ios: true
+  # iOS masks with its own superellipse and rejects alpha, so it gets the
+  # square, fully opaque tile rather than the pre-rounded one.
+  image_path_ios: assets/brand/app_icon_ios.png
+  remove_alpha_ios: true
+  # Adaptive icons are two layers the system masks together: flat ink behind,
+  # glyph in front, already inset for the mask's safe zone.
+  adaptive_icon_background: "#17150F"
+  adaptive_icon_foreground: assets/brand/app_icon_foreground.png
+  web:
+    generate: true
+    image_path: assets/brand/app_icon.png
+    background_color: "#17150F"
+    theme_color: "#E5A21C"
 
 flutter:
   uses-material-design: true
@@ -49,3 +70,11 @@ flutter:
           weight: 800
         - asset: assets/fonts/Inter-Black.ttf
           weight: 900
+
+    # The brand face (Identity Spec §03). SIL Open Font License 1.1 —
+    # see assets/fonts/FamiljenGrotesk-OFL.txt. One weight only: the spec
+    # forbids splitting the wordmark across weights.
+    - family: FamiljenGrotesk
+      fonts:
+        - asset: assets/fonts/FamiljenGrotesk-SemiBold.ttf
+          weight: 600

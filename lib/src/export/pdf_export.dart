@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../brand/brand_pdf.dart';
 import '../data/data_store.dart';
 import '../data/models.dart';
 import '../utils/naira.dart';
@@ -18,9 +19,11 @@ Future<Uint8List> buildReportPdf(
   ExportBundle bundle, {
   required ByteData regularFont,
   required ByteData boldFont,
+  required ByteData brandFont,
 }) async {
   final base = pw.Font.ttf(regularFont);
   final bold = pw.Font.ttf(boldFont);
+  final brand = pw.Font.ttf(brandFont);
   final theme = pw.ThemeData.withFont(base: base, bold: bold);
 
   const green = PdfColor.fromInt(0xFF0B8F4E);
@@ -73,16 +76,23 @@ Future<Uint8List> buildReportPdf(
     pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(32),
-      footer: (context) => pw.Align(
-        alignment: pw.Alignment.centerRight,
-        child: pw.Text(
-          'ProsperFlow · page ${context.pageNumber}/${context.pagesCount}',
-          style: const pw.TextStyle(fontSize: 8, color: grey),
-        ),
+      footer: (context) => pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.end,
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          brandMarkPdf(size: 10, color: grey),
+          pw.SizedBox(width: 4),
+          pw.Text(
+            'page ${context.pageNumber}/${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 8, color: grey),
+          ),
+        ],
       ),
       build: (context) => [
+        brandLockupPdf(font: brand, fontSize: 18),
+        pw.SizedBox(height: 6),
         pw.Text(
-          'ProsperFlow — ${bundle.periodLabel} Report',
+          '${bundle.periodLabel} Report',
           style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
         ),
         pw.Text(

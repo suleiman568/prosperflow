@@ -1,0 +1,13 @@
+<!-- Launch-screen mark: the monogram in ink, on transparency, filling its
+     canvas so the platform splash files can place it at whatever size each
+     density needs.
+
+     Ink on bone rather than the app icon's marigold-on-ink: the launch screen
+     hands straight over to the app's light first screen, and a dark splash
+     would flash to light on every cold start. Revisit alongside the palette
+     migration, when the app's own ground settles. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <g transform="scale(5.12)">
+    <g stroke="#17150F" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M27 86 L27 14"/><path d="M27 14 H51 C65.5 14 73 22.4 73 34 C73 45.6 65.5 54 51 54 H27"/></g>
+  </g>
+</svg>

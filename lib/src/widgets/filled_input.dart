@@ -55,7 +55,7 @@ class FilledInput extends StatelessWidget {
           : (digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null),
       textInputAction: textInputAction,
       style: AppText.input,
-      cursorColor: AppColors.primary,
+      cursorColor: AppColors.textPrimary,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: AppText.inputHint,

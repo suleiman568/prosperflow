@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../brand/brand_lockup.dart';
 import '../../data/app_scope.dart';
 import '../../data/models.dart';
 import '../../theme/tokens.dart';
@@ -8,7 +9,6 @@ import '../../utils/plural.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/money_text.dart';
-import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
 import '../../sync/sync_engine.dart';
 import '../../widgets/app_tab_bar.dart';
@@ -74,8 +74,8 @@ class DashboardScreen extends StatelessWidget {
                               return _StatCard(
                                 icon: Icons.trending_up_rounded,
                                 label: "Today's Sales",
-                                color: AppColors.primary,
-                                tint: AppColors.mintTint,
+                                color: AppColors.positive,
+                                tint: AppColors.positiveTint,
                                 amount: stats.total,
                                 caption:
                                     '${countNoun(stats.count, 'sale')} today',
@@ -95,8 +95,8 @@ class DashboardScreen extends StatelessWidget {
                               return _StatCard(
                                 icon: Icons.calendar_today_rounded,
                                 label: 'This Week',
-                                color: AppColors.accentBlue,
-                                tint: AppColors.blueTint,
+                                color: AppColors.transfer,
+                                tint: AppColors.transferTint,
                                 amount: stats.total,
                                 caption: countNoun(stats.count, 'sale'),
                                 loading: !snapshot.hasData,
@@ -116,8 +116,8 @@ class DashboardScreen extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(top: AppShape.cardGap),
                           child: AppCard.tinted(
-                            color: AppColors.orangeTint,
-                            borderColor: AppColors.orangeBorder,
+                            color: AppColors.creditTint,
+                            borderColor: AppColors.creditBorder,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 14,
@@ -130,7 +130,7 @@ class DashboardScreen extends StatelessWidget {
                                     const Icon(
                                       Icons.warning_amber_rounded,
                                       size: 16,
-                                      color: AppColors.accentOrange,
+                                      color: AppColors.credit,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
@@ -138,7 +138,7 @@ class DashboardScreen extends StatelessWidget {
                                       style: AppText.style(
                                         FontWeight.w800,
                                         13,
-                                        AppColors.accentOrange,
+                                        AppColors.credit,
                                       ),
                                     ),
                                   ],
@@ -186,29 +186,29 @@ class DashboardScreen extends StatelessWidget {
                       children: [
                         _QuickAction(
                           icon: Icons.shopping_cart_rounded,
-                          tint: AppColors.mintTint,
-                          iconColor: AppColors.primary,
+                          tint: AppColors.positiveTint,
+                          iconColor: AppColors.positive,
                           label: 'Record Sale',
                           route: '/record-sale',
                         ),
                         _QuickAction(
                           icon: Icons.inventory_2_rounded,
-                          tint: AppColors.blueTint,
-                          iconColor: AppColors.accentBlue,
+                          tint: AppColors.transferTint,
+                          iconColor: AppColors.transfer,
                           label: 'Products',
                           route: '/products',
                         ),
                         _QuickAction(
                           icon: Icons.payments_rounded,
-                          tint: AppColors.redTint,
-                          iconColor: AppColors.accentRed,
+                          tint: AppColors.negativeTint,
+                          iconColor: AppColors.negative,
                           label: 'Expenses',
                           route: '/expenses',
                         ),
                         _QuickAction(
                           icon: Icons.bar_chart_rounded,
-                          tint: AppColors.purpleTint,
-                          iconColor: AppColors.accentPurple,
+                          tint: AppColors.posTint,
+                          iconColor: AppColors.pos,
                           label: 'Reports',
                           route: '/reports',
                         ),
@@ -226,8 +226,8 @@ class DashboardScreen extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(top: AppShape.cardGap),
                           child: AppCard.tinted(
-                            color: AppColors.orangeTint,
-                            borderColor: AppColors.orangeBorder,
+                            color: AppColors.creditTint,
+                            borderColor: AppColors.creditBorder,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 14,
@@ -248,7 +248,7 @@ class DashboardScreen extends StatelessWidget {
                                         style: AppText.style(
                                           FontWeight.w700,
                                           12,
-                                          AppColors.accentOrange,
+                                          AppColors.credit,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -257,7 +257,7 @@ class DashboardScreen extends StatelessWidget {
                                         style: AppText.style(
                                           FontWeight.w800,
                                           18,
-                                          AppColors.accentOrange,
+                                          AppColors.credit,
                                         ),
                                       ),
                                     ],
@@ -268,7 +268,7 @@ class DashboardScreen extends StatelessWidget {
                                   style: AppText.style(
                                     FontWeight.w600,
                                     12,
-                                    AppColors.accentOrange,
+                                    AppColors.credit,
                                   ),
                                 ),
                               ],
@@ -298,12 +298,8 @@ class _AppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(
-            child: ScreenTitle(
-              'ProsperFlow',
-              style: AppText.style(FontWeight.w800, 18, AppColors.textPrimary),
-              overflow: TextOverflow.ellipsis,
-            ),
+          const Flexible(
+            child: BrandLockup.horizontal(fontSize: 18, isHeader: true),
           ),
           Row(
             children: [
