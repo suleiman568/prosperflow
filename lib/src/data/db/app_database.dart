@@ -1,10 +1,36 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models.dart';
 
 part 'app_database.g.dart';
+
+/// Fixed namespace for reconstructed opening events. Any constant UUID does;
+/// this one exists so the derivation below cannot collide with some other
+/// name-based scheme later.
+const _openingNamespace = 'f789bb90-334b-43ff-b37c-d99a2da229f7';
+
+/// The id of the opening event reconstructed for [productId] during the v6
+/// upgrade.
+///
+/// It has to be a real UUID and it has to be deterministic, and the two
+/// requirements pull in opposite directions.
+///
+/// A real UUID because the server's `stock_adjustments.id` column is `uuid`:
+/// a readable id like `opening-<product>` is rejected by Postgres outright,
+/// and a rejected row sits at the head of the outbox forever — the flush stops
+/// on the first failure, so every later push and every pull queues up behind
+/// one row that can never succeed.
+///
+/// Deterministic because a trader may upgrade two phones. Both hold the same
+/// ledger and both reconstruct the same opening, so a random id on each would
+/// give the server two events where there was one movement, and their stock
+/// would double. A v5 name-based UUID comes out the same on every device that
+/// derives it from the same product, so the second one upserts onto the first.
+String openingAdjustmentId(String productId) =>
+    const Uuid().v5(_openingNamespace, productId);
 
 /// Client-side mirror of the Backend Plan schema (§3). All row IDs are
 /// client-generated UUIDs; `synced` drives the "waiting to sync" UI and the
@@ -184,9 +210,10 @@ class AppDatabase extends _$AppDatabase {
             variables: [Variable<String>(product.id)],
           ).getSingle().then((row) => row.read<int>('n'));
           final opening = product.stock + sold;
+          final openingId = openingAdjustmentId(product.id);
           await into(stockAdjustments).insert(
             StockAdjustmentsCompanion.insert(
-              id: 'opening-${product.id}',
+              id: openingId,
               productId: product.id,
               delta: opening,
               reason: 'opening',
@@ -202,10 +229,10 @@ class AppDatabase extends _$AppDatabase {
           await into(outbox).insert(
             OutboxCompanion.insert(
               entity: 'stock_adjustment',
-              entityId: 'opening-${product.id}',
+              entityId: openingId,
               op: 'create',
               payloadJson: jsonEncode({
-                'id': 'opening-${product.id}',
+                'id': openingId,
                 'product_id': product.id,
                 'delta': opening,
                 'reason': 'opening',

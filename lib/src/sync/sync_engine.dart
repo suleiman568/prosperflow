@@ -278,7 +278,8 @@ class DriftSyncEngine implements SyncEngine {
     return PullCursor(DateTime.parse(at), id);
   }
 
-  static String _cursorKey(String entity) => 'cursor:$entity';
+  static String _cursorKey(String entity) =>
+      '${DriftStore.cursorKeyPrefix}$entity';
 
   Future<String?> _readCursor(String entity) async {
     final row = await (_db.select(

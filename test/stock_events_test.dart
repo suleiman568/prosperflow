@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'package:uuid/uuid.dart';
 
 import 'package:prosperflow/src/data/db/app_database.dart';
 import 'package:prosperflow/src/data/drift_store.dart';
@@ -247,6 +248,14 @@ void main() {
     expect(openingPush.payloadJson, contains('"delta":17'));
     expect(opening.single.synced, isFalse);
 
+    // And it has to be something the server will take. stock_adjustments.id
+    // is a uuid column, so a readable id is rejected outright — and because
+    // the flush stops at the first failure, that one row would block every
+    // later push and every pull behind it, on the very device that just
+    // upgraded.
+    expect(Uuid.isValidUUID(fromString: opening.single.id), isTrue);
+    expect(openingPush.entityId, opening.single.id);
+
     // The derived value has to equal what the trader already sees, or the
     // upgrade silently rewrites their books.
     await upgradedStore.recomputeStock('p1');
@@ -254,6 +263,20 @@ void main() {
       upgraded.products,
     )..where((p) => p.id.equals('p1'))).getSingle();
     expect(row.stock, 12);
+  });
+
+  test('two phones upgrading reconstruct the same opening, not two', () {
+    // Both hold the same v5 ledger and both work out the same movement, so
+    // the ids have to agree. Random ones would give the server two events for
+    // one opening and double the trader's stock; matching ones upsert.
+    expect(
+      openingAdjustmentId('11111111-1111-1111-1111-111111111111'),
+      openingAdjustmentId('11111111-1111-1111-1111-111111111111'),
+    );
+    expect(
+      openingAdjustmentId('11111111-1111-1111-1111-111111111111'),
+      isNot(openingAdjustmentId('22222222-2222-2222-2222-222222222222')),
+    );
   });
 }
 

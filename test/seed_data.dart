@@ -243,7 +243,7 @@ Future<void> seedDatabase(AppDatabase db) async {
     batch.insertAll(db.stockAdjustments, [
       for (final p in seed.products)
         StockAdjustmentsCompanion.insert(
-          id: 'opening-${p.id}',
+          id: openingAdjustmentId(p.id),
           productId: p.id,
           delta:
               p.stock +

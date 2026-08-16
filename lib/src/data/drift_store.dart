@@ -19,6 +19,11 @@ class DriftStore implements DataStore {
   /// Meta key holding the trader this database belongs to.
   static const traderKey = 'trader_id';
 
+  /// Prefix of the per-entity pull cursors the sync engine keeps in `meta`.
+  /// Named here rather than in the engine because binding a new trader has to
+  /// clear them, and the two must agree on what to look for.
+  static const cursorKeyPrefix = 'cursor:';
+
   /// Recomputes a product's stock from its events: everything put in, minus
   /// everything sold.
   ///
@@ -66,7 +71,17 @@ class DriftStore implements DataStore {
         await db.delete(db.credits).go();
         await db.delete(db.sales).go();
         await db.delete(db.expenses).go();
+        await db.delete(db.stockAdjustments).go();
         await db.delete(db.products).go();
+        // The pull cursors have to go with the data they describe. They say
+        // "this device has everything up to here", which was true of the
+        // previous trader's ledger and says nothing about this one's. Left in
+        // place, the first pull resumes from a watermark it never reached and
+        // skips every row the new trader wrote before it — on a stall that has
+        // been trading a while, that is most of their history, silently.
+        await (db.delete(
+          db.meta,
+        )..where((m) => m.key.like('$cursorKeyPrefix%'))).go();
       }
       await db
           .into(db.meta)
