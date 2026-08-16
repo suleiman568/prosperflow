@@ -20,6 +20,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/restoring_state.dart';
 import '../../widgets/sync_widgets.dart';
 
 /// Screen 5 — Expenses.
@@ -104,14 +105,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     body = const _LoadingList();
                   } else if (snapshot.data!.isEmpty) {
                     body = RefreshableViewport(
-                      child: EmptyState(
-                        icon: Icons.receipt_long_outlined,
-                        title: 'No expenses yet',
-                        message:
-                            'Track costs like transport, rent and '
-                            'stock here\nso your profit stays honest.',
-                        actionLabel: 'Add expense',
-                        onAction: _openAddExpense,
+                      child: EmptyUnlessRestoring(
+                        empty: EmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          title: 'No expenses yet',
+                          message:
+                              'Track costs like transport, rent and '
+                              'stock here\nso your profit stays honest.',
+                          actionLabel: 'Add expense',
+                          onAction: _openAddExpense,
+                        ),
                       ),
                     );
                   } else {

@@ -19,15 +19,25 @@ import 'data_store.dart';
 /// signing in on a new phone has neither. It is left running rather than
 /// awaited, because the screens stream from the database and fill in as rows
 /// land.
+///
+/// Whether that sync is a *restore* is settled first, and awaited, because the
+/// screens render as soon as this returns and an empty one has to know which
+/// of two opposite things to say. Pass [newAccount] on the sign-up path: an
+/// account created seconds ago has nothing on the server to wait for, and
+/// saying otherwise would leave a new trader watching for data that does not
+/// exist.
 Future<void> bindLocalDataToTrader(
   DataStore store,
   AuthService auth, {
   SyncEngine? sync,
+  bool newAccount = false,
 }) async {
   final traderId = auth.traderId;
   if (traderId == null) return;
   await store.bindToTrader(traderId);
-  if (sync != null) unawaited(sync.syncNow());
+  if (sync == null) return;
+  await sync.refreshRestoreState(nothingToRestore: newAccount);
+  unawaited(sync.syncNow());
 }
 
 /// Exposes the app's [DataStore], [AuthService], and [SyncEngine] to the

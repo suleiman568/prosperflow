@@ -17,6 +17,8 @@ class SyncState {
     required this.pendingSales,
     required this.pendingTotal,
     this.lastSyncAt,
+    this.restoring = false,
+    this.restoredRows = 0,
   });
 
   final bool online;
@@ -28,6 +30,24 @@ class SyncState {
   final int pendingTotal;
 
   final DateTime? lastSyncAt;
+
+  /// True while this device still owes the signed-in trader the first full
+  /// pull of their ledger.
+  ///
+  /// It is what separates the two reasons a screen can be empty. A trader on a
+  /// new phone has everything on the server and nothing here yet; a trader
+  /// who has genuinely not added anything looks identical. Telling the first
+  /// one "No products yet" invites them to type their products in again,
+  /// minting new ids for stock they already own and doubling the ledger the
+  /// restore is about to deliver.
+  final bool restoring;
+
+  /// Rows brought down so far in the restore currently running.
+  ///
+  /// Deliberately a count of what has arrived rather than a percentage: the
+  /// server never says how many rows are coming, so a proportion would have to
+  /// be invented. A number that climbs is honest and still shows progress.
+  final int restoredRows;
 
   bool get hasPending => pendingTotal > 0;
 }
@@ -57,6 +77,18 @@ abstract class SyncEngine {
 
   /// Manual sync (the ↻ icon / sync row). Safe to call anytime.
   Future<SyncResult> syncNow();
+
+  /// Re-reads whether this device still owes the signed-in trader a restore,
+  /// and publishes it before anything renders.
+  ///
+  /// Awaited on every path into the signed-in app, rather than left to resolve
+  /// on its own, because the answer decides which of two opposite messages an
+  /// empty screen shows. Resolving it a frame late would put "No products yet"
+  /// in front of a trader whose products are still on their way.
+  ///
+  /// Pass [nothingToRestore] when the account was just created, which is the
+  /// one case where an empty ledger is known to be the whole truth.
+  Future<void> refreshRestoreState({bool nothingToRestore = false});
 
   void dispose();
 }
@@ -115,6 +147,8 @@ class DriftSyncEngine implements SyncEngine {
   int _pendingSales = 0;
   int _pendingTotal = 0;
   bool _flushing = false;
+  bool _restoring = false;
+  int _restoredRows = 0;
 
   /// A sync asked for while one was already running. Held rather than
   /// dropped, and run once the current one lets go.
@@ -132,6 +166,8 @@ class DriftSyncEngine implements SyncEngine {
     pendingSales: _pendingSales,
     pendingTotal: _pendingTotal,
     lastSyncAt: _lastSyncAt,
+    restoring: _restoring,
+    restoredRows: _restoredRows,
   );
 
   @override
@@ -272,6 +308,43 @@ class DriftSyncEngine implements SyncEngine {
     }
   }
 
+  @override
+  Future<void> refreshRestoreState({bool nothingToRestore = false}) async {
+    final trader = await DriftStore.ownerOf(_db);
+    if (trader == null) {
+      // Signed out: there is no ledger to be waiting for.
+      _restoring = false;
+      _restoredRows = 0;
+      _emit();
+      return;
+    }
+    if (nothingToRestore) await _markRestored(trader);
+    _restoring = !await _hasRestored(trader);
+    _restoredRows = 0;
+    _emit();
+  }
+
+  static String _restoreKey(String trader) =>
+      '${DriftStore.restoreKeyPrefix}$trader';
+
+  Future<bool> _hasRestored(String trader) async {
+    final row = await (_db.select(
+      _db.meta,
+    )..where((m) => m.key.equals(_restoreKey(trader)))).getSingleOrNull();
+    return row != null;
+  }
+
+  Future<void> _markRestored(String trader) async {
+    await _db.transaction(() async {
+      await _assertStillOwnedBy(trader);
+      await _db
+          .into(_db.meta)
+          .insertOnConflictUpdate(
+            MetaCompanion.insert(key: _restoreKey(trader), value: 'yes'),
+          );
+    });
+  }
+
   /// Guards a write against the phone having changed hands. Call it inside
   /// the transaction that does the writing, so the check and the write commit
   /// together — checking outside leaves the gap the race needs.
@@ -303,6 +376,13 @@ class DriftSyncEngine implements SyncEngine {
 
           await _ingest.apply(entity, page.rows, trader: trader);
           total += page.rows.length;
+          if (_restoring) {
+            // Published per page rather than at the end, so a trader watching
+            // a year of history come down sees the count climb instead of a
+            // still screen they cannot tell from a stuck one.
+            _restoredRows = total;
+            _emit();
+          }
 
           // Record where the page ended before fetching the next one, so an
           // interrupted first sync resumes instead of starting over.
@@ -313,6 +393,13 @@ class DriftSyncEngine implements SyncEngine {
           cursor = page.cursor;
         }
       }
+      // Only once every entity is through. A pull that dies half way has
+      // brought down products but not the sales against them, and calling that
+      // restored would swap "your data is coming" for "you have no sales" on a
+      // ledger that has them — so the marker waits, and the retry finishes the
+      // job.
+      await _markRestored(trader);
+      _restoring = false;
     } finally {
       // Settled even when the pull died part-way, and settled from the events
       // rather than from a list of what this run happened to touch. Cursors
@@ -422,6 +509,9 @@ class NoopSyncEngine implements SyncEngine {
 
   @override
   Future<SyncResult> syncNow() async => const SyncResult(pushedSales: 0);
+
+  @override
+  Future<void> refreshRestoreState({bool nothingToRestore = false}) async {}
 
   @override
   void dispose() {}

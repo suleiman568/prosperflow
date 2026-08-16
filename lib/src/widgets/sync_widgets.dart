@@ -40,9 +40,23 @@ class SyncStatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pendingOrOffline = !state.online || state.hasPending;
+    // Green is reserved for "your work is safe on the server". A restore in
+    // flight has not earned it yet, so it takes the calm gray too.
+    final pendingOrOffline =
+        !state.online || state.hasPending || state.restoring;
     final String text;
-    if (state.hasPending) {
+    if (state.restoring) {
+      // Ahead of everything else: until the ledger is here, what is queued or
+      // when it last backed up is not the question the trader is asking.
+      if (!state.online) {
+        text = '📴 Offline — your data comes back when you are';
+      } else {
+        final n = state.restoredRows;
+        text = n > 0
+            ? '⏳ Restoring your data — ${countNoun(n, 'item')} so far'
+            : '⏳ Restoring your data…';
+      }
+    } else if (state.hasPending) {
       final n = state.pendingSales;
       text = n > 0
           ? '🕓 ${countNoun(n, 'sale')} waiting to sync'
@@ -87,11 +101,10 @@ class SyncStatusRow extends StatelessWidget {
 /// action (and toasts) as the header ↻ button, with the platform's standard
 /// refresh spinner in the app's green.
 ///
-/// Note on scope: a manual sync *backs up* pending local changes (flushes the
-/// push-only outbox to Supabase). It does not yet pull remote changes down —
-/// two-way sync (server → device) is a separate, larger piece of work
-/// (per-table watermarks, conflict resolution, local upsert) tracked outside
-/// this widget. The gesture is deliberately framed as "sync/back up now".
+/// A manual sync pushes pending local changes and then pulls down whatever
+/// has changed elsewhere, so on a phone waiting to be restored this gesture is
+/// also what fetches the ledger. The wording stays "sync/back up now" because
+/// backing up is what a trader is usually reaching for.
 class PullToSync extends StatelessWidget {
   const PullToSync({super.key, required this.child, this.onRefresh});
 

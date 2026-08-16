@@ -17,6 +17,7 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/restoring_state.dart';
 import '../../widgets/sync_widgets.dart';
 
 /// Screen 7 — Outstanding Credits.
@@ -109,7 +110,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
                   } else if (snapshot.data == null) {
                     body = const _LoadingList();
                   } else if (snapshot.data!.isEmpty) {
-                    body = const RefreshableViewport(child: _EmptyState());
+                    body = const RefreshableViewport(
+                      child: EmptyUnlessRestoring(empty: _EmptyState()),
+                    );
                   } else {
                     final credits = snapshot.data!;
                     final total = credits.fold(0, (sum, c) => sum + c.amount);

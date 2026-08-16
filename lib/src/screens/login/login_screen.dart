@@ -232,7 +232,7 @@ class _CreateAccountSheetState extends State<_CreateAccountSheet> {
     );
     if (!mounted) return;
     if (error == null) {
-      await bindLocalDataToTrader(store, auth, sync: sync);
+      await bindLocalDataToTrader(store, auth, sync: sync, newAccount: true);
       if (!mounted) return;
     }
     setState(() => _busy = false);
