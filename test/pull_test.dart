@@ -286,6 +286,74 @@ void main() {
     });
   });
 
+  group('a pulled product keeps its stock', () {
+    // Asserted on the ingest contract rather than through a sync, because the
+    // rewind window usually re-pulls a nearby adjustment and settles the
+    // product by luck. A product whose last stock event is far behind the
+    // cursor gets no such rescue.
+    test('ingesting a product marks it for settlement', () async {
+      final device = Device(server);
+      addTearDown(device.dispose);
+      final ingest = PullIngest(device.db, device.store);
+
+      final touched = await ingest.apply('product', [
+        {
+          'id': 'p1',
+          'name': 'Palm Oil',
+          'unit': 'bottles',
+          'buy_price': 6800,
+          'sell_price': 9200,
+          'low_stock_threshold': 10,
+          'updated_at': DateTime.utc(2026).toIso8601String(),
+          'deleted': false,
+        },
+      ]);
+
+      // The upsert cannot carry a stock value — it is derived, and the wire
+      // has none — so the row lands at zero and must be settled afterwards.
+      expect(touched, contains('p1'));
+    });
+
+    test('an edit with no stock event still settles the cache', () async {
+      final first = Device(server);
+      addTearDown(first.dispose);
+      await first.store.addProduct(
+        name: 'Palm Oil',
+        unit: 'bottles',
+        stock: 42,
+        buyPrice: 6800,
+        sellPrice: 9200,
+      );
+      await first.engine.syncNow();
+
+      final second = Device(server);
+      addTearDown(second.dispose);
+      await second.engine.syncNow();
+      expect((await second.products()).single.stock, 42);
+
+      // Another device renames it. Nothing about stock changed, so the pull
+      // carries no sale and no adjustment — and the wire has never carried a
+      // stock value for the upsert to restore.
+      final productId = (await second.products()).single.id;
+      server.put('product', {
+        'id': productId,
+        'name': 'Palm Oil (25L)',
+        'unit': 'bottles',
+        'buy_price': 6800,
+        'sell_price': 9200,
+        'low_stock_threshold': 10,
+        'updated_at': DateTime.utc(2027).toIso8601String(),
+        'deleted': false,
+      });
+
+      await second.engine.syncNow();
+
+      final after = (await second.products()).single;
+      expect(after.name, 'Palm Oil (25L)');
+      expect(after.stock, 42, reason: 'the rename must not zero the cache');
+    });
+  });
+
   group('local work is protected', () {
     test('a pull does not overwrite something not yet pushed', () async {
       final device = Device(server);

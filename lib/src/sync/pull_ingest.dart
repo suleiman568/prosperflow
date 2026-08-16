@@ -35,6 +35,12 @@ class PullIngest {
         switch (entity) {
           case 'product':
             await _product(row);
+            // The upsert cannot carry a stock value — it is derived, and the
+            // wire has none — so the row lands with a placeholder. Without
+            // settling it here, pulling an unrelated edit like a rename would
+            // leave the cache reading zero until some later sale happened to
+            // recompute it.
+            touchedProducts.add(row['id'] as String);
           case 'sale':
             await _sale(row);
             touchedProducts.add(row['product_id'] as String);
@@ -81,8 +87,8 @@ class PullIngest {
             id: id,
             name: row['name'] as String,
             unit: row['unit'] as String,
-            // Stock is derived locally and is not carried over the wire; the
-            // value here is a placeholder until settleStock runs.
+            // Derived locally and absent from the wire; settleStock replaces
+            // this placeholder before anything reads it.
             stock: 0,
             buyPrice: row['buy_price'] as int,
             sellPrice: row['sell_price'] as int,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../models.dart';
@@ -181,14 +183,35 @@ class AppDatabase extends _$AppDatabase {
             'WHERE product_id = ?',
             variables: [Variable<String>(product.id)],
           ).getSingle().then((row) => row.read<int>('n'));
+          final opening = product.stock + sold;
           await into(stockAdjustments).insert(
             StockAdjustmentsCompanion.insert(
               id: 'opening-${product.id}',
               productId: product.id,
-              delta: product.stock + sold,
+              delta: opening,
               reason: 'opening',
               createdAt: product.updatedAt,
-              synced: const Value(true),
+            ),
+          );
+          // Queued, not just written. The server has no adjustments for
+          // products that predate this table, and only this device can work
+          // out what they were — it is the one holding the total the
+          // reconstruction is derived from. Left local, another device would
+          // pull these products and their sales with no opening to offset
+          // them, and derive every stock level as zero.
+          await into(outbox).insert(
+            OutboxCompanion.insert(
+              entity: 'stock_adjustment',
+              entityId: 'opening-${product.id}',
+              op: 'create',
+              payloadJson: jsonEncode({
+                'id': 'opening-${product.id}',
+                'product_id': product.id,
+                'delta': opening,
+                'reason': 'opening',
+                'created_at': product.updatedAt.toIso8601String(),
+              }),
+              createdAt: product.updatedAt,
             ),
           );
         }

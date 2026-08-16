@@ -235,6 +235,18 @@ void main() {
     final opening = await upgraded.select(upgraded.stockAdjustments).get();
     expect(opening.single.delta, 17, reason: '12 left + 5 sold');
 
+    // The reconstruction has to reach the server. Only this device can work it
+    // out — it holds the total it is derived from — so if it stays local,
+    // another device pulls these products and their sales with no opening to
+    // offset them and derives every stock level as zero.
+    final queued = await upgraded.select(upgraded.outbox).get();
+    final openingPush = queued.singleWhere(
+      (r) => r.entity == 'stock_adjustment',
+    );
+    expect(openingPush.op, 'create');
+    expect(openingPush.payloadJson, contains('"delta":17'));
+    expect(opening.single.synced, isFalse);
+
     // The derived value has to equal what the trader already sees, or the
     // upgrade silently rewrites their books.
     await upgradedStore.recomputeStock('p1');
