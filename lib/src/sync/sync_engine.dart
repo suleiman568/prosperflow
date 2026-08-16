@@ -5,7 +5,9 @@ import 'package:drift/drift.dart';
 
 import '../data/db/app_database.dart';
 import '../utils/streams.dart';
+import '../data/drift_store.dart';
 import 'sync_backend.dart';
+import 'pull_ingest.dart';
 
 /// What the sync UI needs to render the design's offline states (§6):
 /// the offline pill, the "waiting to sync" row, and the backup toasts.
@@ -31,9 +33,18 @@ class SyncState {
 }
 
 class SyncResult {
-  const SyncResult({required this.pushedSales, this.failed = false});
+  const SyncResult({
+    required this.pushedSales,
+    this.pulledRows = 0,
+    this.failed = false,
+  });
 
   final int pushedSales;
+
+  /// Rows brought down from the server — non-zero on a fresh install or a
+  /// device that has been away, zero on a routine sync.
+  final int pulledRows;
+
   final bool failed;
 }
 
@@ -61,7 +72,9 @@ class DriftSyncEngine implements SyncEngine {
     required Stream<bool> connectivity,
     bool initiallyOnline = true,
     Duration writeDebounce = const Duration(seconds: 2),
-  }) : _online = initiallyOnline {
+    PullIngest? ingest,
+  }) : _online = initiallyOnline,
+       _ingest = ingest ?? PullIngest(_db, DriftStore(_db)) {
     _connectivitySub = connectivity.listen(_onConnectivity);
     _outboxSub = _db
         .customSelect('SELECT 1', readsFrom: {_db.outbox})
@@ -71,9 +84,31 @@ class DriftSyncEngine implements SyncEngine {
 
   static const _batchSize = 100;
   static const _maxBackoff = Duration(minutes: 10);
+  static const _pullPageSize = 200;
+
+  /// Entities are pulled in this order so a row never lands before what it
+  /// refers to: products before the sales and adjustments that point at them,
+  /// sales before the credits opened against them.
+  static const _pullOrder = [
+    'product',
+    'stock_adjustment',
+    'sale',
+    'expense',
+    'credit',
+  ];
+
+  /// How far each pull rewinds before resuming.
+  ///
+  /// A watermark is stamped when a transaction starts, not when it commits, so
+  /// a slow write can land behind a cursor that has already passed it. Without
+  /// re-covering a window those rows would never be seen. Ingest upserts on
+  /// client-generated keys, so the repeated rows cost a write and change
+  /// nothing.
+  static const _pullOverlap = Duration(minutes: 2);
 
   final AppDatabase _db;
   final SyncBackend _backend;
+  final PullIngest _ingest;
 
   bool _online;
   DateTime? _lastSyncAt;
@@ -176,9 +211,14 @@ class DriftSyncEngine implements SyncEngine {
           });
         }
       }
+      // Pull after pushing, never before: local work is the trader's most
+      // recent intent, and pushing it first means the rows coming back already
+      // reflect it instead of contradicting it.
+      final pulledRows = await _pull();
+
       _lastSyncAt = DateTime.now();
       _resetBackoff();
-      return SyncResult(pushedSales: pushedSales);
+      return SyncResult(pushedSales: pushedSales, pulledRows: pulledRows);
     } catch (_) {
       _scheduleRetry();
       return SyncResult(pushedSales: pushedSales, failed: true);
@@ -186,6 +226,73 @@ class DriftSyncEngine implements SyncEngine {
       _flushing = false;
       await _refreshPending();
     }
+  }
+
+  /// Brings down everything changed since this device last looked.
+  ///
+  /// A fresh install has no cursor, so it starts at the beginning and pages
+  /// through the trader's whole history — the case where signing in on a new
+  /// phone showed an empty ledger even though the data was on the server.
+  Future<int> _pull() async {
+    var total = 0;
+    final touchedProducts = <String>{};
+
+    for (final entity in _pullOrder) {
+      var cursor = PullCursor.decode(
+        await _readCursor(entity),
+      )?.rewound(_pullOverlap);
+
+      while (true) {
+        final page = await _backend.fetchSince(
+          entity,
+          cursor,
+          limit: _pullPageSize,
+        );
+        if (page.isEmpty) break;
+
+        touchedProducts.addAll(await _ingest.apply(entity, page.rows));
+        total += page.rows.length;
+
+        // Record where the page ended before fetching the next one, so an
+        // interrupted first sync resumes instead of starting over.
+        final reached = _watermarkOf(entity, page.rows.last);
+        if (reached != null) await _writeCursor(entity, reached);
+
+        if (page.cursor == null) break;
+        cursor = page.cursor;
+      }
+    }
+
+    // Stock derives from pulled sales and adjustments, so it settles once the
+    // events are all in rather than part-way through.
+    await _ingest.settleStock(touchedProducts);
+    return total;
+  }
+
+  PullCursor? _watermarkOf(String entity, Map<String, dynamic> row) {
+    final at = row[SupabaseSyncBackend.watermarkColumn];
+    if (at is! String) return null;
+    final pk = entity == 'credit' ? 'sale_id' : 'id';
+    final id = row[pk];
+    if (id is! String) return null;
+    return PullCursor(DateTime.parse(at), id);
+  }
+
+  static String _cursorKey(String entity) => 'cursor:$entity';
+
+  Future<String?> _readCursor(String entity) async {
+    final row = await (_db.select(
+      _db.meta,
+    )..where((m) => m.key.equals(_cursorKey(entity)))).getSingleOrNull();
+    return row?.value;
+  }
+
+  Future<void> _writeCursor(String entity, PullCursor cursor) async {
+    await _db
+        .into(_db.meta)
+        .insertOnConflictUpdate(
+          MetaCompanion.insert(key: _cursorKey(entity), value: cursor.encode()),
+        );
   }
 
   Future<void> _markSynced(String entity, String entityId) async {

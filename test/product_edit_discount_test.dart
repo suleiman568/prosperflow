@@ -74,6 +74,13 @@ class _RecordingBackend implements SyncBackend {
   ) async {
     applied.add((entity, op, payload));
   }
+
+  @override
+  Future<PullPage> fetchSince(
+    String entity,
+    PullCursor? cursor, {
+    int limit = 200,
+  }) async => const PullPage(rows: [], cursor: null);
 }
 
 void main() {

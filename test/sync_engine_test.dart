@@ -13,6 +13,10 @@ import 'seed_data.dart';
 
 class RecordingBackend implements SyncBackend {
   final applied = <(String, String, Map<String, dynamic>)>[];
+
+  /// Rows this fake server will hand back on a pull, by entity.
+  final remote = <String, List<Map<String, dynamic>>>{};
+
   bool failNext = false;
 
   @override
@@ -30,6 +34,13 @@ class RecordingBackend implements SyncBackend {
     }
     applied.add((entity, op, payload));
   }
+
+  @override
+  Future<PullPage> fetchSince(
+    String entity,
+    PullCursor? cursor, {
+    int limit = 200,
+  }) async => PullPage(rows: List.of(remote[entity] ?? const []), cursor: null);
 }
 
 void main() {

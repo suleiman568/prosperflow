@@ -47,6 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _busy = true);
     final auth = AppScope.authOf(context);
     final store = AppScope.of(context);
+    final sync = AppScope.syncOf(context);
     final navigator = Navigator.of(context);
     final error = await auth.signIn(email: email, password: password);
     if (!mounted) return;
@@ -57,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     // Claim the database before the Dashboard reads it: if the last trader on
     // this phone was someone else, their ledger is cleared here.
-    await bindLocalDataToTrader(store, auth);
+    await bindLocalDataToTrader(store, auth, sync: sync);
     if (!mounted) return;
     setState(() => _busy = false);
     navigator.pushReplacementNamed(DashboardScreen.route);
@@ -222,6 +223,7 @@ class _CreateAccountSheetState extends State<_CreateAccountSheet> {
     setState(() => _busy = true);
     final auth = AppScope.authOf(context);
     final store = AppScope.of(context);
+    final sync = AppScope.syncOf(context);
     final navigator = Navigator.of(context);
     final error = await auth.signUp(
       name: name,
@@ -230,7 +232,7 @@ class _CreateAccountSheetState extends State<_CreateAccountSheet> {
     );
     if (!mounted) return;
     if (error == null) {
-      await bindLocalDataToTrader(store, auth);
+      await bindLocalDataToTrader(store, auth, sync: sync);
       if (!mounted) return;
     }
     setState(() => _busy = false);

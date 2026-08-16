@@ -130,6 +130,112 @@ void main() {
     });
   });
 
+  group('pull queries', () {
+    test('an opening pull filters on nothing and orders on the pair', () async {
+      final backend = await backendReturning(jsonEncode([]));
+
+      await backend.fetchSince('product', null, limit: 50);
+
+      final query = Uri.decodeFull(requests.single.url.query);
+      expect(query, isNot(contains('server_updated_at.gt')));
+      // The primary key is in the ordering, not just the watermark: rows
+      // written by one transaction share a watermark, and a page boundary
+      // inside a tied group would otherwise skip the rest of it.
+      expect(
+        query,
+        matches(RegExp(r'order=server_updated_at\.asc[^,]*,id\.asc')),
+      );
+      expect(query, contains('limit=50'));
+    });
+
+    test('resuming asks for the rest of the tied group too', () async {
+      final backend = await backendReturning(jsonEncode([]));
+      final at = DateTime.utc(2026, 3, 1);
+
+      await backend.fetchSince('product', PullCursor(at, 'p1'));
+
+      final query = Uri.decodeFull(requests.single.url.query);
+      // Strictly later rows, OR the same watermark with a later key.
+      expect(query, contains('server_updated_at.gt.${at.toIso8601String()}'));
+      expect(query, contains('server_updated_at.eq.${at.toIso8601String()}'));
+      expect(query, contains('id.gt.p1'));
+    });
+
+    test('a rewound cursor re-covers its window inclusively', () async {
+      final backend = await backendReturning(jsonEncode([]));
+      final at = DateTime.utc(2026, 3, 1);
+
+      // lastId null means "start here", not "resume after a row" — a strict
+      // greater-than would step over the window it is meant to re-cover.
+      await backend.fetchSince('sale', PullCursor(at, null));
+
+      final query = Uri.decodeFull(requests.single.url.query);
+      expect(query, contains('server_updated_at=gte.${at.toIso8601String()}'));
+    });
+
+    test('credits page on sale_id', () async {
+      final backend = await backendReturning(jsonEncode([]));
+
+      await backend.fetchSince('credit', PullCursor(DateTime.utc(2026), 's1'));
+
+      final query = Uri.decodeFull(requests.single.url.query);
+      expect(query, contains('sale_id.gt.s1'));
+      expect(
+        query,
+        matches(RegExp(r'order=server_updated_at\.asc[^,]*,sale_id\.asc')),
+      );
+    });
+
+    test('a short page means caught up, a full one means more', () async {
+      Map<String, dynamic> row(String id, String at) => {
+        'id': id,
+        'server_updated_at': at,
+      };
+
+      final short = await backendReturning(
+        jsonEncode([row('p1', '2026-03-01T00:00:00.000Z')]),
+      );
+      expect(
+        (await short.fetchSince('product', null, limit: 2)).cursor,
+        isNull,
+      );
+
+      final full = await backendReturning(
+        jsonEncode([
+          row('p1', '2026-03-01T00:00:00.000Z'),
+          row('p2', '2026-03-01T00:00:00.000Z'),
+        ]),
+      );
+      final page = await full.fetchSince('product', null, limit: 2);
+      expect(page.cursor, isNotNull);
+      // Resumes from the last row of the page, keeping its key so the tied
+      // group continues rather than restarting.
+      expect(page.cursor!.lastId, 'p2');
+    });
+  });
+
+  group('PullCursor', () {
+    test('survives a round trip through storage', () {
+      final cursor = PullCursor(DateTime.utc(2026, 3, 1, 12, 30), 'p1');
+      final restored = PullCursor.decode(cursor.encode())!;
+      expect(restored.watermark, cursor.watermark);
+      expect(restored.lastId, 'p1');
+    });
+
+    test('rewinding drops the key so the window is re-covered', () {
+      final cursor = PullCursor(DateTime.utc(2026, 3, 1, 12, 30), 'p1');
+      final rewound = cursor.rewound(const Duration(minutes: 2));
+      expect(rewound.watermark, DateTime.utc(2026, 3, 1, 12, 28));
+      expect(rewound.lastId, isNull);
+    });
+
+    test('unreadable stored values start from the beginning', () {
+      expect(PullCursor.decode(null), isNull);
+      expect(PullCursor.decode(''), isNull);
+      expect(PullCursor.decode('not-a-date|p1'), isNull);
+    });
+  });
+
   group('create ops', () {
     test('creates upsert so a replayed push cannot double-count', () async {
       final backend = await backendReturning(
