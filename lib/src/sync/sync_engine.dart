@@ -150,6 +150,17 @@ class DriftSyncEngine implements SyncEngine {
   bool _restoring = false;
   int _restoredRows = 0;
 
+  /// Whose restore [_restoring] and [_restoredRows] are describing.
+  ///
+  /// The engine is built once at startup and outlives any session, so a pull
+  /// still unwinding for the trader who just handed the phone over must not
+  /// write its result into the state the incoming trader's screens are reading
+  /// — "finished" said about the wrong ledger is exactly the empty state this
+  /// change exists to suppress. Every durable write here is already guarded by
+  /// [_assertStillOwnedBy] inside its transaction; this is the same discipline
+  /// for the copy held in memory, which had none.
+  String? _restoreOwner;
+
   /// A sync asked for while one was already running. Held rather than
   /// dropped, and run once the current one lets go.
   bool _resyncRequested = false;
@@ -313,12 +324,14 @@ class DriftSyncEngine implements SyncEngine {
     final trader = await DriftStore.ownerOf(_db);
     if (trader == null) {
       // Signed out: there is no ledger to be waiting for.
+      _restoreOwner = null;
       _restoring = false;
       _restoredRows = 0;
       _emit();
       return;
     }
     if (nothingToRestore) await _markRestored(trader);
+    _restoreOwner = trader;
     _restoring = !await _hasRestored(trader);
     _restoredRows = 0;
     _emit();
@@ -376,7 +389,7 @@ class DriftSyncEngine implements SyncEngine {
 
           await _ingest.apply(entity, page.rows, trader: trader);
           total += page.rows.length;
-          if (_restoring) {
+          if (_restoring && _restoreOwner == trader) {
             // Published per page rather than at the end, so a trader watching
             // a year of history come down sees the count climb instead of a
             // still screen they cannot tell from a stuck one.
@@ -399,7 +412,12 @@ class DriftSyncEngine implements SyncEngine {
       // ledger that has them — so the marker waits, and the retry finishes the
       // job.
       await _markRestored(trader);
-      _restoring = false;
+      // Only if the screens are still showing this trader's restore. The
+      // durable marker is keyed by trader and so is safe to write regardless;
+      // the published flag is a single field, and clearing it for a ledger
+      // nobody is looking at any more would hand the incoming trader the
+      // ordinary empty state over data that has not arrived.
+      if (_restoreOwner == trader) _restoring = false;
     } finally {
       // Settled even when the pull died part-way, and settled from the events
       // rather than from a list of what this run happened to touch. Cursors

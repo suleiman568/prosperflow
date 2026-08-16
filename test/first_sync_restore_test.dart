@@ -25,6 +25,10 @@ class RestoreBackend implements SyncBackend {
   /// mid-restore.
   String? failOn;
 
+  /// Runs as a page is fetched, so a test can drop a sign-in into the middle
+  /// of a pull — the only place the ownership races live.
+  Future<void> Function(String entity)? onFetch;
+
   @override
   bool get canPush => true;
 
@@ -43,6 +47,7 @@ class RestoreBackend implements SyncBackend {
     int limit = 200,
   }) async {
     if (entity == failOn) throw Exception('connection lost');
+    await onFetch?.call(entity);
     final pages = remote[entity] ?? const [];
     // Cursors carry the page index, so paging works without the fake needing
     // to model watermarks — this test is about the restore flag, not paging.
@@ -226,6 +231,37 @@ void main() {
       final again = makeEngine();
       await again.refreshRestoreState();
       expect(again.state.restoring, isTrue);
+    });
+
+    test('one engine, phone changing hands mid-pull, still waiting', () async {
+      // The engine is built once at startup and outlives every session, so a
+      // handover happens *inside* a live engine rather than between two of
+      // them. Making a fresh one per trader — as the test above does, to check
+      // what survives a restart — would step around the case where a pull for
+      // the outgoing trader is still unwinding as the incoming one arrives.
+      backend.remote['product'] = [
+        [productRow('p1')],
+      ];
+      final sync = makeEngine();
+      await sync.refreshRestoreState();
+      await sync.syncNow();
+      expect(sync.state.restoring, isFalse);
+
+      // The phone changes hands part-way through trader-a's next pull.
+      backend.onFetch = (entity) async {
+        if (entity != 'sale') return;
+        backend.onFetch = null;
+        await store.bindToTrader('trader-b');
+        await sync.refreshRestoreState();
+      };
+
+      await sync.syncNow();
+
+      // trader-b is owed a restore and must keep being told so. The pull that
+      // was in flight belonged to somebody else's ledger and has no business
+      // reporting it finished.
+      expect(sync.state.restoring, isTrue);
+      expect(sync.state.restoredRows, 0);
     });
 
     test('progress is published while the rows are still coming', () async {
