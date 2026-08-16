@@ -49,6 +49,10 @@ void main() {
       db = AppDatabase(NativeDatabase.memory());
       store = DriftStore(db);
       await seedDatabase(db);
+      // Claim it, as every path into the signed-in app does. The engine
+      // attributes its writes to the owning trader and syncs nothing for a
+      // database nobody has claimed.
+      await store.bindToTrader('trader-a');
     });
 
     tearDown(() => db.close());

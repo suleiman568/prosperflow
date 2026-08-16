@@ -56,6 +56,10 @@ void main() {
     backend = RecordingBackend();
     connectivity = StreamController<bool>.broadcast();
     await seedDatabase(db);
+    // Claim the database, as every path into the signed-in app does. The
+    // engine attributes its writes to whoever owns it and syncs nothing for
+    // a database nobody has claimed.
+    await store.bindToTrader('trader-a');
   });
 
   tearDown(() async {

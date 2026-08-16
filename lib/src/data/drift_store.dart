@@ -24,6 +24,21 @@ class DriftStore implements DataStore {
   /// clear them, and the two must agree on what to look for.
   static const cursorKeyPrefix = 'cursor:';
 
+  /// The trader this database currently belongs to, or null while it is
+  /// unclaimed.
+  ///
+  /// Static, and taking the database, because the sync engine needs it as
+  /// much as the store does: every write the engine makes has to be
+  /// attributed to the trader it started under. Read it inside the same
+  /// transaction as the write it guards — checking first and writing after
+  /// leaves a gap for a sign-in to land in.
+  static Future<String?> ownerOf(AppDatabase db) async {
+    final row = await (db.select(
+      db.meta,
+    )..where((m) => m.key.equals(traderKey))).getSingleOrNull();
+    return row?.value;
+  }
+
   /// Recomputes a product's stock from its events: everything put in, minus
   /// everything sold.
   ///
@@ -56,10 +71,8 @@ class DriftStore implements DataStore {
 
   @override
   Future<void> bindToTrader(String traderId) async {
-    final owner = await (db.select(
-      db.meta,
-    )..where((m) => m.key.equals(traderKey))).getSingleOrNull();
-    if (owner?.value == traderId) return;
+    final owner = await ownerOf(db);
+    if (owner == traderId) return;
 
     await db.transaction(() async {
       if (owner != null) {

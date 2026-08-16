@@ -4,6 +4,16 @@ import '../data/db/app_database.dart';
 import '../data/drift_store.dart';
 import '../data/models.dart';
 
+/// Raised to abandon sync work whose trader is no longer the one it started
+/// under, because the phone changed hands part-way through.
+///
+/// Not a failure, and nothing to retry: the work belonged to a ledger this
+/// device no longer holds. The sign-in that caused it starts its own sync.
+class TraderChanged implements Exception {
+  @override
+  String toString() => 'TraderChanged: the database changed hands mid-sync';
+}
+
 /// Writes pulled rows into the local database.
 ///
 /// Deliberately not part of [DataStore]. Every method there appends to the
@@ -23,14 +33,23 @@ class PullIngest {
 
   /// Applies one page of [entity] rows. Returns the product ids whose stock
   /// needs re-deriving, since a pulled sale or adjustment changes it.
+  ///
+  /// [trader] is who the page was fetched as. It is re-checked inside the
+  /// write transaction, so a sign-in that lands mid-pull cannot leave the
+  /// outgoing trader's rows in the incoming one's ledger: either this
+  /// transaction commits first and the wipe clears it, or the wipe commits
+  /// first and this sees the new owner and abandons. Checking before opening
+  /// the transaction would leave exactly the gap that makes the race possible.
   Future<Set<String>> apply(
     String entity,
-    List<Map<String, dynamic>> rows,
-  ) async {
+    List<Map<String, dynamic>> rows, {
+    required String trader,
+  }) async {
     final touchedProducts = <String>{};
     if (rows.isEmpty) return touchedProducts;
 
     await db.transaction(() async {
+      if (await DriftStore.ownerOf(db) != trader) throw TraderChanged();
       for (final row in rows) {
         switch (entity) {
           case 'product':

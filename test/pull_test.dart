@@ -61,6 +61,11 @@ class FakeBackend implements SyncBackend {
   final FakeServer server;
   final pulls = <String>[];
 
+  /// Runs when a page is fetched, before it is handed back. Lets a test drop
+  /// something — a sign-in, a delay — into the middle of a sync, which is the
+  /// only place the interesting races live.
+  Future<void> Function()? onFetch;
+
   @override
   bool get canPush => true;
 
@@ -78,6 +83,7 @@ class FakeBackend implements SyncBackend {
     int limit = 200,
   }) async {
     pulls.add(entity);
+    await onFetch?.call();
     final key = server._keyOf(entity);
     var rows = server._ordered(entity);
 
@@ -108,10 +114,15 @@ class FakeBackend implements SyncBackend {
 }
 
 /// One trader's phone.
+///
+/// The database is claimed on construction, as it is on every path into the
+/// signed-in app. The engine attributes its writes to whoever owns the
+/// database, so an unclaimed one syncs nothing.
 class Device {
-  Device(this.server, {int pageSize = 200}) {
+  Device(this.server, {int pageSize = 200, this.trader = 'trader-a'}) {
     db = AppDatabase(NativeDatabase.memory());
     store = DriftStore(db);
+    claimed = store.bindToTrader(trader);
     backend = FakeBackend(server);
     connectivity = StreamController<bool>.broadcast();
     engine = DriftSyncEngine(
@@ -123,13 +134,24 @@ class Device {
   }
 
   final FakeServer server;
+  final String trader;
   late final AppDatabase db;
   late final DriftStore store;
   late final FakeBackend backend;
   late final StreamController<bool> connectivity;
   late final DriftSyncEngine engine;
 
+  /// Completes once the database has been claimed. Awaited by [sync] so the
+  /// tests need not think about it.
+  late final Future<void> claimed;
+
   Future<List<Product>> products() => store.watchProducts().first;
+
+  /// Claims the database if that has not finished, then syncs.
+  Future<SyncResult> sync() async {
+    await claimed;
+    return engine.syncNow();
+  }
 
   Future<void> dispose() async {
     engine.dispose();
@@ -162,7 +184,7 @@ void main() {
         method: PaymentMethod.cash,
         fulfilment: Fulfilment.walkIn,
       );
-      await first.engine.syncNow();
+      await first.sync();
 
       // A replacement phone: empty database, same account. This is the case
       // that used to show an empty ledger forever.
@@ -170,7 +192,7 @@ void main() {
       addTearDown(replacement.dispose);
       expect(await replacement.products(), isEmpty);
 
-      final result = await replacement.engine.syncNow();
+      final result = await replacement.sync();
 
       expect(result.pulledRows, greaterThan(0));
       final restored = await replacement.products();
@@ -193,14 +215,14 @@ void main() {
         buyPrice: 6800,
         sellPrice: 9200,
       );
-      await first.engine.syncNow();
+      await first.sync();
 
       final second = Device(server);
       addTearDown(second.dispose);
-      await second.engine.syncNow();
+      await second.sync();
       final afterFirst = await second.products();
 
-      final again = await second.engine.syncNow();
+      final again = await second.sync();
 
       // The overlap window re-covers a few rows on purpose; what matters is
       // that ingesting them again changes nothing.
@@ -223,8 +245,8 @@ void main() {
         buyPrice: 6800,
         sellPrice: 9200,
       );
-      await a.engine.syncNow();
-      await b.engine.syncNow();
+      await a.sync();
+      await b.sync();
       final productId = (await b.products()).single.id;
       expect((await b.products()).single.stock, 42);
 
@@ -245,9 +267,9 @@ void main() {
       expect((await b.products()).single.stock, 39);
 
       // Both sync, then both sync again so each sees the other's sale.
-      await a.engine.syncNow();
-      await b.engine.syncNow();
-      await a.engine.syncNow();
+      await a.sync();
+      await b.sync();
+      await a.sync();
 
       // 42 - 2 - 3. A pushed absolute total would have left 40 or 39 here,
       // depending on who wrote last, and one sale would be gone from the count.
@@ -279,7 +301,7 @@ void main() {
       );
       addTearDown(device.dispose);
 
-      await device.engine.syncNow();
+      await device.sync();
 
       final expenses = await device.db.select(device.db.expenses).get();
       expect(expenses, hasLength(4), reason: 'no row lost at the boundary');
@@ -295,6 +317,7 @@ void main() {
       final device = Device(server);
       addTearDown(device.dispose);
       final ingest = PullIngest(device.db, device.store);
+      await device.claimed;
 
       final touched = await ingest.apply('product', [
         {
@@ -307,7 +330,7 @@ void main() {
           'updated_at': DateTime.utc(2026).toIso8601String(),
           'deleted': false,
         },
-      ]);
+      ], trader: device.trader);
 
       // The upsert cannot carry a stock value — it is derived, and the wire
       // has none — so the row lands at zero and must be settled afterwards.
@@ -324,11 +347,11 @@ void main() {
         buyPrice: 6800,
         sellPrice: 9200,
       );
-      await first.engine.syncNow();
+      await first.sync();
 
       final second = Device(server);
       addTearDown(second.dispose);
-      await second.engine.syncNow();
+      await second.sync();
       expect((await second.products()).single.stock, 42);
 
       // Another device renames it. Nothing about stock changed, so the pull
@@ -346,7 +369,7 @@ void main() {
         'deleted': false,
       });
 
-      await second.engine.syncNow();
+      await second.sync();
 
       final after = (await second.products()).single;
       expect(after.name, 'Palm Oil (25L)');
@@ -367,7 +390,7 @@ void main() {
         sellPrice: 9200,
       );
       final productId = (await device.products()).single.id;
-      await device.engine.syncNow();
+      await device.sync();
 
       // An older copy is waiting on the server while the trader renames it
       // locally and has not pushed yet.
@@ -390,10 +413,103 @@ void main() {
         ),
       );
 
-      await device.engine.syncNow();
+      await device.sync();
 
       // The rename is the trader's most recent intent; the push settles it.
       expect((await device.products()).single.name, 'Renamed Locally');
+    });
+  });
+
+  /// The phone is shared, and the sync engine is built once at startup rather
+  /// than per session — so a sign-in can land in the middle of a sync that is
+  /// still writing. Everything the engine writes is attributed to the trader
+  /// it started as, and stops the moment the database belongs to someone else.
+  group('the phone changes hands mid-sync', () {
+    test('the outgoing trader rows do not land in the new ledger', () async {
+      // trader-a's ledger, already on the server.
+      final a = Device(server);
+      addTearDown(a.dispose);
+      await a.store.addProduct(
+        name: 'Palm Oil',
+        unit: 'bottles',
+        stock: 42,
+        buyPrice: 6800,
+        sellPrice: 9200,
+      );
+      await a.sync();
+
+      // The same phone starts a pull as trader-a, and trader-b signs in while
+      // the page is in flight — after it was fetched, before it is written.
+      final phone = Device(server);
+      addTearDown(phone.dispose);
+      await phone.claimed;
+      phone.backend.onFetch = () async {
+        phone.backend.onFetch = null;
+        await phone.store.bindToTrader('trader-b');
+      };
+
+      await phone.sync();
+
+      // trader-b is looking at this screen. None of trader-a's ledger may be
+      // on it, whatever was already in flight when they signed in.
+      expect(await phone.products(), isEmpty);
+      expect(await phone.db.select(phone.db.sales).get(), isEmpty);
+      expect(await phone.db.select(phone.db.stockAdjustments).get(), isEmpty);
+    });
+
+    test('the new trader sync is not swallowed by the running one', () async {
+      final device = Device(server);
+      addTearDown(device.dispose);
+      await device.claimed;
+
+      // Hold the first sync open, so the second is asked for while it runs.
+      final held = Completer<void>();
+      var first = true;
+      device.backend.onFetch = () async {
+        if (!first) return;
+        first = false;
+        await held.future;
+      };
+
+      final running = device.engine.syncNow();
+      await pumpEventQueue();
+
+      // This is the sign-in kick. Dropped, the trader taking the phone over
+      // sits on an empty ledger until some unrelated trigger fires.
+      await device.engine.syncNow();
+      held.complete();
+      await running;
+      await pumpEventQueue();
+
+      expect(
+        device.backend.pulls.where((e) => e == 'product'),
+        hasLength(greaterThan(1)),
+        reason: 'the deferred request should run once the first lets go',
+      );
+    });
+
+    test('cursors are keyed per trader, so one cannot become another', () async {
+      final device = Device(server);
+      addTearDown(device.dispose);
+      await device.store.addProduct(
+        name: 'Palm Oil',
+        unit: 'bottles',
+        stock: 5,
+        buyPrice: 6800,
+        sellPrice: 9200,
+      );
+      await device.sync();
+
+      // A cursor claims "this device holds everything up to here" about one
+      // ledger, so it is nonsense applied to another. Naming the trader in the
+      // key means a straggling write from a sync that is still unwinding lands
+      // somewhere the next trader never reads, rather than silently becoming
+      // their starting position and skipping their history.
+      final keys = (await device.db.select(device.db.meta).get())
+          .map((m) => m.key)
+          .where((k) => k.startsWith(DriftStore.cursorKeyPrefix));
+      expect(keys, isNotEmpty);
+      expect(keys.every((k) => k.contains(device.trader)), isTrue);
     });
   });
 
@@ -407,11 +523,11 @@ void main() {
       buyPrice: 6800,
       sellPrice: 9200,
     );
-    await first.engine.syncNow();
+    await first.sync();
 
     final second = Device(server);
     addTearDown(second.dispose);
-    await second.engine.syncNow();
+    await second.sync();
 
     // Ingest writes the tables directly rather than through DataStore, which
     // would queue every pulled row straight back to the server it came from.

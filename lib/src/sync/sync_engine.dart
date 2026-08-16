@@ -115,6 +115,10 @@ class DriftSyncEngine implements SyncEngine {
   int _pendingSales = 0;
   int _pendingTotal = 0;
   bool _flushing = false;
+
+  /// A sync asked for while one was already running. Held rather than
+  /// dropped, and run once the current one lets go.
+  bool _resyncRequested = false;
   Duration _backoff = const Duration(seconds: 30);
   Timer? _retryTimer;
   Timer? _debounceTimer;
@@ -182,13 +186,36 @@ class DriftSyncEngine implements SyncEngine {
 
   @override
   Future<SyncResult> syncNow() async {
-    await _refreshPending();
-    if (!_online || !_backend.canPush || _flushing) {
+    // Claimed synchronously, before the first await. Checking it after one
+    // would let two calls arriving in the same turn both get past the guard
+    // and run at once.
+    if (_flushing) {
+      // Remember the request instead of dropping it. A sign-in kicks a sync
+      // for the trader taking the phone over, and that kick arrives while the
+      // previous trader's sync is still unwinding — dropped, the new trader
+      // would sit on an empty ledger until some unrelated trigger fired,
+      // which is the very failure the pull exists to fix.
+      _resyncRequested = true;
       return const SyncResult(pushedSales: 0, failed: false);
     }
     _flushing = true;
+
     var pushedSales = 0;
     try {
+      await _refreshPending();
+      if (!_online || !_backend.canPush) {
+        return const SyncResult(pushedSales: 0, failed: false);
+      }
+
+      // Everything below is done on behalf of one trader and stops the moment
+      // the database belongs to somebody else. The engine outlives any single
+      // session — it is built once at startup — so a sign-in can land in the
+      // middle of a sync that is still writing.
+      final trader = await DriftStore.ownerOf(_db);
+      if (trader == null) {
+        return const SyncResult(pushedSales: 0, failed: false);
+      }
+
       while (true) {
         final rows =
             await (_db.select(_db.outbox)
@@ -197,6 +224,10 @@ class DriftSyncEngine implements SyncEngine {
                 .get();
         if (rows.isEmpty) break;
         for (final row in rows) {
+          // Pushing now would send the previous trader's queued work under the
+          // new session, where row-level security stamps it with the wrong
+          // owner on insert and refuses it on update.
+          await _assertStillOwnedBy(trader);
           await _backend.apply(
             row.entity,
             row.op,
@@ -204,6 +235,7 @@ class DriftSyncEngine implements SyncEngine {
           );
           if (row.entity == 'sale') pushedSales++;
           await _db.transaction(() async {
+            await _assertStillOwnedBy(trader);
             await (_db.delete(
               _db.outbox,
             )..where((o) => o.seq.equals(row.seq))).go();
@@ -214,18 +246,34 @@ class DriftSyncEngine implements SyncEngine {
       // Pull after pushing, never before: local work is the trader's most
       // recent intent, and pushing it first means the rows coming back already
       // reflect it instead of contradicting it.
-      final pulledRows = await _pull();
+      final pulledRows = await _pull(trader);
 
       _lastSyncAt = DateTime.now();
       _resetBackoff();
       return SyncResult(pushedSales: pushedSales, pulledRows: pulledRows);
+    } on TraderChanged {
+      // Abandoned, not failed. There is nothing here to retry — this work
+      // belonged to a ledger the device no longer holds — and no backoff to
+      // schedule, because the sign-in that took it over kicks its own sync.
+      return SyncResult(pushedSales: pushedSales, failed: false);
     } catch (_) {
       _scheduleRetry();
       return SyncResult(pushedSales: pushedSales, failed: true);
     } finally {
       _flushing = false;
       await _refreshPending();
+      if (_resyncRequested) {
+        _resyncRequested = false;
+        unawaited(syncNow());
+      }
     }
+  }
+
+  /// Guards a write against the phone having changed hands. Call it inside
+  /// the transaction that does the writing, so the check and the write commit
+  /// together — checking outside leaves the gap the race needs.
+  Future<void> _assertStillOwnedBy(String trader) async {
+    if (await DriftStore.ownerOf(_db) != trader) throw TraderChanged();
   }
 
   /// Brings down everything changed since this device last looked.
@@ -233,13 +281,13 @@ class DriftSyncEngine implements SyncEngine {
   /// A fresh install has no cursor, so it starts at the beginning and pages
   /// through the trader's whole history — the case where signing in on a new
   /// phone showed an empty ledger even though the data was on the server.
-  Future<int> _pull() async {
+  Future<int> _pull(String trader) async {
     var total = 0;
     final touchedProducts = <String>{};
 
     for (final entity in _pullOrder) {
       var cursor = PullCursor.decode(
-        await _readCursor(entity),
+        await _readCursor(entity, trader),
       )?.rewound(_pullOverlap);
 
       while (true) {
@@ -250,13 +298,15 @@ class DriftSyncEngine implements SyncEngine {
         );
         if (page.isEmpty) break;
 
-        touchedProducts.addAll(await _ingest.apply(entity, page.rows));
+        touchedProducts.addAll(
+          await _ingest.apply(entity, page.rows, trader: trader),
+        );
         total += page.rows.length;
 
         // Record where the page ended before fetching the next one, so an
         // interrupted first sync resumes instead of starting over.
         final reached = _watermarkOf(entity, page.rows.last);
-        if (reached != null) await _writeCursor(entity, reached);
+        if (reached != null) await _writeCursor(entity, reached, trader);
 
         if (page.cursor == null) break;
         cursor = page.cursor;
@@ -278,22 +328,40 @@ class DriftSyncEngine implements SyncEngine {
     return PullCursor(DateTime.parse(at), id);
   }
 
-  static String _cursorKey(String entity) =>
-      '${DriftStore.cursorKeyPrefix}$entity';
+  /// Cursors are keyed by trader as well as entity.
+  ///
+  /// A cursor is a claim about one ledger — "this device holds everything up
+  /// to here" — so it is meaningless applied to another. Naming the trader in
+  /// the key means a straggling write from the outgoing trader's pull lands
+  /// somewhere the incoming trader will never read, instead of quietly
+  /// becoming their starting position and skipping their history.
+  static String _cursorKey(String entity, String trader) =>
+      '${DriftStore.cursorKeyPrefix}$trader:$entity';
 
-  Future<String?> _readCursor(String entity) async {
-    final row = await (_db.select(
-      _db.meta,
-    )..where((m) => m.key.equals(_cursorKey(entity)))).getSingleOrNull();
+  Future<String?> _readCursor(String entity, String trader) async {
+    final row =
+        await (_db.select(_db.meta)
+              ..where((m) => m.key.equals(_cursorKey(entity, trader))))
+            .getSingleOrNull();
     return row?.value;
   }
 
-  Future<void> _writeCursor(String entity, PullCursor cursor) async {
-    await _db
-        .into(_db.meta)
-        .insertOnConflictUpdate(
-          MetaCompanion.insert(key: _cursorKey(entity), value: cursor.encode()),
-        );
+  Future<void> _writeCursor(
+    String entity,
+    PullCursor cursor,
+    String trader,
+  ) async {
+    await _db.transaction(() async {
+      await _assertStillOwnedBy(trader);
+      await _db
+          .into(_db.meta)
+          .insertOnConflictUpdate(
+            MetaCompanion.insert(
+              key: _cursorKey(entity, trader),
+              value: cursor.encode(),
+            ),
+          );
+    });
   }
 
   Future<void> _markSynced(String entity, String entityId) async {
