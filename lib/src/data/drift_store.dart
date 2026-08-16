@@ -69,6 +69,27 @@ class DriftStore implements DataStore {
     );
   }
 
+  /// Re-derives every product's cached stock from its events, in one
+  /// statement.
+  ///
+  /// The cache is a function of rows this device already holds, so this can
+  /// always be recomputed from scratch and never needs to know what changed.
+  /// That is what makes it safe to run after a sync that died half-way: a
+  /// repair which has to be told what to repair is one that can be skipped,
+  /// and a skipped repair leaves a product reading zero with no later event
+  /// to rescue it.
+  Future<void> reconcileStock() async {
+    await db.customUpdate(
+      'UPDATE products SET stock = MAX(0, '
+      '(SELECT COALESCE(SUM(delta), 0) FROM stock_adjustments '
+      ' WHERE product_id = products.id) - '
+      '(SELECT COALESCE(SUM(qty), 0) FROM sales WHERE product_id = products.id)'
+      ')',
+      updates: {db.products},
+      updateKind: UpdateKind.update,
+    );
+  }
+
   @override
   Future<void> bindToTrader(String traderId) async {
     final owner = await ownerOf(db);

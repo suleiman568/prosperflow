@@ -286,39 +286,42 @@ class DriftSyncEngine implements SyncEngine {
   /// phone showed an empty ledger even though the data was on the server.
   Future<int> _pull(String trader) async {
     var total = 0;
-    final touchedProducts = <String>{};
 
-    for (final entity in _pullOrder) {
-      var cursor = PullCursor.decode(
-        await _readCursor(entity, trader),
-      )?.rewound(_pullOverlap);
+    try {
+      for (final entity in _pullOrder) {
+        var cursor = PullCursor.decode(
+          await _readCursor(entity, trader),
+        )?.rewound(_pullOverlap);
 
-      while (true) {
-        final page = await _backend.fetchSince(
-          entity,
-          cursor,
-          limit: _pullPageSize,
-        );
-        if (page.isEmpty) break;
+        while (true) {
+          final page = await _backend.fetchSince(
+            entity,
+            cursor,
+            limit: _pullPageSize,
+          );
+          if (page.isEmpty) break;
 
-        touchedProducts.addAll(
-          await _ingest.apply(entity, page.rows, trader: trader),
-        );
-        total += page.rows.length;
+          await _ingest.apply(entity, page.rows, trader: trader);
+          total += page.rows.length;
 
-        // Record where the page ended before fetching the next one, so an
-        // interrupted first sync resumes instead of starting over.
-        final reached = _watermarkOf(entity, page.rows.last);
-        if (reached != null) await _writeCursor(entity, reached, trader);
+          // Record where the page ended before fetching the next one, so an
+          // interrupted first sync resumes instead of starting over.
+          final reached = _watermarkOf(entity, page.rows.last);
+          if (reached != null) await _writeCursor(entity, reached, trader);
 
-        if (page.cursor == null) break;
-        cursor = page.cursor;
+          if (page.cursor == null) break;
+          cursor = page.cursor;
+        }
       }
+    } finally {
+      // Settled even when the pull died part-way, and settled from the events
+      // rather than from a list of what this run happened to touch. Cursors
+      // advance durably per page, so a pull that fails after ingesting a
+      // product has already recorded that it holds it — and the two-minute
+      // rewind will not reach back far enough to fetch it again. Anything
+      // left reading the placeholder zero would stay there.
+      await _ingest.settleStock();
     }
-
-    // Stock derives from pulled sales and adjustments, so it settles once the
-    // events are all in rather than part-way through.
-    await _ingest.settleStock(touchedProducts);
     return total;
   }
 

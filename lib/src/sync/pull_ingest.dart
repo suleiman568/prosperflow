@@ -22,8 +22,12 @@ class PullIngest {
   final AppDatabase db;
   final DriftStore store;
 
-  /// Applies one page of [entity] rows. Returns the product ids whose stock
-  /// needs re-deriving, since a pulled sale or adjustment changes it.
+  /// Applies one page of [entity] rows.
+  ///
+  /// A pulled product row lands with a placeholder stock, since the value is
+  /// derived and the wire carries none. [settleStock] replaces it, and it
+  /// works off the events rather than off anything reported from here — which
+  /// is why this needs to report nothing.
   ///
   /// [trader] is who the page was fetched as. It is re-checked inside the
   /// write transaction, so a sign-in that lands mid-pull cannot leave the
@@ -31,13 +35,12 @@ class PullIngest {
   /// transaction commits first and the wipe clears it, or the wipe commits
   /// first and this sees the new owner and abandons. Checking before opening
   /// the transaction would leave exactly the gap that makes the race possible.
-  Future<Set<String>> apply(
+  Future<void> apply(
     String entity,
     List<Map<String, dynamic>> rows, {
     required String trader,
   }) async {
-    final touchedProducts = <String>{};
-    if (rows.isEmpty) return touchedProducts;
+    if (rows.isEmpty) return;
 
     await db.transaction(() async {
       if (await DriftStore.ownerOf(db) != trader) throw TraderChanged();
@@ -45,34 +48,27 @@ class PullIngest {
         switch (entity) {
           case 'product':
             await _product(row);
-            // The upsert cannot carry a stock value — it is derived, and the
-            // wire has none — so the row lands with a placeholder. Without
-            // settling it here, pulling an unrelated edit like a rename would
-            // leave the cache reading zero until some later sale happened to
-            // recompute it.
-            touchedProducts.add(row['id'] as String);
           case 'sale':
             await _sale(row);
-            touchedProducts.add(row['product_id'] as String);
           case 'expense':
             await _expense(row);
           case 'credit':
             await _credit(row);
           case 'stock_adjustment':
             await _stockAdjustment(row);
-            touchedProducts.add(row['product_id'] as String);
         }
       }
     });
-    return touchedProducts;
   }
 
-  /// Re-derives stock for everything a pull touched.
-  Future<void> settleStock(Set<String> productIds) async {
-    for (final id in productIds) {
-      await store.recomputeStock(id);
-    }
-  }
+  /// Re-derives the stock cache from the events now on this device.
+  ///
+  /// Deliberately takes no list of what changed. Settling only what a pull
+  /// reported touching means the repair is lost if the pull dies before
+  /// reaching it, while the cursors it already advanced are durable — so a
+  /// product whose row was rewritten in that pull keeps the placeholder zero
+  /// its upsert left, and nothing re-pulls it to put it right.
+  Future<void> settleStock() => store.reconcileStock();
 
   /// A local row still waiting to be pushed is the trader's most recent
   /// intent, so a pulled copy must not overwrite it — the push will settle it

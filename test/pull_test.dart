@@ -310,17 +310,15 @@ void main() {
   });
 
   group('a pulled product keeps its stock', () {
-    // Asserted on the ingest contract rather than through a sync, because the
-    // rewind window usually re-pulls a nearby adjustment and settles the
-    // product by luck. A product whose last stock event is far behind the
-    // cursor gets no such rescue.
-    test('ingesting a product marks it for settlement', () async {
+    test('ingesting a product leaves the cache settled', () async {
       final device = Device(server);
       addTearDown(device.dispose);
       final ingest = PullIngest(device.db, device.store);
       await device.claimed;
 
-      final touched = await ingest.apply('product', [
+      // The upsert cannot carry a stock value — it is derived, and the wire
+      // has none — so the row lands at a placeholder zero.
+      await ingest.apply('product', [
         {
           'id': 'p1',
           'name': 'Palm Oil',
@@ -332,10 +330,95 @@ void main() {
           'deleted': false,
         },
       ], trader: device.trader);
+      await ingest.apply('stock_adjustment', [
+        {
+          'id': 'a1',
+          'product_id': 'p1',
+          'delta': 42,
+          'reason': 'opening',
+          'created_at': DateTime.utc(2026).toIso8601String(),
+        },
+      ], trader: device.trader);
 
-      // The upsert cannot carry a stock value — it is derived, and the wire
-      // has none — so the row lands at zero and must be settled afterwards.
-      expect(touched, contains('p1'));
+      // Settlement is told nothing about what changed and works it out from
+      // the events, which is what lets it run after a pull that died.
+      await ingest.settleStock();
+
+      expect((await device.products()).single.stock, 42);
+    });
+
+    test('a pull that dies part-way still settles what landed', () async {
+      // The case a per-pull settlement list cannot survive, and it needs
+      // setting up precisely: the rewind re-covers the newest rows every
+      // time, so a product only stays broken when the cursor has moved well
+      // past it. Watermarks are stamped an hour apart for that reason —
+      // seconds apart, the two-minute rewind would rescue everything by luck
+      // and this test would pass with the bug in place.
+      final t0 = DateTime.utc(2026, 3, 1);
+      final t1 = t0.add(const Duration(hours: 1));
+      final t2 = t0.add(const Duration(hours: 2));
+      final t3 = t0.add(const Duration(hours: 3));
+
+      void putProduct(String id, String name, DateTime at) =>
+          server.put('product', {
+            'id': id,
+            'name': name,
+            'unit': 'bottles',
+            'buy_price': 6800,
+            'sell_price': 9200,
+            'low_stock_threshold': 10,
+            'updated_at': at.toIso8601String(),
+            'deleted': false,
+          }, at: at);
+
+      void putOpening(String id, String productId, int delta, DateTime at) =>
+          server.put('stock_adjustment', {
+            'id': id,
+            'product_id': productId,
+            'delta': delta,
+            'reason': 'opening',
+            'created_at': at.toIso8601String(),
+          }, at: at);
+
+      putProduct('p1', 'Palm Oil', t0);
+      putOpening('a1', 'p1', 42, t0);
+      putProduct('p2', 'Rice', t1);
+      putOpening('a2', 'p2', 7, t1);
+
+      final device = Device(server);
+      addTearDown(device.dispose);
+      await device.sync();
+      expect(
+        {for (final p in await device.products()) p.name: p.stock},
+        {'Palm Oil': 42, 'Rice': 7},
+      );
+
+      // Both are renamed elsewhere. Neither edit carries stock — the wire
+      // never does — so each upsert drops its row back to the placeholder.
+      putProduct('p1', 'Palm Oil (25L)', t2);
+      putProduct('p2', 'Rice (50kg)', t3);
+
+      // The pull dies after the products land, before it finishes.
+      device.backend.onFetch = () async {
+        if (device.backend.pulls.last != 'product') {
+          throw Exception('connection dropped');
+        }
+      };
+      expect((await device.sync()).failed, isTrue, reason: 'the pull must die');
+
+      // The next pull cannot repair p1 by re-fetching it: the product cursor
+      // now sits at t3 and rewinds two minutes, which reaches p2 and nothing
+      // else, and p1's only stock event is three hours behind the adjustment
+      // cursor. Nothing will ever fetch either of them again.
+      device.backend.onFetch = null;
+      await device.sync();
+
+      // Stock is derived from events this device already holds. A pull that
+      // died is no reason to show the trader an empty shelf.
+      expect(
+        {for (final p in await device.products()) p.name: p.stock},
+        {'Palm Oil (25L)': 42, 'Rice (50kg)': 7},
+      );
     });
 
     test('an edit with no stock event still settles the cache', () async {
