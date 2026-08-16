@@ -3072,6 +3072,418 @@ class MetaCompanion extends UpdateCompanion<MetaRow> {
   }
 }
 
+class $StockAdjustmentsTable extends StockAdjustments
+    with TableInfo<$StockAdjustmentsTable, StockAdjustmentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StockAdjustmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deltaMeta = const VerificationMeta('delta');
+  @override
+  late final GeneratedColumn<int> delta = GeneratedColumn<int>(
+    'delta',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    productId,
+    delta,
+    reason,
+    createdAt,
+    synced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'stock_adjustments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StockAdjustmentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('delta')) {
+      context.handle(
+        _deltaMeta,
+        delta.isAcceptableOrUnknown(data['delta']!, _deltaMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deltaMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StockAdjustmentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StockAdjustmentRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      delta: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}delta'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}synced'],
+      )!,
+    );
+  }
+
+  @override
+  $StockAdjustmentsTable createAlias(String alias) {
+    return $StockAdjustmentsTable(attachedDatabase, alias);
+  }
+}
+
+class StockAdjustmentRow extends DataClass
+    implements Insertable<StockAdjustmentRow> {
+  final String id;
+  final String productId;
+
+  /// Signed: positive puts stock in, negative takes it out. Sales are not
+  /// recorded here — they are already events in their own right.
+  final int delta;
+
+  /// Why the stock moved: 'opening' when the product was created, and room
+  /// for restocks and corrections without another migration.
+  final String reason;
+  final DateTime createdAt;
+  final bool synced;
+  const StockAdjustmentRow({
+    required this.id,
+    required this.productId,
+    required this.delta,
+    required this.reason,
+    required this.createdAt,
+    required this.synced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['product_id'] = Variable<String>(productId);
+    map['delta'] = Variable<int>(delta);
+    map['reason'] = Variable<String>(reason);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['synced'] = Variable<bool>(synced);
+    return map;
+  }
+
+  StockAdjustmentsCompanion toCompanion(bool nullToAbsent) {
+    return StockAdjustmentsCompanion(
+      id: Value(id),
+      productId: Value(productId),
+      delta: Value(delta),
+      reason: Value(reason),
+      createdAt: Value(createdAt),
+      synced: Value(synced),
+    );
+  }
+
+  factory StockAdjustmentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StockAdjustmentRow(
+      id: serializer.fromJson<String>(json['id']),
+      productId: serializer.fromJson<String>(json['productId']),
+      delta: serializer.fromJson<int>(json['delta']),
+      reason: serializer.fromJson<String>(json['reason']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      synced: serializer.fromJson<bool>(json['synced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'productId': serializer.toJson<String>(productId),
+      'delta': serializer.toJson<int>(delta),
+      'reason': serializer.toJson<String>(reason),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'synced': serializer.toJson<bool>(synced),
+    };
+  }
+
+  StockAdjustmentRow copyWith({
+    String? id,
+    String? productId,
+    int? delta,
+    String? reason,
+    DateTime? createdAt,
+    bool? synced,
+  }) => StockAdjustmentRow(
+    id: id ?? this.id,
+    productId: productId ?? this.productId,
+    delta: delta ?? this.delta,
+    reason: reason ?? this.reason,
+    createdAt: createdAt ?? this.createdAt,
+    synced: synced ?? this.synced,
+  );
+  StockAdjustmentRow copyWithCompanion(StockAdjustmentsCompanion data) {
+    return StockAdjustmentRow(
+      id: data.id.present ? data.id.value : this.id,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      delta: data.delta.present ? data.delta.value : this.delta,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      synced: data.synced.present ? data.synced.value : this.synced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockAdjustmentRow(')
+          ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('delta: $delta, ')
+          ..write('reason: $reason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('synced: $synced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, productId, delta, reason, createdAt, synced);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StockAdjustmentRow &&
+          other.id == this.id &&
+          other.productId == this.productId &&
+          other.delta == this.delta &&
+          other.reason == this.reason &&
+          other.createdAt == this.createdAt &&
+          other.synced == this.synced);
+}
+
+class StockAdjustmentsCompanion extends UpdateCompanion<StockAdjustmentRow> {
+  final Value<String> id;
+  final Value<String> productId;
+  final Value<int> delta;
+  final Value<String> reason;
+  final Value<DateTime> createdAt;
+  final Value<bool> synced;
+  final Value<int> rowid;
+  const StockAdjustmentsCompanion({
+    this.id = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.delta = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.synced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StockAdjustmentsCompanion.insert({
+    required String id,
+    required String productId,
+    required int delta,
+    required String reason,
+    required DateTime createdAt,
+    this.synced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       productId = Value(productId),
+       delta = Value(delta),
+       reason = Value(reason),
+       createdAt = Value(createdAt);
+  static Insertable<StockAdjustmentRow> custom({
+    Expression<String>? id,
+    Expression<String>? productId,
+    Expression<int>? delta,
+    Expression<String>? reason,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? synced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (productId != null) 'product_id': productId,
+      if (delta != null) 'delta': delta,
+      if (reason != null) 'reason': reason,
+      if (createdAt != null) 'created_at': createdAt,
+      if (synced != null) 'synced': synced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StockAdjustmentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? productId,
+    Value<int>? delta,
+    Value<String>? reason,
+    Value<DateTime>? createdAt,
+    Value<bool>? synced,
+    Value<int>? rowid,
+  }) {
+    return StockAdjustmentsCompanion(
+      id: id ?? this.id,
+      productId: productId ?? this.productId,
+      delta: delta ?? this.delta,
+      reason: reason ?? this.reason,
+      createdAt: createdAt ?? this.createdAt,
+      synced: synced ?? this.synced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (delta.present) {
+      map['delta'] = Variable<int>(delta.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<bool>(synced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StockAdjustmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('delta: $delta, ')
+          ..write('reason: $reason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('synced: $synced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3081,6 +3493,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CreditsTable credits = $CreditsTable(this);
   late final $OutboxTable outbox = $OutboxTable(this);
   late final $MetaTable meta = $MetaTable(this);
+  late final $StockAdjustmentsTable stockAdjustments = $StockAdjustmentsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3092,6 +3507,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     credits,
     outbox,
     meta,
+    stockAdjustments,
   ];
 }
 
@@ -4607,6 +5023,235 @@ typedef $$MetaTableProcessedTableManager =
       MetaRow,
       PrefetchHooks Function()
     >;
+typedef $$StockAdjustmentsTableCreateCompanionBuilder =
+    StockAdjustmentsCompanion Function({
+      required String id,
+      required String productId,
+      required int delta,
+      required String reason,
+      required DateTime createdAt,
+      Value<bool> synced,
+      Value<int> rowid,
+    });
+typedef $$StockAdjustmentsTableUpdateCompanionBuilder =
+    StockAdjustmentsCompanion Function({
+      Value<String> id,
+      Value<String> productId,
+      Value<int> delta,
+      Value<String> reason,
+      Value<DateTime> createdAt,
+      Value<bool> synced,
+      Value<int> rowid,
+    });
+
+class $$StockAdjustmentsTableFilterComposer
+    extends Composer<_$AppDatabase, $StockAdjustmentsTable> {
+  $$StockAdjustmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get delta => $composableBuilder(
+    column: $table.delta,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$StockAdjustmentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StockAdjustmentsTable> {
+  $$StockAdjustmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get delta => $composableBuilder(
+    column: $table.delta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$StockAdjustmentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StockAdjustmentsTable> {
+  $$StockAdjustmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<int> get delta =>
+      $composableBuilder(column: $table.delta, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
+}
+
+class $$StockAdjustmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StockAdjustmentsTable,
+          StockAdjustmentRow,
+          $$StockAdjustmentsTableFilterComposer,
+          $$StockAdjustmentsTableOrderingComposer,
+          $$StockAdjustmentsTableAnnotationComposer,
+          $$StockAdjustmentsTableCreateCompanionBuilder,
+          $$StockAdjustmentsTableUpdateCompanionBuilder,
+          (
+            StockAdjustmentRow,
+            BaseReferences<
+              _$AppDatabase,
+              $StockAdjustmentsTable,
+              StockAdjustmentRow
+            >,
+          ),
+          StockAdjustmentRow,
+          PrefetchHooks Function()
+        > {
+  $$StockAdjustmentsTableTableManager(
+    _$AppDatabase db,
+    $StockAdjustmentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StockAdjustmentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StockAdjustmentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StockAdjustmentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<int> delta = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StockAdjustmentsCompanion(
+                id: id,
+                productId: productId,
+                delta: delta,
+                reason: reason,
+                createdAt: createdAt,
+                synced: synced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String productId,
+                required int delta,
+                required String reason,
+                required DateTime createdAt,
+                Value<bool> synced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StockAdjustmentsCompanion.insert(
+                id: id,
+                productId: productId,
+                delta: delta,
+                reason: reason,
+                createdAt: createdAt,
+                synced: synced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$StockAdjustmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StockAdjustmentsTable,
+      StockAdjustmentRow,
+      $$StockAdjustmentsTableFilterComposer,
+      $$StockAdjustmentsTableOrderingComposer,
+      $$StockAdjustmentsTableAnnotationComposer,
+      $$StockAdjustmentsTableCreateCompanionBuilder,
+      $$StockAdjustmentsTableUpdateCompanionBuilder,
+      (
+        StockAdjustmentRow,
+        BaseReferences<
+          _$AppDatabase,
+          $StockAdjustmentsTable,
+          StockAdjustmentRow
+        >,
+      ),
+      StockAdjustmentRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4622,4 +5267,6 @@ class $AppDatabaseManager {
   $$OutboxTableTableManager get outbox =>
       $$OutboxTableTableManager(_db, _db.outbox);
   $$MetaTableTableManager get meta => $$MetaTableTableManager(_db, _db.meta);
+  $$StockAdjustmentsTableTableManager get stockAdjustments =>
+      $$StockAdjustmentsTableTableManager(_db, _db.stockAdjustments);
 }

@@ -129,11 +129,13 @@ void main() {
       expect(after.total, before.total + 3 * palm.sellPrice);
       expect(after.count, before.count + 1);
 
+      // The sale is the only thing queued. Stock is derived from it, so
+      // there is no absolute total to push — pushing one is what used to lose
+      // a concurrent sale made on another device.
       final outbox = await db.select(db.outbox).get();
-      expect(
-        outbox.map((r) => '${r.entity}.${r.op}'),
-        containsAll(['sale.create', 'product.update']),
-      );
+      final queued = outbox.map((r) => '${r.entity}.${r.op}').toList();
+      expect(queued, contains('sale.create'));
+      expect(queued, isNot(contains('product.update')));
     },
   );
 

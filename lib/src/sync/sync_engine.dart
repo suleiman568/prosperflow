@@ -202,6 +202,10 @@ class DriftSyncEngine implements SyncEngine {
       case 'credit':
         await (_db.update(_db.credits)..where((c) => c.saleId.equals(entityId)))
             .write(const CreditsCompanion(synced: Value(true)));
+      case 'stock_adjustment':
+        await (_db.update(_db.stockAdjustments)
+              ..where((a) => a.id.equals(entityId)))
+            .write(const StockAdjustmentsCompanion(synced: Value(true)));
     }
   }
 

@@ -22,6 +22,7 @@ class SupabaseSyncBackend implements SyncBackend {
     'sale': 'sales',
     'expense': 'expenses',
     'credit': 'credits',
+    'stock_adjustment': 'stock_adjustments',
   };
 
   @override

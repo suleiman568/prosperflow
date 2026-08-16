@@ -19,6 +19,36 @@ class DriftStore implements DataStore {
   /// Meta key holding the trader this database belongs to.
   static const traderKey = 'trader_id';
 
+  /// Recomputes a product's stock from its events: everything put in, minus
+  /// everything sold.
+  ///
+  /// products.stock is a cache, not a fact. Keeping exactly one writer means
+  /// it cannot drift from the events, and it stays a local read convenience —
+  /// it is never pushed and never pulled, because an absolute total is the
+  /// thing that cannot merge across devices.
+  ///
+  /// Public because the sync layer calls it too: pulling a sale or an
+  /// adjustment made on another device changes the events this derives from.
+  Future<void> recomputeStock(String productId) async {
+    // Clamped at zero: overselling means the books are already wrong, and the
+    // trader is better served by a floor than by a negative count. The events
+    // still record what actually happened.
+    final row = await db
+        .customSelect(
+          'SELECT MAX(0, '
+          '(SELECT COALESCE(SUM(delta), 0) FROM stock_adjustments '
+          ' WHERE product_id = ?1) - '
+          '(SELECT COALESCE(SUM(qty), 0) FROM sales WHERE product_id = ?1)'
+          ') AS n',
+          variables: [Variable<String>(productId)],
+          readsFrom: {db.stockAdjustments, db.sales},
+        )
+        .getSingle();
+    await (db.update(db.products)..where((p) => p.id.equals(productId))).write(
+      ProductsCompanion(stock: Value(row.read<int>('n'))),
+    );
+  }
+
   @override
   Future<void> bindToTrader(String traderId) async {
     final owner = await (db.select(
@@ -137,21 +167,44 @@ class DriftStore implements DataStore {
               id: id,
               name: name,
               unit: unit,
-              stock: stock,
+              stock: 0,
               buyPrice: buyPrice,
               sellPrice: sellPrice,
               updatedAt: now,
             ),
           );
+      // The opening level is an event like any other, so a second device
+      // learns it by pulling the adjustment rather than by trusting a total.
+      final openingId = _uuid.v4();
+      await db
+          .into(db.stockAdjustments)
+          .insert(
+            StockAdjustmentsCompanion.insert(
+              id: openingId,
+              productId: id,
+              delta: stock,
+              reason: 'opening',
+              createdAt: now,
+            ),
+          );
+      await _appendOutbox('stock_adjustment', openingId, 'create', {
+        'id': openingId,
+        'product_id': id,
+        'delta': stock,
+        'reason': 'opening',
+        'created_at': now.toIso8601String(),
+      });
+      // products no longer carries stock over the wire: an absolute total is
+      // exactly what cannot merge.
       await _appendOutbox('product', id, 'create', {
         'id': id,
         'name': name,
         'unit': unit,
-        'stock': stock,
         'buy_price': buyPrice,
         'sell_price': sellPrice,
         'updated_at': now.toIso8601String(),
       });
+      await recomputeStock(id);
     });
   }
 
@@ -288,21 +341,11 @@ class DriftStore implements DataStore {
         'sold_at': now.toIso8601String(),
       });
 
-      final newStock = (product.stock - qty).clamp(0, 1 << 31);
-      await (db.update(
-        db.products,
-      )..where((p) => p.id.equals(productId))).write(
-        ProductsCompanion(
-          stock: Value(newStock),
-          updatedAt: Value(now),
-          synced: const Value(false),
-        ),
-      );
-      await _appendOutbox('product', productId, 'update', {
-        'id': productId,
-        'stock': newStock,
-        'updated_at': now.toIso8601String(),
-      });
+      // No stock write goes to the server here. The sale itself is the event;
+      // pushing the absolute total it left behind is what used to lose a
+      // concurrent sale made on another device. The local total is a cache,
+      // recomputed from the events that now include this sale.
+      await recomputeStock(productId);
 
       if (method == PaymentMethod.credit) {
         await db

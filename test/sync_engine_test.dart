@@ -87,7 +87,9 @@ void main() {
     expect(result.pushedSales, 0);
     expect(backend.applied, isEmpty);
     expect(engine.state.pendingSales, 2);
-    expect(engine.state.pendingTotal, 5); // 2 sales + 2 stock + 1 credit
+    // 2 sales + 1 credit. A sale no longer queues a product update: stock is
+    // derived from the sale itself, so there is no absolute total to push.
+    expect(engine.state.pendingTotal, 3);
 
     // Reconnect → auto-flush.
     connectivity.add(true);
@@ -96,12 +98,10 @@ void main() {
     expect(engine.state.pendingTotal, 0);
     expect(engine.state.lastSyncAt, isNotNull);
 
-    // Seq order: sale, product update, sale, product update, credit.
+    // Seq order: sale, sale, credit.
     expect(backend.applied.map((a) => '${a.$1}.${a.$2}').toList(), [
       'sale.create',
-      'product.update',
       'sale.create',
-      'product.update',
       'credit.create',
     ]);
 

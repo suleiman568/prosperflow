@@ -236,6 +236,25 @@ Future<void> seedDatabase(AppDatabase db) async {
           synced: const Value(true),
         ),
     ]);
+    // Stock is derived, so a seeded product needs the opening event its total
+    // implies: the seed's stock already has its sales subtracted, so the
+    // opening level is stock + everything sold. Same reconstruction the v6
+    // migration does for real installs.
+    batch.insertAll(db.stockAdjustments, [
+      for (final p in seed.products)
+        StockAdjustmentsCompanion.insert(
+          id: 'opening-${p.id}',
+          productId: p.id,
+          delta:
+              p.stock +
+              seed.sales
+                  .where((s) => s.productId == p.id)
+                  .fold(0, (sum, s) => sum + s.qty),
+          reason: 'opening',
+          createdAt: now,
+          synced: const Value(true),
+        ),
+    ]);
     batch.insertAll(db.sales, [
       for (final s in seed.sales)
         SalesCompanion.insert(

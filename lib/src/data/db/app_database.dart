@@ -84,6 +84,34 @@ class Credits extends Table {
   Set<Column> get primaryKey => {saleId};
 }
 
+/// Every deliberate change to a product's stock level, as an event.
+///
+/// Stock is derived — the sum of these deltas minus everything sold — rather
+/// than stored as a running total. A running total cannot survive two devices:
+/// each pushes the absolute value it arrived at, so whichever writes last wins
+/// and the other device's sales silently vanish from the count. Deltas and
+/// sales are both facts that merge by union, so any set of devices that has
+/// seen the same events computes the same stock.
+@DataClassName('StockAdjustmentRow')
+class StockAdjustments extends Table {
+  TextColumn get id => text()();
+  TextColumn get productId => text()();
+
+  /// Signed: positive puts stock in, negative takes it out. Sales are not
+  /// recorded here — they are already events in their own right.
+  IntColumn get delta => integer()();
+
+  /// Why the stock moved: 'opening' when the product was created, and room
+  /// for restocks and corrections without another migration.
+  TextColumn get reason => text()();
+
+  DateTimeColumn get createdAt => dateTime()();
+  BoolColumn get synced => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Small key/value side table for local bookkeeping that is not the
 /// trader's data: which trader this database belongs to, and (once pulls
 /// land) the per-entity sync cursors.
@@ -108,12 +136,14 @@ class Outbox extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
-@DriftDatabase(tables: [Products, Sales, Expenses, Credits, Outbox, Meta])
+@DriftDatabase(
+  tables: [Products, Sales, Expenses, Credits, Outbox, Meta, StockAdjustments],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +166,32 @@ class AppDatabase extends _$AppDatabase {
         // upgrading adopts the database rather than wiping it — the data
         // already belongs to whoever is signed in on that device.
         await m.createTable(meta);
+      }
+      if (from < 6) {
+        // v6: stock becomes derived. Every existing product needs the opening
+        // event its current total implies — current stock already has its
+        // sales subtracted, so the opening level is stock + everything sold.
+        // Reconstructing it this way means the derived value comes out equal
+        // to what the trader sees today rather than jumping.
+        await m.createTable(stockAdjustments);
+        final products = await select(this.products).get();
+        for (final product in products) {
+          final sold = await customSelect(
+            'SELECT COALESCE(SUM(qty), 0) AS n FROM sales '
+            'WHERE product_id = ?',
+            variables: [Variable<String>(product.id)],
+          ).getSingle().then((row) => row.read<int>('n'));
+          await into(stockAdjustments).insert(
+            StockAdjustmentsCompanion.insert(
+              id: 'opening-${product.id}',
+              productId: product.id,
+              delta: product.stock + sold,
+              reason: 'opening',
+              createdAt: product.updatedAt,
+              synced: const Value(true),
+            ),
+          );
+        }
       }
     },
   );
