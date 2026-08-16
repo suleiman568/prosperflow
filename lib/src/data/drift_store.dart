@@ -19,12 +19,81 @@ class DriftStore implements DataStore {
   /// Meta key holding the trader this database belongs to.
   static const traderKey = 'trader_id';
 
-  @override
-  Future<void> bindToTrader(String traderId) async {
-    final owner = await (db.select(
+  /// Prefix of the per-entity pull cursors the sync engine keeps in `meta`.
+  /// Named here rather than in the engine because binding a new trader has to
+  /// clear them, and the two must agree on what to look for.
+  static const cursorKeyPrefix = 'cursor:';
+
+  /// The trader this database currently belongs to, or null while it is
+  /// unclaimed.
+  ///
+  /// Static, and taking the database, because the sync engine needs it as
+  /// much as the store does: every write the engine makes has to be
+  /// attributed to the trader it started under. Read it inside the same
+  /// transaction as the write it guards — checking first and writing after
+  /// leaves a gap for a sign-in to land in.
+  static Future<String?> ownerOf(AppDatabase db) async {
+    final row = await (db.select(
       db.meta,
     )..where((m) => m.key.equals(traderKey))).getSingleOrNull();
-    if (owner?.value == traderId) return;
+    return row?.value;
+  }
+
+  /// Recomputes a product's stock from its events: everything put in, minus
+  /// everything sold.
+  ///
+  /// products.stock is a cache, not a fact. Keeping exactly one writer means
+  /// it cannot drift from the events, and it stays a local read convenience —
+  /// it is never pushed and never pulled, because an absolute total is the
+  /// thing that cannot merge across devices.
+  ///
+  /// Public because the sync layer calls it too: pulling a sale or an
+  /// adjustment made on another device changes the events this derives from.
+  Future<void> recomputeStock(String productId) async {
+    // Clamped at zero: overselling means the books are already wrong, and the
+    // trader is better served by a floor than by a negative count. The events
+    // still record what actually happened.
+    final row = await db
+        .customSelect(
+          'SELECT MAX(0, '
+          '(SELECT COALESCE(SUM(delta), 0) FROM stock_adjustments '
+          ' WHERE product_id = ?1) - '
+          '(SELECT COALESCE(SUM(qty), 0) FROM sales WHERE product_id = ?1)'
+          ') AS n',
+          variables: [Variable<String>(productId)],
+          readsFrom: {db.stockAdjustments, db.sales},
+        )
+        .getSingle();
+    await (db.update(db.products)..where((p) => p.id.equals(productId))).write(
+      ProductsCompanion(stock: Value(row.read<int>('n'))),
+    );
+  }
+
+  /// Re-derives every product's cached stock from its events, in one
+  /// statement.
+  ///
+  /// The cache is a function of rows this device already holds, so this can
+  /// always be recomputed from scratch and never needs to know what changed.
+  /// That is what makes it safe to run after a sync that died half-way: a
+  /// repair which has to be told what to repair is one that can be skipped,
+  /// and a skipped repair leaves a product reading zero with no later event
+  /// to rescue it.
+  Future<void> reconcileStock() async {
+    await db.customUpdate(
+      'UPDATE products SET stock = MAX(0, '
+      '(SELECT COALESCE(SUM(delta), 0) FROM stock_adjustments '
+      ' WHERE product_id = products.id) - '
+      '(SELECT COALESCE(SUM(qty), 0) FROM sales WHERE product_id = products.id)'
+      ')',
+      updates: {db.products},
+      updateKind: UpdateKind.update,
+    );
+  }
+
+  @override
+  Future<void> bindToTrader(String traderId) async {
+    final owner = await ownerOf(db);
+    if (owner == traderId) return;
 
     await db.transaction(() async {
       if (owner != null) {
@@ -36,7 +105,17 @@ class DriftStore implements DataStore {
         await db.delete(db.credits).go();
         await db.delete(db.sales).go();
         await db.delete(db.expenses).go();
+        await db.delete(db.stockAdjustments).go();
         await db.delete(db.products).go();
+        // The pull cursors have to go with the data they describe. They say
+        // "this device has everything up to here", which was true of the
+        // previous trader's ledger and says nothing about this one's. Left in
+        // place, the first pull resumes from a watermark it never reached and
+        // skips every row the new trader wrote before it — on a stall that has
+        // been trading a while, that is most of their history, silently.
+        await (db.delete(
+          db.meta,
+        )..where((m) => m.key.like('$cursorKeyPrefix%'))).go();
       }
       await db
           .into(db.meta)
@@ -137,21 +216,44 @@ class DriftStore implements DataStore {
               id: id,
               name: name,
               unit: unit,
-              stock: stock,
+              stock: 0,
               buyPrice: buyPrice,
               sellPrice: sellPrice,
               updatedAt: now,
             ),
           );
+      // The opening level is an event like any other, so a second device
+      // learns it by pulling the adjustment rather than by trusting a total.
+      final openingId = _uuid.v4();
+      await db
+          .into(db.stockAdjustments)
+          .insert(
+            StockAdjustmentsCompanion.insert(
+              id: openingId,
+              productId: id,
+              delta: stock,
+              reason: 'opening',
+              createdAt: now,
+            ),
+          );
+      await _appendOutbox('stock_adjustment', openingId, 'create', {
+        'id': openingId,
+        'product_id': id,
+        'delta': stock,
+        'reason': 'opening',
+        'created_at': now.toIso8601String(),
+      });
+      // products no longer carries stock over the wire: an absolute total is
+      // exactly what cannot merge.
       await _appendOutbox('product', id, 'create', {
         'id': id,
         'name': name,
         'unit': unit,
-        'stock': stock,
         'buy_price': buyPrice,
         'sell_price': sellPrice,
         'updated_at': now.toIso8601String(),
       });
+      await recomputeStock(id);
     });
   }
 
@@ -288,21 +390,11 @@ class DriftStore implements DataStore {
         'sold_at': now.toIso8601String(),
       });
 
-      final newStock = (product.stock - qty).clamp(0, 1 << 31);
-      await (db.update(
-        db.products,
-      )..where((p) => p.id.equals(productId))).write(
-        ProductsCompanion(
-          stock: Value(newStock),
-          updatedAt: Value(now),
-          synced: const Value(false),
-        ),
-      );
-      await _appendOutbox('product', productId, 'update', {
-        'id': productId,
-        'stock': newStock,
-        'updated_at': now.toIso8601String(),
-      });
+      // No stock write goes to the server here. The sale itself is the event;
+      // pushing the absolute total it left behind is what used to lose a
+      // concurrent sale made on another device. The local total is a cache,
+      // recomputed from the events that now include this sale.
+      await recomputeStock(productId);
 
       if (method == PaymentMethod.credit) {
         await db

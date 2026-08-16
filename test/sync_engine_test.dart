@@ -13,6 +13,10 @@ import 'seed_data.dart';
 
 class RecordingBackend implements SyncBackend {
   final applied = <(String, String, Map<String, dynamic>)>[];
+
+  /// Rows this fake server will hand back on a pull, by entity.
+  final remote = <String, List<Map<String, dynamic>>>{};
+
   bool failNext = false;
 
   @override
@@ -22,14 +26,22 @@ class RecordingBackend implements SyncBackend {
   Future<void> apply(
     String entity,
     String op,
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    required String trader,
+  }) async {
     if (failNext) {
       failNext = false;
       throw Exception('network down');
     }
     applied.add((entity, op, payload));
   }
+
+  @override
+  Future<PullPage> fetchSince(
+    String entity,
+    PullCursor? cursor, {
+    int limit = 200,
+  }) async => PullPage(rows: List.of(remote[entity] ?? const []), cursor: null);
 }
 
 void main() {
@@ -45,6 +57,10 @@ void main() {
     backend = RecordingBackend();
     connectivity = StreamController<bool>.broadcast();
     await seedDatabase(db);
+    // Claim the database, as every path into the signed-in app does. The
+    // engine attributes its writes to whoever owns it and syncs nothing for
+    // a database nobody has claimed.
+    await store.bindToTrader('trader-a');
   });
 
   tearDown(() async {
@@ -87,7 +103,9 @@ void main() {
     expect(result.pushedSales, 0);
     expect(backend.applied, isEmpty);
     expect(engine.state.pendingSales, 2);
-    expect(engine.state.pendingTotal, 5); // 2 sales + 2 stock + 1 credit
+    // 2 sales + 1 credit. A sale no longer queues a product update: stock is
+    // derived from the sale itself, so there is no absolute total to push.
+    expect(engine.state.pendingTotal, 3);
 
     // Reconnect → auto-flush.
     connectivity.add(true);
@@ -96,12 +114,10 @@ void main() {
     expect(engine.state.pendingTotal, 0);
     expect(engine.state.lastSyncAt, isNotNull);
 
-    // Seq order: sale, product update, sale, product update, credit.
+    // Seq order: sale, sale, credit.
     expect(backend.applied.map((a) => '${a.$1}.${a.$2}').toList(), [
       'sale.create',
-      'product.update',
       'sale.create',
-      'product.update',
       'credit.create',
     ]);
 

@@ -1,19 +1,33 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 import '../auth/auth_service.dart';
 import '../sync/sync_engine.dart';
 import 'data_store.dart';
 
-/// Claims the local database for whoever is signed in, before any screen
-/// reads it.
+/// Claims the local database for whoever is signed in and starts their first
+/// sync, before any screen reads it.
 ///
 /// Call on every path into the signed-in app: sign-in, sign-up, and startup
-/// with a restored session. A no-op when signed out, and a no-op when the
+/// with a restored session. Binding is a no-op when signed out, and when the
 /// database already belongs to this trader — it only does work when the phone
 /// changes hands.
-Future<void> bindLocalDataToTrader(DataStore store, AuthService auth) async {
+///
+/// The sync is what fills a fresh install. Nothing else would start one: the
+/// engine syncs on a connectivity change or after a local write, and a trader
+/// signing in on a new phone has neither. It is left running rather than
+/// awaited, because the screens stream from the database and fill in as rows
+/// land.
+Future<void> bindLocalDataToTrader(
+  DataStore store,
+  AuthService auth, {
+  SyncEngine? sync,
+}) async {
   final traderId = auth.traderId;
-  if (traderId != null) await store.bindToTrader(traderId);
+  if (traderId == null) return;
+  await store.bindToTrader(traderId);
+  if (sync != null) unawaited(sync.syncNow());
 }
 
 /// Exposes the app's [DataStore], [AuthService], and [SyncEngine] to the

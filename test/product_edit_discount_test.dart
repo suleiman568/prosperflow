@@ -70,10 +70,18 @@ class _RecordingBackend implements SyncBackend {
   Future<void> apply(
     String entity,
     String op,
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    required String trader,
+  }) async {
     applied.add((entity, op, payload));
   }
+
+  @override
+  Future<PullPage> fetchSince(
+    String entity,
+    PullCursor? cursor, {
+    int limit = 200,
+  }) async => const PullPage(rows: [], cursor: null);
 }
 
 void main() {
@@ -85,6 +93,10 @@ void main() {
       db = AppDatabase(NativeDatabase.memory());
       store = DriftStore(db);
       await seedDatabase(db);
+      // Claim it, as every path into the signed-in app does. The engine
+      // attributes its writes to the owning trader and syncs nothing for a
+      // database nobody has claimed.
+      await store.bindToTrader('trader-a');
     });
 
     tearDown(() => db.close());

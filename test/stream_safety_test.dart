@@ -17,7 +17,19 @@ class _NoopBackend implements SyncBackend {
   bool get canPush => false;
 
   @override
-  Future<void> apply(String e, String o, Map<String, dynamic> p) async {}
+  Future<void> apply(
+    String e,
+    String o,
+    Map<String, dynamic> p, {
+    required String trader,
+  }) async {}
+
+  @override
+  Future<PullPage> fetchSince(
+    String entity,
+    PullCursor? cursor, {
+    int limit = 200,
+  }) async => const PullPage(rows: [], cursor: null);
 }
 
 /// Every watch stream the app exposes must survive being listened to more

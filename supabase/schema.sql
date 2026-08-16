@@ -117,6 +117,40 @@ create index if not exists expenses_trader_updated_at_idx
 create index if not exists credits_trader_updated_at_idx
   on public.credits (trader_id, updated_at);
 
+-- v6 addition: stock as events rather than a running total.
+--
+-- A running total cannot survive two devices. Each pushes the absolute value
+-- it arrived at, so whichever writes last wins and the other device's sales
+-- vanish from the count — two phones on one stall selling 2 and 3 from a
+-- stock of 42 both push a total, and the books end up at 40 or 39 when the
+-- truth is 37. Deltas and sales are facts that merge by union, so any set of
+-- devices that has seen the same events computes the same stock.
+--
+-- products.stock is left in place but is no longer written by clients: it is
+-- derived on the device now. Treat it as dead.
+create table if not exists public.stock_adjustments (
+  id uuid primary key,
+  trader_id uuid not null references auth.users (id) on delete cascade,
+  product_id uuid not null,
+  delta integer not null, -- signed: positive in, negative out
+  reason text not null default 'opening',
+  created_at timestamptz not null,
+  received_at timestamptz not null default now()
+);
+
+create index if not exists stock_adjustments_trader_product_idx
+  on public.stock_adjustments (trader_id, product_id);
+
+alter table public.stock_adjustments enable row level security;
+
+drop policy if exists "traders manage own stock adjustments"
+  on public.stock_adjustments;
+create policy "traders manage own stock adjustments"
+  on public.stock_adjustments
+  for all to authenticated
+  using (trader_id = (select auth.uid()))
+  with check (trader_id = (select auth.uid()));
+
 -- v5 addition: a true server-clock watermark, for delta pulls.
 --
 -- Neither existing column can serve as a pull cursor. `received_at` is a
@@ -147,7 +181,8 @@ declare
   t text;
   pk text;
 begin
-  foreach t in array array['products', 'sales', 'expenses', 'credits'] loop
+  foreach t in array array['products', 'sales', 'expenses', 'credits',
+                           'stock_adjustments'] loop
     -- credits are keyed on the sale they belong to; everything else on id.
     pk := case when t = 'credits' then 'sale_id' else 'id' end;
 

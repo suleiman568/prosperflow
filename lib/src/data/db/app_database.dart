@@ -1,8 +1,36 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models.dart';
 
 part 'app_database.g.dart';
+
+/// Fixed namespace for reconstructed opening events. Any constant UUID does;
+/// this one exists so the derivation below cannot collide with some other
+/// name-based scheme later.
+const _openingNamespace = 'f789bb90-334b-43ff-b37c-d99a2da229f7';
+
+/// The id of the opening event reconstructed for [productId] during the v6
+/// upgrade.
+///
+/// It has to be a real UUID and it has to be deterministic, and the two
+/// requirements pull in opposite directions.
+///
+/// A real UUID because the server's `stock_adjustments.id` column is `uuid`:
+/// a readable id like `opening-<product>` is rejected by Postgres outright,
+/// and a rejected row sits at the head of the outbox forever — the flush stops
+/// on the first failure, so every later push and every pull queues up behind
+/// one row that can never succeed.
+///
+/// Deterministic because a trader may upgrade two phones. Both hold the same
+/// ledger and both reconstruct the same opening, so a random id on each would
+/// give the server two events where there was one movement, and their stock
+/// would double. A v5 name-based UUID comes out the same on every device that
+/// derives it from the same product, so the second one upserts onto the first.
+String openingAdjustmentId(String productId) =>
+    const Uuid().v5(_openingNamespace, productId);
 
 /// Client-side mirror of the Backend Plan schema (§3). All row IDs are
 /// client-generated UUIDs; `synced` drives the "waiting to sync" UI and the
@@ -84,6 +112,34 @@ class Credits extends Table {
   Set<Column> get primaryKey => {saleId};
 }
 
+/// Every deliberate change to a product's stock level, as an event.
+///
+/// Stock is derived — the sum of these deltas minus everything sold — rather
+/// than stored as a running total. A running total cannot survive two devices:
+/// each pushes the absolute value it arrived at, so whichever writes last wins
+/// and the other device's sales silently vanish from the count. Deltas and
+/// sales are both facts that merge by union, so any set of devices that has
+/// seen the same events computes the same stock.
+@DataClassName('StockAdjustmentRow')
+class StockAdjustments extends Table {
+  TextColumn get id => text()();
+  TextColumn get productId => text()();
+
+  /// Signed: positive puts stock in, negative takes it out. Sales are not
+  /// recorded here — they are already events in their own right.
+  IntColumn get delta => integer()();
+
+  /// Why the stock moved: 'opening' when the product was created, and room
+  /// for restocks and corrections without another migration.
+  TextColumn get reason => text()();
+
+  DateTimeColumn get createdAt => dateTime()();
+  BoolColumn get synced => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Small key/value side table for local bookkeeping that is not the
 /// trader's data: which trader this database belongs to, and (once pulls
 /// land) the per-entity sync cursors.
@@ -108,12 +164,14 @@ class Outbox extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
-@DriftDatabase(tables: [Products, Sales, Expenses, Credits, Outbox, Meta])
+@DriftDatabase(
+  tables: [Products, Sales, Expenses, Credits, Outbox, Meta, StockAdjustments],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +194,54 @@ class AppDatabase extends _$AppDatabase {
         // upgrading adopts the database rather than wiping it — the data
         // already belongs to whoever is signed in on that device.
         await m.createTable(meta);
+      }
+      if (from < 6) {
+        // v6: stock becomes derived. Every existing product needs the opening
+        // event its current total implies — current stock already has its
+        // sales subtracted, so the opening level is stock + everything sold.
+        // Reconstructing it this way means the derived value comes out equal
+        // to what the trader sees today rather than jumping.
+        await m.createTable(stockAdjustments);
+        final products = await select(this.products).get();
+        for (final product in products) {
+          final sold = await customSelect(
+            'SELECT COALESCE(SUM(qty), 0) AS n FROM sales '
+            'WHERE product_id = ?',
+            variables: [Variable<String>(product.id)],
+          ).getSingle().then((row) => row.read<int>('n'));
+          final opening = product.stock + sold;
+          final openingId = openingAdjustmentId(product.id);
+          await into(stockAdjustments).insert(
+            StockAdjustmentsCompanion.insert(
+              id: openingId,
+              productId: product.id,
+              delta: opening,
+              reason: 'opening',
+              createdAt: product.updatedAt,
+            ),
+          );
+          // Queued, not just written. The server has no adjustments for
+          // products that predate this table, and only this device can work
+          // out what they were — it is the one holding the total the
+          // reconstruction is derived from. Left local, another device would
+          // pull these products and their sales with no opening to offset
+          // them, and derive every stock level as zero.
+          await into(outbox).insert(
+            OutboxCompanion.insert(
+              entity: 'stock_adjustment',
+              entityId: openingId,
+              op: 'create',
+              payloadJson: jsonEncode({
+                'id': openingId,
+                'product_id': product.id,
+                'delta': opening,
+                'reason': 'opening',
+                'created_at': product.updatedAt.toIso8601String(),
+              }),
+              createdAt: product.updatedAt,
+            ),
+          );
+        }
       }
     },
   );

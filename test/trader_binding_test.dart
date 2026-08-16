@@ -86,6 +86,46 @@ void main() {
       expect(await outboxCount(), 0);
     });
 
+    test('the previous trader stock events go too', () async {
+      await store.bindToTrader('trader-a');
+      await store.addProduct(
+        name: 'Palm Oil',
+        unit: 'bottles',
+        stock: 5,
+        buyPrice: 6800,
+        sellPrice: 9200,
+      );
+      expect(await db.select(db.stockAdjustments).get(), isNotEmpty);
+
+      await store.bindToTrader('trader-b');
+
+      // Stock is derived from these, so leaving them behind would have the
+      // new trader's products counting movements they never made.
+      expect(await db.select(db.stockAdjustments).get(), isEmpty);
+    });
+
+    test('the pull cursors are cleared, but ownership is not', () async {
+      await store.bindToTrader('trader-a');
+      await db
+          .into(db.meta)
+          .insertOnConflictUpdate(
+            MetaCompanion.insert(
+              key: '${DriftStore.cursorKeyPrefix}product',
+              value: '2026-03-01T00:00:00.000Z|p1',
+            ),
+          );
+
+      await store.bindToTrader('trader-b');
+
+      // A cursor means "this device has everything up to here", which was
+      // true of the previous trader's ledger and says nothing about this
+      // one's. Kept, the first pull resumes from a watermark it never
+      // reached and silently skips everything the new trader wrote before it.
+      final keys = (await db.select(db.meta).get()).map((m) => m.key);
+      expect(keys, isNot(contains('${DriftStore.cursorKeyPrefix}product')));
+      expect(keys, contains(DriftStore.traderKey));
+    });
+
     test('ownership survives so the next sign-in is compared against it', () {
       return db.transaction(() async {
         await store.bindToTrader('trader-a');
