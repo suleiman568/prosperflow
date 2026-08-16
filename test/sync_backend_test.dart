@@ -70,7 +70,7 @@ void main() {
           'id': 'p1',
           'name': 'Palm Oil',
           'stock': 5,
-        }),
+        }, trader: 'trader-a'),
         throwsA(isA<StateError>()),
       );
     });
@@ -86,7 +86,7 @@ void main() {
         'id': 'p1',
         'name': 'Palm Oil',
         'stock': 5,
-      });
+      }, trader: 'trader-a');
 
       // One PATCH, asking for the affected rows back — without the select
       // there is nothing in the response to tell the two cases apart.
@@ -106,7 +106,7 @@ void main() {
         'id': 'p1',
         'name': 'Palm Oil',
         'trader_id': 'someone-else',
-      });
+      }, trader: 'trader-a');
 
       final sent = jsonDecode(requests.single.body) as Map<String, dynamic>;
       expect(sent.containsKey('trader_id'), isFalse);
@@ -124,9 +124,53 @@ void main() {
       await backend.apply('credit', 'update', {
         'sale_id': 's1',
         'status': 'paid',
-      });
+      }, trader: 'trader-a');
 
       expect(requests.single.url.query, contains('sale_id=eq.s1'));
+    });
+  });
+
+  group('whose ledger a push joins', () {
+    test('a row is never filed under whoever is signed in now', () async {
+      // The engine checks who owns the local database before calling, but a
+      // sign-in can complete between there and the row going out — and it is
+      // this session read, not that check, that decides whose ledger the row
+      // joins. No transaction spans a network call, so the guard has to live
+      // where the stamping happens.
+      final backend = await backendReturning(
+        jsonEncode([
+          {'id': 's1'},
+        ]),
+      );
+
+      await expectLater(
+        backend.apply('sale', 'create', {
+          'id': 's1',
+          'total': 18400,
+        }, trader: 'trader-b'),
+        throwsA(isA<TraderChanged>()),
+      );
+      expect(
+        requests,
+        isEmpty,
+        reason: 'nothing may go out under the wrong session',
+      );
+    });
+
+    test('the stamped owner is the trader the push was made for', () async {
+      final backend = await backendReturning(
+        jsonEncode([
+          {'id': 's1'},
+        ]),
+      );
+
+      await backend.apply('sale', 'create', {
+        'id': 's1',
+        'total': 18400,
+      }, trader: 'trader-a');
+
+      final sent = jsonDecode(requests.single.body) as Map<String, dynamic>;
+      expect(sent['trader_id'], 'trader-a');
     });
   });
 
@@ -244,7 +288,10 @@ void main() {
         ]),
       );
 
-      await backend.apply('sale', 'create', {'id': 's1', 'total': 18400});
+      await backend.apply('sale', 'create', {
+        'id': 's1',
+        'total': 18400,
+      }, trader: 'trader-a');
 
       // POST with a merge-duplicates resolution is what makes the outbox safe
       // to replay after a dropped response.
@@ -269,7 +316,10 @@ void main() {
         );
 
         await expectLater(
-          backend.apply('sale', 'create', {'id': 's1', 'total': 18400}),
+          backend.apply('sale', 'create', {
+            'id': 's1',
+            'total': 18400,
+          }, trader: 'trader-a'),
           throwsA(isA<PostgrestException>()),
         );
       },

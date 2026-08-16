@@ -3,16 +3,7 @@ import 'package:drift/drift.dart';
 import '../data/db/app_database.dart';
 import '../data/drift_store.dart';
 import '../data/models.dart';
-
-/// Raised to abandon sync work whose trader is no longer the one it started
-/// under, because the phone changed hands part-way through.
-///
-/// Not a failure, and nothing to retry: the work belonged to a ledger this
-/// device no longer holds. The sign-in that caused it starts its own sync.
-class TraderChanged implements Exception {
-  @override
-  String toString() => 'TraderChanged: the database changed hands mid-sync';
-}
+import 'sync_backend.dart';
 
 /// Writes pulled rows into the local database.
 ///

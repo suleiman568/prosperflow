@@ -70,8 +70,9 @@ class _RecordingBackend implements SyncBackend {
   Future<void> apply(
     String entity,
     String op,
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    required String trader,
+  }) async {
     applied.add((entity, op, payload));
   }
 

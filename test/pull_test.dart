@@ -73,8 +73,9 @@ class FakeBackend implements SyncBackend {
   Future<void> apply(
     String entity,
     String op,
-    Map<String, dynamic> payload,
-  ) async => server.put(entity, payload);
+    Map<String, dynamic> payload, {
+    required String trader,
+  }) async => server.put(entity, payload);
 
   @override
   Future<PullPage> fetchSince(

@@ -26,8 +26,9 @@ class RecordingBackend implements SyncBackend {
   Future<void> apply(
     String entity,
     String op,
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    required String trader,
+  }) async {
     if (failNext) {
       failNext = false;
       throw Exception('network down');

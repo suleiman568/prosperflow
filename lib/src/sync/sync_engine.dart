@@ -226,12 +226,15 @@ class DriftSyncEngine implements SyncEngine {
         for (final row in rows) {
           // Pushing now would send the previous trader's queued work under the
           // new session, where row-level security stamps it with the wrong
-          // owner on insert and refuses it on update.
+          // owner on insert and refuses it on update. The backend re-checks
+          // against its own session before sending, which is what closes the
+          // gap between this check and the row going out.
           await _assertStillOwnedBy(trader);
           await _backend.apply(
             row.entity,
             row.op,
             jsonDecode(row.payloadJson) as Map<String, dynamic>,
+            trader: trader,
           );
           if (row.entity == 'sale') pushedSales++;
           await _db.transaction(() async {

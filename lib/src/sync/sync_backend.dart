@@ -1,5 +1,15 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Raised to abandon sync work whose trader is no longer the one it started
+/// under, because the phone changed hands part-way through.
+///
+/// Not a failure, and nothing to retry: the work belonged to a ledger this
+/// device no longer holds. The sign-in that caused it starts its own sync.
+class TraderChanged implements Exception {
+  @override
+  String toString() => 'TraderChanged: the database changed hands mid-sync';
+}
+
 /// Where a delta pull has reached, per entity.
 ///
 /// A timestamp alone is not a position: now() is transaction time, so every
@@ -56,7 +66,17 @@ abstract class SyncBackend {
   /// True when a signed-in session exists to push under.
   bool get canPush;
 
-  Future<void> apply(String entity, String op, Map<String, dynamic> payload);
+  /// Sends one mutation on behalf of [trader].
+  ///
+  /// Throws [TraderChanged] if the signed-in session is somebody else by the
+  /// time it goes out, rather than filing the row under whoever happens to be
+  /// signed in.
+  Future<void> apply(
+    String entity,
+    String op,
+    Map<String, dynamic> payload, {
+    required String trader,
+  });
 
   /// Reads up to [limit] rows of [entity] changed at or after [cursor], in
   /// (server_updated_at, primary key) order.
@@ -96,11 +116,22 @@ class SupabaseSyncBackend implements SyncBackend {
   Future<void> apply(
     String entity,
     String op,
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    required String trader,
+  }) async {
     final table = _tables[entity]!;
     final pk = entity == 'credit' ? 'sale_id' : 'id';
-    final row = {...payload, 'trader_id': _client.auth.currentUser!.id};
+
+    // The session is read once and that same value does the stamping. This is
+    // the read that decides whose ledger the row joins, so the check belongs
+    // here rather than only at the caller: the caller checked who owns the
+    // local database, but a sign-in can complete between there and here, and
+    // then the row would be filed under whoever happened to be signed in when
+    // it went out. Nothing awaits between the check and the use, so no
+    // sign-in can land in the gap.
+    final signedIn = _client.auth.currentUser?.id;
+    if (signedIn != trader) throw TraderChanged();
+    final row = {...payload, 'trader_id': signedIn};
 
     if (op == 'create') {
       // An insert that row-level security refuses fails its WITH CHECK and
