@@ -4,6 +4,18 @@ import '../auth/auth_service.dart';
 import '../sync/sync_engine.dart';
 import 'data_store.dart';
 
+/// Claims the local database for whoever is signed in, before any screen
+/// reads it.
+///
+/// Call on every path into the signed-in app: sign-in, sign-up, and startup
+/// with a restored session. A no-op when signed out, and a no-op when the
+/// database already belongs to this trader — it only does work when the phone
+/// changes hands.
+Future<void> bindLocalDataToTrader(DataStore store, AuthService auth) async {
+  final traderId = auth.traderId;
+  if (traderId != null) await store.bindToTrader(traderId);
+}
+
 /// Exposes the app's [DataStore], [AuthService], and [SyncEngine] to the
 /// widget tree.
 class AppScope extends InheritedWidget {

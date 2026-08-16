@@ -55,6 +55,11 @@ Future<void> main() async {
     }
   }
 
+  // A restored session skips the login screen entirely, so the database has
+  // to be claimed here too — otherwise the Dashboard renders the previous
+  // trader's ledger before anything else runs.
+  await bindLocalDataToTrader(store, auth);
+
   runApp(
     AppScope(
       store: store,

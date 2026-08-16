@@ -84,6 +84,18 @@ class Credits extends Table {
   Set<Column> get primaryKey => {saleId};
 }
 
+/// Small key/value side table for local bookkeeping that is not the
+/// trader's data: which trader this database belongs to, and (once pulls
+/// land) the per-entity sync cursors.
+@DataClassName('MetaRow')
+class Meta extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
 /// Outbox per Backend Plan §5: every local write appends a mutation here;
 /// a background task flushes it to the server in order (Stage 3).
 @DataClassName('OutboxRow')
@@ -96,12 +108,12 @@ class Outbox extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
-@DriftDatabase(tables: [Products, Sales, Expenses, Credits, Outbox])
+@DriftDatabase(tables: [Products, Sales, Expenses, Credits, Outbox, Meta])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -117,6 +129,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) {
         // v4: discounted sales keep the normal price for display.
         await m.addColumn(sales, sales.listPrice);
+      }
+      if (from < 5) {
+        // v5: local bookkeeping, starting with the owning trader. Existing
+        // installs have no trader recorded, so the first sign-in after
+        // upgrading adopts the database rather than wiping it — the data
+        // already belongs to whoever is signed in on that device.
+        await m.createTable(meta);
       }
     },
   );

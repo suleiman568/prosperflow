@@ -117,6 +117,69 @@ create index if not exists expenses_trader_updated_at_idx
 create index if not exists credits_trader_updated_at_idx
   on public.credits (trader_id, updated_at);
 
+-- v5 addition: a true server-clock watermark, for delta pulls.
+--
+-- Neither existing column can serve as a pull cursor. `received_at` is a
+-- column default, and Postgres has no ON UPDATE for defaults, so it fires on
+-- insert only and silently misses every edit. `updated_at` is the *device*
+-- clock, supplied in the client payload, so two phones with skewed clocks
+-- order writes wrongly and one badly-set clock can hide rows from a pull
+-- indefinitely.
+--
+-- So pulls key on `server_updated_at`: written by the server on both insert
+-- and update, and never trusted from the payload. Run BEFORE shipping any
+-- client that pulls.
+--
+-- Existing rows take the migration timestamp. That is harmless today because
+-- nothing pulls yet, so every device's first pull starts from epoch anyway.
+create or replace function public.touch_server_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.server_updated_at = now();
+  return new;
+end;
+$$;
+
+do $$
+declare
+  t text;
+  pk text;
+begin
+  foreach t in array array['products', 'sales', 'expenses', 'credits'] loop
+    -- credits are keyed on the sale they belong to; everything else on id.
+    pk := case when t = 'credits' then 'sale_id' else 'id' end;
+
+    execute format(
+      'alter table public.%I add column if not exists server_updated_at '
+      'timestamptz not null default now()', t);
+
+    execute format(
+      'drop trigger if exists %I on public.%I',
+      t || '_touch_server_updated_at', t);
+    execute format(
+      'create trigger %I before insert or update on public.%I '
+      'for each row execute function public.touch_server_updated_at()',
+      t || '_touch_server_updated_at', t);
+
+    -- The cursor index. The existing indexes are on updated_at / sold_at,
+    -- which a delta pull does not key on.
+    --
+    -- The primary key is part of it as a tie-breaker, not for lookup speed.
+    -- now() is transaction time, so every row written by one transaction
+    -- shares a server_updated_at — recording a sale stamps the sale, the
+    -- product and the credit identically. A pull paginating on the timestamp
+    -- alone would then either skip the rest of a tied group when a batch
+    -- boundary lands inside it, or fetch it forever. Ordering by
+    -- (server_updated_at, pk) is total, so the pull can page on the pair.
+    execute format(
+      'create index if not exists %I '
+      'on public.%I (trader_id, server_updated_at, %I)',
+      t || '_trader_server_updated_idx', t, pk);
+  end loop;
+end $$;
+
 -- Row-level security: every query is filtered by the trader's auth uid.
 alter table public.products enable row level security;
 alter table public.sales enable row level security;

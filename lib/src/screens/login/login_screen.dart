@@ -46,14 +46,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     setState(() => _busy = true);
     final auth = AppScope.authOf(context);
+    final store = AppScope.of(context);
     final navigator = Navigator.of(context);
     final error = await auth.signIn(email: email, password: password);
     if (!mounted) return;
-    setState(() => _busy = false);
     if (error != null) {
+      setState(() => _busy = false);
       showAppToast(context, '⚠ $error');
       return;
     }
+    // Claim the database before the Dashboard reads it: if the last trader on
+    // this phone was someone else, their ledger is cleared here.
+    await bindLocalDataToTrader(store, auth);
+    if (!mounted) return;
+    setState(() => _busy = false);
     navigator.pushReplacementNamed(DashboardScreen.route);
   }
 
@@ -215,6 +221,7 @@ class _CreateAccountSheetState extends State<_CreateAccountSheet> {
     }
     setState(() => _busy = true);
     final auth = AppScope.authOf(context);
+    final store = AppScope.of(context);
     final navigator = Navigator.of(context);
     final error = await auth.signUp(
       name: name,
@@ -222,6 +229,10 @@ class _CreateAccountSheetState extends State<_CreateAccountSheet> {
       password: password,
     );
     if (!mounted) return;
+    if (error == null) {
+      await bindLocalDataToTrader(store, auth);
+      if (!mounted) return;
+    }
     setState(() => _busy = false);
     navigator.pop();
     widget.onDone(error);
