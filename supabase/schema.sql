@@ -145,8 +145,12 @@ $$;
 do $$
 declare
   t text;
+  pk text;
 begin
   foreach t in array array['products', 'sales', 'expenses', 'credits'] loop
+    -- credits are keyed on the sale they belong to; everything else on id.
+    pk := case when t = 'credits' then 'sale_id' else 'id' end;
+
     execute format(
       'alter table public.%I add column if not exists server_updated_at '
       'timestamptz not null default now()', t);
@@ -161,9 +165,18 @@ begin
 
     -- The cursor index. The existing indexes are on updated_at / sold_at,
     -- which a delta pull does not key on.
+    --
+    -- The primary key is part of it as a tie-breaker, not for lookup speed.
+    -- now() is transaction time, so every row written by one transaction
+    -- shares a server_updated_at — recording a sale stamps the sale, the
+    -- product and the credit identically. A pull paginating on the timestamp
+    -- alone would then either skip the rest of a tied group when a batch
+    -- boundary lands inside it, or fetch it forever. Ordering by
+    -- (server_updated_at, pk) is total, so the pull can page on the pair.
     execute format(
-      'create index if not exists %I on public.%I (trader_id, server_updated_at)',
-      t || '_trader_server_updated_idx', t);
+      'create index if not exists %I '
+      'on public.%I (trader_id, server_updated_at, %I)',
+      t || '_trader_server_updated_idx', t, pk);
   end loop;
 end $$;
 
