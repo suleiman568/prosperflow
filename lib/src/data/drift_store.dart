@@ -24,6 +24,14 @@ class DriftStore implements DataStore {
   /// clear them, and the two must agree on what to look for.
   static const cursorKeyPrefix = 'cursor:';
 
+  /// Prefix of the per-trader marker saying this device has finished bringing
+  /// that trader's ledger down at least once.
+  ///
+  /// Absence is what the app reads as "still restoring", so it must survive a
+  /// restart: a trader who closes the app mid-restore and reopens it should be
+  /// told their data is still coming, not that they have none.
+  static const restoreKeyPrefix = 'restored:';
+
   /// The trader this database currently belongs to, or null while it is
   /// unclaimed.
   ///
@@ -116,6 +124,14 @@ class DriftStore implements DataStore {
         await (db.delete(
           db.meta,
         )..where((m) => m.key.like('$cursorKeyPrefix%'))).go();
+        // The restore markers go with them, for the same reason and one more:
+        // a trader whose ledger was just wiped from this phone is owed a fresh
+        // restore if they ever sign back in. Their old marker would say the
+        // device already has their data and leave them looking at an empty
+        // ledger described as empty.
+        await (db.delete(
+          db.meta,
+        )..where((m) => m.key.like('$restoreKeyPrefix%'))).go();
       }
       await db
           .into(db.meta)

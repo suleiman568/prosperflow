@@ -18,6 +18,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/restoring_state.dart';
 import '../../widgets/sync_widgets.dart';
 
 /// Screen 4 — Products.
@@ -133,12 +134,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     body = const _LoadingList();
                   } else if (snapshot.data!.isEmpty) {
                     body = RefreshableViewport(
-                      child: EmptyState(
-                        icon: Icons.inventory_2_outlined,
-                        title: 'No products yet',
-                        message: 'Everything you sell lives here.',
-                        actionLabel: 'Add product',
-                        onAction: _openAddProduct,
+                      child: EmptyUnlessRestoring(
+                        empty: EmptyState(
+                          icon: Icons.inventory_2_outlined,
+                          title: 'No products yet',
+                          message: 'Everything you sell lives here.',
+                          actionLabel: 'Add product',
+                          onAction: _openAddProduct,
+                        ),
                       ),
                     );
                   } else {
