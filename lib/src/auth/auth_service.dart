@@ -6,6 +6,10 @@
 abstract class AuthService {
   bool get isSignedIn;
 
+  /// Stable id of the signed-in trader, or null when signed out. Used to
+  /// decide whether the local database belongs to this trader.
+  String? get traderId;
+
   /// Display name for the Dashboard greeting.
   String get traderName;
 
@@ -30,9 +34,13 @@ class FakeAuthService implements AuthService {
 
   bool _signedIn;
   String _name;
+  String? _id;
 
   @override
   bool get isSignedIn => _signedIn;
+
+  @override
+  String? get traderId => _signedIn ? _id : null;
 
   @override
   String get traderName => _name;
@@ -44,6 +52,7 @@ class FakeAuthService implements AuthService {
   }) async {
     if (password.length < 6) return 'Password must be at least 6 characters';
     _signedIn = true;
+    _id = email.trim().toLowerCase();
     _name = _nameFromEmail(email);
     return null;
   }
@@ -56,6 +65,7 @@ class FakeAuthService implements AuthService {
   }) async {
     if (password.length < 6) return 'Password must be at least 6 characters';
     _signedIn = true;
+    _id = email.trim().toLowerCase();
     _name = name;
     return null;
   }

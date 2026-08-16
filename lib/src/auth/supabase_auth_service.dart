@@ -21,6 +21,9 @@ class SupabaseAuthService implements AuthService {
   bool get isSignedIn => _client.auth.currentSession != null;
 
   @override
+  String? get traderId => _client.auth.currentUser?.id;
+
+  @override
   String get traderName {
     final user = _client.auth.currentUser;
     final name = user?.userMetadata?['name'];

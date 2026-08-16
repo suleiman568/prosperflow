@@ -16,6 +16,36 @@ class DriftStore implements DataStore {
   final AppDatabase db;
   final _uuid = const Uuid();
 
+  /// Meta key holding the trader this database belongs to.
+  static const traderKey = 'trader_id';
+
+  @override
+  Future<void> bindToTrader(String traderId) async {
+    final owner = await (db.select(
+      db.meta,
+    )..where((m) => m.key.equals(traderKey))).getSingleOrNull();
+    if (owner?.value == traderId) return;
+
+    await db.transaction(() async {
+      if (owner != null) {
+        // A different trader. Their ledger must not be readable here, and
+        // their queued mutations must never be pushed under the new session:
+        // row-level security would refuse them, and a refused update is
+        // indistinguishable from a successful one over the wire.
+        await db.delete(db.outbox).go();
+        await db.delete(db.credits).go();
+        await db.delete(db.sales).go();
+        await db.delete(db.expenses).go();
+        await db.delete(db.products).go();
+      }
+      await db
+          .into(db.meta)
+          .insertOnConflictUpdate(
+            MetaCompanion.insert(key: traderKey, value: traderId),
+          );
+    });
+  }
+
   // ---------------------------------------------------------------- mapping
 
   Product _product(ProductRow row) => Product(

@@ -76,6 +76,22 @@ class ReportData {
 /// each mutation to the outbox, which the sync engine (Stage 3) flushes
 /// to Supabase when connectivity allows.
 abstract class DataStore {
+  /// Binds this store to [traderId], clearing everything local first if it
+  /// currently holds a different trader's ledger.
+  ///
+  /// Local rows carry no trader column — a phone holds one trader's books —
+  /// so isolation comes from owning the whole database rather than filtering
+  /// per row. Without this, a second trader signing in on the same phone sees
+  /// the first's products and sales, and any edit they make to those rows is
+  /// refused by row-level security and then dropped without a trace, because
+  /// PostgREST answers an update that matches nothing with 204 rather than an
+  /// error.
+  ///
+  /// A store with no owner recorded adopts [traderId] and keeps its data:
+  /// that is a fresh install, or one upgrading from before this existed,
+  /// where the ledger already belongs to whoever is signing in.
+  Future<void> bindToTrader(String traderId);
+
   Stream<List<Product>> watchProducts();
 
   Future<void> addProduct({

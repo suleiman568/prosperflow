@@ -31,6 +31,23 @@ class MemoryStore implements DataStore {
   final _deletedIds = <String>{};
 
   final _changes = StreamController<void>.broadcast();
+
+  String? _traderId;
+
+  @override
+  Future<void> bindToTrader(String traderId) async {
+    if (_traderId == traderId) return;
+    if (_traderId != null) {
+      _products.clear();
+      _sales.clear();
+      _expenses.clear();
+      _credits.clear();
+      _deletedIds.clear();
+    }
+    _traderId = traderId;
+    _notify();
+  }
+
   final _uuid = const Uuid();
 
   void _notify() => _changes.add(null);
