@@ -136,7 +136,19 @@ class SupabaseSyncBackend implements SyncBackend {
     if (op == 'create') {
       // An insert that row-level security refuses fails its WITH CHECK and
       // comes back as an error, so this path is already loud.
-      await _client.from(table).upsert(row, onConflict: pk);
+      //
+      // First writer wins: a create never rewrites a row that is already
+      // there. Creates describe something that happened once, so a second one
+      // for the same key is either a replay of a push whose response was lost
+      // or two devices reconstructing the same past event — and in both cases
+      // what the server already holds is at least as good as what is being
+      // sent. Merging instead would let a replayed create undo the edits made
+      // since, and would let a device that upgraded with a staler view of a
+      // pre-v6 product overwrite the opening another had already established,
+      // moving stock under everyone who had it right.
+      await _client
+          .from(table)
+          .upsert(row, onConflict: pk, ignoreDuplicates: true);
     } else {
       final id = row.remove(pk);
       row.remove('trader_id'); // never update ownership

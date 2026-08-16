@@ -281,7 +281,7 @@ void main() {
   });
 
   group('create ops', () {
-    test('creates upsert so a replayed push cannot double-count', () async {
+    test('a create never rewrites a row already on the server', () async {
       final backend = await backendReturning(
         jsonEncode([
           {'id': 's1'},
@@ -293,12 +293,16 @@ void main() {
         'total': 18400,
       }, trader: 'trader-a');
 
-      // POST with a merge-duplicates resolution is what makes the outbox safe
-      // to replay after a dropped response.
+      // Upserting on the client key is what makes the outbox safe to replay
+      // after a dropped response. Ignoring the duplicate rather than merging
+      // it is what stops that replay undoing whatever has happened to the row
+      // since — and what stops a device that upgraded holding a staler view
+      // of a pre-v6 product overwriting an opening another device already
+      // established, which would move stock under everyone who had it right.
       expect(requests.single.method, 'POST');
       expect(
         requests.single.headers['Prefer'],
-        contains('resolution=merge-duplicates'),
+        contains('resolution=ignore-duplicates'),
       );
     });
 
