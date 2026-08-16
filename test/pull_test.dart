@@ -347,6 +347,62 @@ void main() {
       expect((await device.products()).single.stock, 42);
     });
 
+    test('a pull killed before it settles is repaired by the next', () async {
+      // Harsher than a failed pull: the process is gone, so nothing runs on
+      // the way out. The cursor is already committed and the product row is
+      // already sitting at the placeholder zero its upsert wrote, with no
+      // in-memory record of it left anywhere.
+      final t0 = DateTime.utc(2026, 3, 1);
+      final t1 = t0.add(const Duration(hours: 1));
+
+      void putProduct(String id, String name, DateTime at) =>
+          server.put('product', {
+            'id': id,
+            'name': name,
+            'unit': 'bottles',
+            'buy_price': 6800,
+            'sell_price': 9200,
+            'low_stock_threshold': 10,
+            'updated_at': at.toIso8601String(),
+            'deleted': false,
+          }, at: at);
+
+      void putOpening(String id, String productId, int delta, DateTime at) =>
+          server.put('stock_adjustment', {
+            'id': id,
+            'product_id': productId,
+            'delta': delta,
+            'reason': 'opening',
+            'created_at': at.toIso8601String(),
+          }, at: at);
+
+      putProduct('p1', 'Palm Oil', t0);
+      putOpening('a1', 'p1', 42, t0);
+      putProduct('p2', 'Rice', t1);
+      putOpening('a2', 'p2', 7, t1);
+
+      final device = Device(server);
+      addTearDown(device.dispose);
+      await device.sync();
+
+      // What a kill mid-pull leaves behind: the placeholder persisted, and
+      // the cursors already recording those rows as held. p1's events are an
+      // hour behind the cursor, so the two-minute rewind will never reach
+      // back for them — nothing will re-pull p1 to put it right.
+      await (device.db.update(device.db.products)
+            ..where((p) => p.id.equals('p1')))
+          .write(const ProductsCompanion(stock: Value(0)));
+
+      await device.sync();
+
+      // Settlement re-derives from the events on disk rather than from what
+      // a run happened to touch, so it repairs damage it never saw done.
+      expect(
+        {for (final p in await device.products()) p.name: p.stock},
+        {'Palm Oil': 42, 'Rice': 7},
+      );
+    });
+
     test('a pull that dies part-way still settles what landed', () async {
       // The case a per-pull settlement list cannot survive, and it needs
       // setting up precisely: the rewind re-covers the newest rows every
