@@ -8,6 +8,29 @@ import '../utils/plural.dart';
 import 'app_card.dart';
 import 'app_toast.dart';
 
+/// Rebuilds [builder] whenever the sync state changes.
+///
+/// Scoped on purpose: several parts of a screen depend on sync — the figures,
+/// an alert, a banner — and wrapping each one keeps a restore's per-page
+/// updates from rebuilding the whole screen for every page that lands.
+class SyncStateBuilder extends StatelessWidget {
+  const SyncStateBuilder({super.key, required this.builder});
+
+  final Widget Function(BuildContext context, SyncState state) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    final sync = AppScope.syncOf(context);
+    return StreamBuilder<SyncState>(
+      stream: sync.watchState(),
+      // The engine's current value stands in until the stream delivers, so
+      // nothing renders a frame of "not restoring" before the truth arrives.
+      builder: (context, snapshot) =>
+          builder(context, snapshot.data ?? sync.state),
+    );
+  }
+}
+
 /// Gray strip under the app bar when offline (handoff §6):
 /// "📴 Offline — sales save on your phone". Calm gray, never red.
 class OfflinePill extends StatelessWidget {

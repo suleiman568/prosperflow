@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../data/app_scope.dart';
 import '../sync/sync_engine.dart';
 import '../theme/tokens.dart';
 import '../utils/plural.dart';
+import 'sync_widgets.dart';
 
 /// Shown in place of an empty state while this device is still bringing the
 /// trader's ledger down for the first time.
@@ -104,13 +104,9 @@ class EmptyUnlessRestoring extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sync = AppScope.syncOf(context);
-    return StreamBuilder<SyncState>(
-      stream: sync.watchState(),
-      builder: (context, snapshot) {
-        final state = snapshot.data ?? sync.state;
-        return state.restoring ? RestoringState(state: state) : empty;
-      },
+    return SyncStateBuilder(
+      builder: (context, state) =>
+          state.restoring ? RestoringState(state: state) : empty,
     );
   }
 }

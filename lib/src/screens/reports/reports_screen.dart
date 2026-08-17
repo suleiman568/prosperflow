@@ -21,6 +21,8 @@ import '../../widgets/header_back_button.dart';
 import '../../widgets/money_text.dart';
 import '../../widgets/screen_title.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/restoring_state.dart';
+import '../../widgets/sync_widgets.dart';
 
 /// Screen 6 — Reports.
 ///
@@ -79,6 +81,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   void _openExportSheet() {
     if (_exporting) return;
+    if (AppScope.syncOf(context).state.restoring) {
+      // Refused rather than greyed out, because a disabled button explains
+      // nothing. Everything else here corrects itself as rows land; a file
+      // does not — it leaves the phone, or it is kept as the record of a
+      // month that had not finished arriving.
+      showAppToast(context, '⏳ Still restoring — export when it has finished');
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -192,14 +202,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             _Header(onExport: _openExportSheet, exporting: _exporting),
             Expanded(
-              child: StreamBuilder<ReportData>(
-                stream: store.watchReport(_period),
-                builder: (context, snapshot) {
-                  final report = snapshot.data;
-                  if (report == null) {
-                    return const Center(child: CircularProgressIndicator());
+              child: SyncStateBuilder(
+                builder: (context, syncState) {
+                  // The whole screen is aggregates, and a restore delivers the
+                  // rows they add up over several minutes: sales arrive before
+                  // the expenses that offset them, so a half-restored ledger
+                  // reports a profit no period of trading ever produced. There
+                  // is no partial version of this screen worth showing.
+                  if (syncState.restoring) {
+                    return RestoringState(state: syncState);
                   }
-                  return _buildReport(report);
+                  return StreamBuilder<ReportData>(
+                    stream: store.watchReport(_period),
+                    builder: (context, snapshot) {
+                      final report = snapshot.data;
+                      if (report == null) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      return _buildReport(report);
+                    },
+                  );
                 },
               ),
             ),
