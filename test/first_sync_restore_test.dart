@@ -8,10 +8,14 @@ import 'package:prosperflow/src/data/db/app_database.dart';
 import 'package:prosperflow/src/data/drift_store.dart';
 import 'package:prosperflow/src/data/memory_store.dart';
 import 'package:prosperflow/src/screens/credits/credits_screen.dart';
+import 'package:prosperflow/src/screens/dashboard/dashboard_screen.dart';
 import 'package:prosperflow/src/screens/expenses/expenses_screen.dart';
 import 'package:prosperflow/src/screens/products/products_screen.dart';
+import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 import 'package:prosperflow/src/sync/sync_backend.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
+import 'package:prosperflow/src/widgets/money_text.dart';
+import 'package:prosperflow/src/widgets/skeleton.dart';
 import 'package:prosperflow/src/widgets/sync_widgets.dart';
 
 import 'helpers.dart';
@@ -394,6 +398,145 @@ void main() {
         find.text('⏳ Restoring your data — 12 items so far'),
         findsOneWidget,
       );
+    });
+  });
+
+  group('what a waiting phone shows on its figures', () {
+    // The fixtures give every one of these something to render, so each test
+    // is about the restore hiding it rather than about there being nothing.
+    testWidgets("the day's takings are a skeleton, not zero", (tester) async {
+      usePhoneSurface(tester);
+      await pumpWithStore(
+        tester,
+        const DashboardScreen(),
+        sync: StubSyncEngine(restoring: true),
+      );
+      await tester.pump();
+
+      // ₦0 is a number a trader can act on — it says the morning's sales are
+      // gone. A skeleton says the app does not know yet, which is the truth.
+      // The dashboard's only skeletons are the two stat cards', so their
+      // presence and absence is exactly the thing under test.
+      expect(find.byType(Skeleton), findsWidgets);
+      expect(find.text('Today\'s Sales'), findsOneWidget);
+      expect(find.byType(MoneyText), findsNothing);
+    });
+
+    testWidgets('the figures come back once the restore is done', (
+      tester,
+    ) async {
+      usePhoneSurface(tester);
+      await pumpWithStore(
+        tester,
+        const DashboardScreen(),
+        sync: StubSyncEngine(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Skeleton), findsNothing);
+      expect(find.byType(MoneyText), findsWidgets);
+    });
+
+    testWidgets('no low stock alarm over half-arrived stock', (tester) async {
+      usePhoneSurface(tester);
+      // The fixtures include a product below its threshold, so the alert is
+      // on screen whenever it is allowed to be.
+      await pumpWithStore(
+        tester,
+        const DashboardScreen(),
+        sync: StubSyncEngine(restoring: true),
+      );
+      await tester.pump();
+      expect(find.text('Low Stock Alert'), findsNothing);
+
+      await pumpWithStore(
+        tester,
+        const DashboardScreen(),
+        sync: StubSyncEngine(),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Low Stock Alert'), findsOneWidget);
+    });
+
+    testWidgets('no debt total until all the debts are in', (tester) async {
+      usePhoneSurface(tester);
+      await pumpWithStore(
+        tester,
+        const DashboardScreen(),
+        sync: StubSyncEngine(restoring: true),
+      );
+      await tester.pump();
+      expect(find.text('OUTSTANDING CREDITS'), findsNothing);
+
+      await pumpWithStore(
+        tester,
+        const DashboardScreen(),
+        sync: StubSyncEngine(),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('OUTSTANDING CREDITS'), findsOneWidget);
+    });
+
+    testWidgets('Reports waits rather than reporting a partial profit', (
+      tester,
+    ) async {
+      usePhoneSurface(tester);
+      await pumpWithStore(
+        tester,
+        const ReportsScreen(),
+        sync: StubSyncEngine(restoring: true, restoredRows: 58),
+      );
+      await tester.pump();
+
+      expect(find.text('Restoring your data'), findsOneWidget);
+      expect(find.text('58 items so far'), findsOneWidget);
+      // Sales are pulled before the expenses that offset them, so a profit
+      // computed now is one no period of trading ever produced.
+      expect(find.text('NET PROFIT'), findsNothing);
+      expect(find.text('NET LOSS'), findsNothing);
+    });
+
+    testWidgets('Reports reports again once the ledger is whole', (
+      tester,
+    ) async {
+      usePhoneSurface(tester);
+      await pumpWithStore(
+        tester,
+        const ReportsScreen(),
+        sync: StubSyncEngine(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Restoring your data'), findsNothing);
+      expect(
+        find.text('NET PROFIT').evaluate().length +
+            find.text('NET LOSS').evaluate().length,
+        1,
+      );
+    });
+
+    testWidgets('an export is refused while the ledger is still arriving', (
+      tester,
+    ) async {
+      usePhoneSurface(tester);
+      await pumpWithStore(
+        tester,
+        const ReportsScreen(),
+        sync: StubSyncEngine(restoring: true),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('Export report'));
+      await tester.pump();
+
+      // Everything else on screen corrects itself as rows land. A file does
+      // not: it leaves the phone, or it is filed as the record of a month
+      // that had not finished arriving.
+      expect(
+        find.text('⏳ Still restoring — export when it has finished'),
+        findsOneWidget,
+      );
+      expect(find.text('Export report'), findsNothing);
     });
   });
 }

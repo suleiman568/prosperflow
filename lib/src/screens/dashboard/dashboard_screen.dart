@@ -65,100 +65,122 @@ class DashboardScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: StreamBuilder<SalesStats>(
-                            stream: store.watchTodayStats(),
-                            builder: (_, snapshot) {
-                              final stats =
-                                  snapshot.data ??
-                                  const SalesStats(total: 0, count: 0);
-                              return _StatCard(
-                                icon: Icons.trending_up_rounded,
-                                label: "Today's Sales",
-                                color: AppColors.positive,
-                                tint: AppColors.positiveTint,
-                                amount: stats.total,
-                                caption:
-                                    '${countNoun(stats.count, 'sale')} today',
-                                loading: !snapshot.hasData,
-                              );
-                            },
+                          child: SyncStateBuilder(
+                            builder: (_, syncState) =>
+                                StreamBuilder<SalesStats>(
+                                  stream: store.watchTodayStats(),
+                                  builder: (_, snapshot) {
+                                    final stats =
+                                        snapshot.data ??
+                                        const SalesStats(total: 0, count: 0);
+                                    return _StatCard(
+                                      icon: Icons.trending_up_rounded,
+                                      label: "Today's Sales",
+                                      color: AppColors.positive,
+                                      tint: AppColors.positiveTint,
+                                      amount: stats.total,
+                                      caption:
+                                          '${countNoun(stats.count, 'sale')} '
+                                          'today',
+                                      loading:
+                                          !snapshot.hasData ||
+                                          syncState.restoring,
+                                    );
+                                  },
+                                ),
                           ),
                         ),
                         const SizedBox(width: AppShape.gridGap),
                         Expanded(
-                          child: StreamBuilder<SalesStats>(
-                            stream: store.watchWeekStats(),
-                            builder: (_, snapshot) {
-                              final stats =
-                                  snapshot.data ??
-                                  const SalesStats(total: 0, count: 0);
-                              return _StatCard(
-                                icon: Icons.calendar_today_rounded,
-                                label: 'This Week',
-                                color: AppColors.transfer,
-                                tint: AppColors.transferTint,
-                                amount: stats.total,
-                                caption: countNoun(stats.count, 'sale'),
-                                loading: !snapshot.hasData,
-                              );
-                            },
+                          child: SyncStateBuilder(
+                            builder: (_, syncState) =>
+                                StreamBuilder<SalesStats>(
+                                  stream: store.watchWeekStats(),
+                                  builder: (_, snapshot) {
+                                    final stats =
+                                        snapshot.data ??
+                                        const SalesStats(total: 0, count: 0);
+                                    return _StatCard(
+                                      icon: Icons.calendar_today_rounded,
+                                      label: 'This Week',
+                                      color: AppColors.transfer,
+                                      tint: AppColors.transferTint,
+                                      amount: stats.total,
+                                      caption: countNoun(stats.count, 'sale'),
+                                      loading:
+                                          !snapshot.hasData ||
+                                          syncState.restoring,
+                                    );
+                                  },
+                                ),
                           ),
                         ),
                       ],
                     ),
-                    StreamBuilder<List<Product>>(
-                      stream: store.watchProducts(),
-                      builder: (_, snapshot) {
-                        final lowStock = (snapshot.data ?? const <Product>[])
-                            .where((p) => p.isLow)
-                            .toList();
-                        if (lowStock.isEmpty) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: AppShape.cardGap),
-                          child: AppCard.tinted(
-                            color: AppColors.creditTint,
-                            borderColor: AppColors.creditBorder,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
+                    SyncStateBuilder(
+                      builder: (_, syncState) => StreamBuilder<List<Product>>(
+                        stream: store.watchProducts(),
+                        builder: (_, snapshot) {
+                          final lowStock = (snapshot.data ?? const <Product>[])
+                              .where((p) => p.isLow)
+                              .toList();
+                          // Silent until the restore is done. Products arrive
+                          // before the stock events they derive from, so a
+                          // product that is halfway here reads zero — and an
+                          // alarm about stock the trader can see on the floor
+                          // is how they learn to ignore the alarm.
+                          if (lowStock.isEmpty || syncState.restoring) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              top: AppShape.cardGap,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.warning_amber_rounded,
-                                      size: 16,
-                                      color: AppColors.credit,
-                                    ),
-                                    const SizedBox(width: 8),
+                            child: AppCard.tinted(
+                              color: AppColors.creditTint,
+                              borderColor: AppColors.creditBorder,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.warning_amber_rounded,
+                                        size: 16,
+                                        color: AppColors.credit,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Low Stock Alert',
+                                        style: AppText.style(
+                                          FontWeight.w800,
+                                          13,
+                                          AppColors.credit,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  for (final product in lowStock) ...[
+                                    const SizedBox(height: AppShape.gapSm),
                                     Text(
-                                      'Low Stock Alert',
+                                      product.lowStockLine,
                                       style: AppText.style(
-                                        FontWeight.w800,
+                                        FontWeight.w600,
                                         13,
-                                        AppColors.credit,
+                                        AppColors.textPrimary,
                                       ),
                                     ),
                                   ],
-                                ),
-                                for (final product in lowStock) ...[
-                                  const SizedBox(height: AppShape.gapSm),
-                                  Text(
-                                    product.lowStockLine,
-                                    style: AppText.style(
-                                      FontWeight.w600,
-                                      13,
-                                      AppColors.textPrimary,
-                                    ),
-                                  ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(height: AppShape.cardGap),
                     StreamBuilder<SyncState>(
@@ -214,68 +236,79 @@ class DashboardScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    StreamBuilder<List<Credit>>(
-                      stream: store.watchOwedCredits(),
-                      builder: (context, snapshot) {
-                        final credits = snapshot.data ?? const <Credit>[];
-                        if (credits.isEmpty) return const SizedBox.shrink();
-                        final total = credits.fold(
-                          0,
-                          (sum, c) => sum + c.amount,
-                        );
-                        return Padding(
-                          padding: const EdgeInsets.only(top: AppShape.cardGap),
-                          child: AppCard.tinted(
-                            color: AppColors.creditTint,
-                            borderColor: AppColors.creditBorder,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
+                    SyncStateBuilder(
+                      builder: (_, syncState) => StreamBuilder<List<Credit>>(
+                        stream: store.watchOwedCredits(),
+                        builder: (context, snapshot) {
+                          final credits = snapshot.data ?? const <Credit>[];
+                          // Credits are pulled last, so mid-restore this total
+                          // is however much of the debt has arrived. A figure
+                          // that says a customer owes less than they do is one
+                          // a trader might act on.
+                          if (credits.isEmpty || syncState.restoring) {
+                            return const SizedBox.shrink();
+                          }
+                          final total = credits.fold(
+                            0,
+                            (sum, c) => sum + c.amount,
+                          );
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              top: AppShape.cardGap,
                             ),
-                            onTap: () =>
-                                Navigator.of(context).pushNamed('/credits'),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'OUTSTANDING CREDITS',
-                                        overflow: TextOverflow.ellipsis,
-                                        style: AppText.style(
-                                          FontWeight.w700,
-                                          12,
-                                          AppColors.credit,
+                            child: AppCard.tinted(
+                              color: AppColors.creditTint,
+                              borderColor: AppColors.creditBorder,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              onTap: () =>
+                                  Navigator.of(context).pushNamed('/credits'),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'OUTSTANDING CREDITS',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppText.style(
+                                            FontWeight.w700,
+                                            12,
+                                            AppColors.credit,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      MoneyText(
-                                        total,
-                                        style: AppText.style(
-                                          FontWeight.w800,
-                                          18,
-                                          AppColors.credit,
+                                        const SizedBox(height: 2),
+                                        MoneyText(
+                                          total,
+                                          style: AppText.style(
+                                            FontWeight.w800,
+                                            18,
+                                            AppColors.credit,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  '${countNoun(credits.length, 'customer')} →',
-                                  style: AppText.style(
-                                    FontWeight.w600,
-                                    12,
-                                    AppColors.credit,
+                                  Text(
+                                    '${countNoun(credits.length, 'customer')} →',
+                                    style: AppText.style(
+                                      FontWeight.w600,
+                                      12,
+                                      AppColors.credit,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
