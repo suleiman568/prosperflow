@@ -21,10 +21,11 @@ starting up.
 
 **Run the file whole, not statement by statement.** Every statement is
 `if not exists`, `or replace`, or a `drop … if exists` followed by a create, so
-the file is safe to run and re-run. But two of the steps are `do $$ … $$`
-blocks, and the block that adds `server_updated_at` to `stock_adjustments`
-relies on the block above it having created that table. Pasting selected
-statements is how this goes wrong.
+the file is safe to run and re-run — with one exception, in the legacy rename
+covered by step 1, which is the reason step 1 comes before the run. But two of
+the steps are `do $$ … $$` blocks, and the block that adds
+`server_updated_at` to `stock_adjustments` relies on the block above it having
+created that table. Pasting selected statements is how this goes wrong.
 
 **`supabase db push` is not an option here**, despite what the file's own
 header comment says. The repository has no `supabase/config.toml` and no
@@ -49,7 +50,12 @@ select t.table_name,
          where c.table_schema = 'public'
            and c.table_name = t.table_name
            and c.column_name = 'trader_id'
-       ) as has_trader_id
+       ) as has_trader_id,
+       exists (
+         select from information_schema.tables l
+         where l.table_schema = 'public'
+           and l.table_name = t.table_name || '_legacy'
+       ) as legacy_name_taken
 from information_schema.tables t
 where t.table_schema = 'public'
   and t.table_name in
@@ -60,8 +66,14 @@ order by t.table_name;
 - **Expect** no rows on a clean project — nothing is renamed. Or rows all
   reading `has_trader_id = true`, meaning the tables are already the current
   shape and nothing is renamed.
-- **Stop if** any row reads `false`. That table *will* be renamed. Decide what
-  you want to happen to its data first.
+- **Stop if** any row reads `has_trader_id = false`. That table *will* be
+  renamed. Decide what you want to happen to its data first.
+- **Stop if** a row reads `has_trader_id = false` **and**
+  `legacy_name_taken = true`. The rename has nowhere to go: `alter table …
+  rename to` will not write onto an existing name, so it raises and takes the
+  whole file down with it. Move or drop the existing `<name>_legacy` first. This
+  is the one state a re-run does not recover from by itself, which is why the
+  column is in the query.
 
 ## 2. Run the whole file
 
@@ -148,8 +160,15 @@ rollback;
 Pulls page on `(server_updated_at, primary key)` because `now()` is transaction
 time: recording one sale stamps the sale, the product and the credit
 identically, and a cursor on the timestamp alone either skips the rest of a tied
-group at a page boundary or fetches it forever. The primary key is in the index
-as a tie-breaker, so column order is the thing to check.
+group at a page boundary or fetches it forever.
+
+Be clear about what the index is and is not responsible for. The client asks for
+that order explicitly — `.order(server_updated_at).order(pk).limit(n)` — and
+carries the tie-breaker in its `where` clause too, so **paging is correct
+whether or not this index exists**. Postgres will sort without it. What the
+index buys is the cost: without it every page sorts the trader's whole partition
+of the table, and on a long ledger over a slow connection that is what turns a
+restore into a sequence of timeouts.
 
 ```sql
 select tablename, indexdef
@@ -162,9 +181,11 @@ order by tablename;
 - **Expect** five rows. Four read `(trader_id, server_updated_at, id)`;
   `credits` reads `(trader_id, server_updated_at, sale_id)`, because credits are
   keyed on the sale they belong to.
-- **Symptom** a two-column index, or the columns in another order. Pulls will
-  still return rows, so nothing looks broken — they will drop rows at page
-  boundaries under load, which is the hardest class of bug to notice later.
+- **Symptom** a two-column index, or the columns in another order. Nothing looks
+  broken and no rows are lost — the pull is simply paying for a sort on every
+  page. On a small ledger you will never notice; on a large one it surfaces from
+  the phone as step 7's first row, a restore that never finishes, because each
+  page times out and the retry backoff hides why.
 
 ## 6. Verify: row-level security is on, and refusing
 
