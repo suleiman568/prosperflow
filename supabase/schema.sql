@@ -1,5 +1,17 @@
 -- ProsperFlow — Supabase schema (Backend Plan §3, §6)
--- Run this in the Supabase SQL editor (or `supabase db push`).
+--
+-- Run this whole file in the Supabase SQL editor, or with
+-- `psql "$DATABASE_URL" -f supabase/schema.sql`. Not `supabase db push`:
+-- there is no supabase/config.toml and no migrations/ directory for the CLI
+-- to work from.
+--
+-- Run it whole rather than a statement at a time. Everything here is
+-- idempotent, but the do-blocks depend on what the blocks above them created
+-- — the v5 loop adds server_updated_at to stock_adjustments, which the v6
+-- section creates.
+--
+-- Procedure, including what to verify afterwards and the symptoms of each
+-- way it can go wrong: docs/applying-the-schema.md
 --
 -- Design rules:
 --   * All row IDs are client-generated UUIDs — the key to safe offline sync.
