@@ -3,7 +3,7 @@
 `supabase/schema.sql` carries three things the client already expects: the
 `server_updated_at` watermark and its trigger, which every delta pull keys on;
 the `stock_adjustments` table that stock is now derived from; and the cursor
-indexes that make paging correct rather than merely fast.
+indexes that keep paging affordable as a ledger grows.
 
 Against an unmigrated project the failure is quiet rather than loud. A pulling
 client sits in the restoring state — "Restoring your data" on Products,
@@ -14,7 +14,7 @@ starting up.
 | | |
 |---|---|
 | Applies | `supabase/schema.sql` (246 lines) |
-| Safe to re-run | Yes, as a whole |
+| Safe to re-run | Yes, as a whole — except the state step 1 checks for |
 | Needs | Project owner access |
 
 ## Two things to know first
