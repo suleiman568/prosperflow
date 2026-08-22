@@ -71,7 +71,7 @@ void main() {
           'name': 'Palm Oil',
           'stock': 5,
         }, trader: 'trader-a'),
-        throwsA(isA<StateError>()),
+        throwsA(isA<WriteRefused>()),
       );
     });
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'src/app.dart';
@@ -60,6 +62,17 @@ class _ProsperFlowBootstrapState extends State<ProsperFlowBootstrap> {
 
   Future<void> _connect() async {
     final startup = await connectBackend(db: _db, store: _store);
+    if (startup is StartupFailed) {
+      // The failure this whole change exists for. Without this it is invisible
+      // from here: the trader sees a screen, and nobody else sees anything.
+      unawaited(
+        widget.reporter.reportIssue(
+          'startup_failed',
+          error: startup.error,
+          stackTrace: startup.stackTrace,
+        ),
+      );
+    }
     if (startup is StartupReady) {
       // A restored session skips the login screen entirely, so the database
       // has to be claimed here too — otherwise the Dashboard renders the
@@ -69,6 +82,9 @@ class _ProsperFlowBootstrapState extends State<ProsperFlowBootstrap> {
         startup.auth,
         sync: startup.sync,
       );
+      // The opaque account uuid and nothing else, so a report can be tied to
+      // a ledger without naming anybody.
+      unawaited(widget.reporter.setTrader(startup.auth.traderId));
     }
     if (mounted) setState(() => _startup = startup);
   }
