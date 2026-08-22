@@ -8,13 +8,20 @@ import 'src/data/drift_store.dart';
 import 'src/data/memory_store.dart';
 import 'src/screens/startup_failure_screen.dart';
 import 'src/startup.dart';
+import 'src/telemetry/error_reporter.dart';
+import 'src/telemetry/telemetry.dart';
 
 import 'src/data/db/connection.dart'
     if (dart.library.js_interop) 'src/data/db/connection_stub.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProsperFlowBootstrap());
+  // Started before the binding, so that anything the binding itself throws is
+  // already being watched.
+  final reporter = await startReporting();
+  await runGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    runApp(ProsperFlowBootstrap(reporter: reporter));
+  }, reporter: reporter);
 }
 
 /// Wires up the app's services before showing it, and shows the failure
@@ -24,7 +31,9 @@ Future<void> main() async {
 /// displayed and something to retry it. Previously it happened before
 /// `runApp`, which left nowhere to put the news.
 class ProsperFlowBootstrap extends StatefulWidget {
-  const ProsperFlowBootstrap({super.key});
+  const ProsperFlowBootstrap({super.key, required this.reporter});
+
+  final ErrorReporter reporter;
 
   @override
   State<ProsperFlowBootstrap> createState() => _ProsperFlowBootstrapState();
