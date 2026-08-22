@@ -1,71 +1,106 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
-import 'src/auth/auth_service.dart';
-import 'src/auth/supabase_auth_service.dart';
-import 'src/config/supabase_config.dart';
 import 'src/data/app_scope.dart';
 import 'src/data/data_store.dart';
 import 'src/data/db/app_database.dart';
 import 'src/data/drift_store.dart';
 import 'src/data/memory_store.dart';
-import 'src/sync/sync_backend.dart';
-import 'src/sync/sync_engine.dart';
+import 'src/screens/startup_failure_screen.dart';
+import 'src/startup.dart';
 
 import 'src/data/db/connection.dart'
     if (dart.library.js_interop) 'src/data/db/connection_stub.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ProsperFlowBootstrap());
+}
 
+/// Wires up the app's services before showing it, and shows the failure
+/// plainly if they cannot be wired up.
+///
+/// The work moved out of `main` so that a failure has somewhere to be
+/// displayed and something to retry it. Previously it happened before
+/// `runApp`, which left nowhere to put the news.
+class ProsperFlowBootstrap extends StatefulWidget {
+  const ProsperFlowBootstrap({super.key});
+
+  @override
+  State<ProsperFlowBootstrap> createState() => _ProsperFlowBootstrapState();
+}
+
+class _ProsperFlowBootstrapState extends State<ProsperFlowBootstrap> {
+  // Opened once and kept across retries: a retry re-attempts the backend, not
+  // the database, and opening the file twice would give the app two
+  // connections to it.
+  //
   // Local-first storage (Backend Plan §6): SQLite on device. The web build
   // (used for design previews) keeps data in memory only. Fresh installs
   // start empty — no demo data is seeded.
-  final AppDatabase? db = kIsWeb ? null : AppDatabase(openConnection());
-  final DataStore store = db == null ? MemoryStore() : DriftStore(db);
+  late final AppDatabase? _db = openLocalDatabase(openConnection);
+  late final DataStore _store = _db == null ? MemoryStore() : DriftStore(_db);
 
-  // Auth: Supabase on device (sessions persist locally, so a trader who
-  // signed in once stays signed in offline). The web preview uses the fake.
-  AuthService auth = FakeAuthService();
-  SyncEngine sync = NoopSyncEngine(lastSyncAt: DateTime.now());
-  if (db != null && SupabaseConfig.enabled) {
-    try {
-      await Supabase.initialize(
-        url: SupabaseConfig.url,
-        publishableKey: SupabaseConfig.publishableKey,
-      );
-      final client = Supabase.instance.client;
-      auth = SupabaseAuthService(client);
+  Startup? _startup;
 
-      final connectivity = Connectivity();
-      final initial = await connectivity.checkConnectivity();
-      sync = DriftSyncEngine(
-        db,
-        SupabaseSyncBackend(client),
-        connectivity: connectivity.onConnectivityChanged.map(
-          (results) => !results.contains(ConnectivityResult.none),
-        ),
-        initiallyOnline: !initial.contains(ConnectivityResult.none),
-      );
-    } catch (_) {
-      // Never block the ledger on network infrastructure.
-    }
+  @override
+  void initState() {
+    super.initState();
+    _connect();
   }
 
-  // A restored session skips the login screen entirely, so the database has
-  // to be claimed here too — otherwise the Dashboard renders the previous
-  // trader's ledger before anything else runs.
-  await bindLocalDataToTrader(store, auth, sync: sync);
+  Future<void> _connect() async {
+    final startup = await connectBackend(db: _db, store: _store);
+    if (startup is StartupReady) {
+      // A restored session skips the login screen entirely, so the database
+      // has to be claimed here too — otherwise the Dashboard renders the
+      // previous trader's ledger before anything else runs.
+      await bindLocalDataToTrader(
+        startup.store,
+        startup.auth,
+        sync: startup.sync,
+      );
+    }
+    if (mounted) setState(() => _startup = startup);
+  }
 
-  runApp(
-    AppScope(
-      store: store,
-      auth: auth,
-      sync: sync,
-      child: const ProsperFlowApp(),
-    ),
-  );
+  void _retry() {
+    setState(() => _startup = null);
+    _connect();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (_startup) {
+      // Brief on a phone, and deliberately bare: the branding lockup belongs
+      // to the login screen, and flashing it here would read as a screen that
+      // failed to finish loading.
+      null => const _Connecting(),
+      StartupFailed() => StartupFailureScreen(onRetry: _retry),
+      StartupReady(:final store, :final auth, :final sync) => AppScope(
+        store: store,
+        auth: auth,
+        sync: sync,
+        child: const ProsperFlowApp(),
+      ),
+    };
+  }
+}
+
+class _Connecting extends StatelessWidget {
+  const _Connecting();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFFFAF7F0), // AppColors.appBg, before the theme exists
+      child: Center(
+        child: SizedBox(
+          width: 26,
+          height: 26,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      ),
+    );
+  }
 }
