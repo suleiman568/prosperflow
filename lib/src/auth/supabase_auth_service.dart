@@ -15,7 +15,22 @@ class SupabaseAuthService implements AuthService {
   final SupabaseClient _client;
 
   static const _offlineMessage =
-      '📴 No connection — check your network and try again';
+      "📴 Can't connect — check your internet and try again";
+
+  /// True when the failure was the connection, not the credentials.
+  ///
+  /// gotrue wraps a transport failure in an [AuthException] whose `message` is
+  /// the raw text from the HTTP client — "ClientException with SocketException:
+  /// Failed host lookup ... errno = 7". Returning `message` verbatim put that
+  /// in front of a trader, which tells them nothing they can act on and reads
+  /// like the app is broken. A genuine auth error like "Invalid login
+  /// credentials" still comes through untouched, because that one they can
+  /// act on.
+  static bool _isConnectionFailure(AuthException e) =>
+      e is AuthRetryableFetchException ||
+      e is AuthUnknownException ||
+      e.message.contains('SocketException') ||
+      e.message.contains('ClientException');
 
   @override
   bool get isSignedIn => _client.auth.currentSession != null;
@@ -43,7 +58,7 @@ class SupabaseAuthService implements AuthService {
       await _client.auth.signInWithPassword(email: email, password: password);
       return null;
     } on AuthException catch (e) {
-      return e.message;
+      return _isConnectionFailure(e) ? _offlineMessage : e.message;
     } catch (_) {
       return _offlineMessage;
     }
@@ -67,7 +82,7 @@ class SupabaseAuthService implements AuthService {
       }
       return null;
     } on AuthException catch (e) {
-      return e.message;
+      return _isConnectionFailure(e) ? _offlineMessage : e.message;
     } catch (_) {
       return _offlineMessage;
     }
@@ -79,7 +94,7 @@ class SupabaseAuthService implements AuthService {
       await _client.auth.resetPasswordForEmail(email);
       return null;
     } on AuthException catch (e) {
-      return e.message;
+      return _isConnectionFailure(e) ? _offlineMessage : e.message;
     } catch (_) {
       return _offlineMessage;
     }
