@@ -46,25 +46,24 @@ class SentryErrorReporter implements ErrorReporter {
     options.beforeSend = _scrub;
   }
 
-  /// The last gate: empties the breadcrumb trail and reduces the user down to
-  /// an opaque id, whatever put them there.
+  /// The last gate: drops the request, empties the breadcrumb trail, and
+  /// reduces the user down to an opaque id, whatever put them there.
   ///
   /// Belt and braces over the options above, because a future version could
   /// add a source of context that is on by default, and this runs on every
   /// event regardless of where its contents came from.
-  ///
-  /// `request` is not cleared here because it cannot be: `copyWith` reads a
-  /// null argument as "leave it alone", so there is no way to blank a field
-  /// through it. Nothing populates it either — that needs the HTTP or
-  /// failed-request integrations, which this app does not add, and
-  /// `sendDefaultPii` is off. Worth knowing rather than assuming covered.
   static SentryEvent? _scrub(SentryEvent event, Hint hint) {
+    // Nothing populates `request` today — that needs the HTTP or
+    // failed-request integrations, which this app does not add — but it is
+    // cleared rather than trusted to stay empty. On the version this was
+    // first written against it could not be: fields were final, and copyWith
+    // read a null argument as "leave it alone".
+    event.request = null;
+    event.breadcrumbs = const [];
+    // Sentry would otherwise carry email, username and ip address here.
     final user = event.user;
-    return event.copyWith(
-      breadcrumbs: const [],
-      // Sentry would otherwise carry email, username and ip address here.
-      user: user == null ? null : SentryUser(id: user.id),
-    );
+    event.user = user == null ? null : SentryUser(id: user.id);
+    return event;
   }
 
   @override

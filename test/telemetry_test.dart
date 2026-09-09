@@ -125,6 +125,10 @@ void main() {
           options.beforeSend!(
                 SentryEvent(
                   breadcrumbs: [Breadcrumb(message: 'tapped Credits')],
+                  request: SentryRequest(
+                    url: 'https://example.supabase.co/rest/v1/credits',
+                    queryString: 'customer_name=eq.Amaka',
+                  ),
                   user: SentryUser(
                     id: 'trader-uuid',
                     email: 'trader@example.test',
@@ -137,6 +141,9 @@ void main() {
               as SentryEvent;
 
       expect(scrubbed.breadcrumbs, isEmpty);
+      // A request URL can carry a customer's name in a filter. Clearable as
+      // of Sentry 9, where the event's fields stopped being final.
+      expect(scrubbed.request, isNull);
       expect(scrubbed.user!.id, 'trader-uuid');
       expect(scrubbed.user!.email, isNull);
       expect(scrubbed.user!.username, isNull);
