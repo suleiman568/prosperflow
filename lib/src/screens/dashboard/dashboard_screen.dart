@@ -346,6 +346,7 @@ class _AppBar extends StatelessWidget {
                 onTap: () async {
                   final navigator = Navigator.of(context);
                   final auth = AppScope.authOf(context);
+                  final reporter = AppScope.reporterOf(context);
                   final confirmed = await confirmDialog(
                     context,
                     title: 'Sign out?',
@@ -355,6 +356,10 @@ class _AppBar extends StatelessWidget {
                   );
                   if (!confirmed) return;
                   await auth.signOut();
+                  // Cleared here rather than on the next sign-in: between the
+                  // two, anything this phone reports would otherwise still
+                  // carry the id of the trader who just left.
+                  await reporter.setTrader(null);
                   navigator.pushReplacementNamed(LoginScreen.route);
                 },
               ),

@@ -106,7 +106,11 @@ class DriftSyncEngine implements SyncEngine {
     bool initiallyOnline = true,
     Duration writeDebounce = const Duration(seconds: 2),
     PullIngest? ingest,
-    ErrorReporter reporter = const NoopErrorReporter(),
+    // Required, with no default. A `const NoopErrorReporter()` default here is
+    // what let the app ship with every sync failure discarded: the wiring in
+    // `connectBackend` simply never passed one, and nothing anywhere said so.
+    // Silence has to be asked for by name.
+    required ErrorReporter reporter,
   }) : _online = initiallyOnline,
        _reporter = reporter,
        _ingest = ingest ?? PullIngest(_db, DriftStore(_db)) {

@@ -17,6 +17,7 @@ import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/money_text.dart';
 import 'package:prosperflow/src/widgets/skeleton.dart';
 import 'package:prosperflow/src/widgets/sync_widgets.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -141,6 +142,7 @@ void main() {
         connectivity: connectivity.stream,
         initiallyOnline: online,
         writeDebounce: const Duration(milliseconds: 10),
+        reporter: const NoopErrorReporter(),
       );
     }
 

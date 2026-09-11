@@ -10,6 +10,7 @@ import 'package:prosperflow/src/screens/record_sale/record_sale_screen.dart';
 import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/empty_state.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -23,6 +24,7 @@ Future<void> pumpWithRoutes(
       store: store ?? MemoryStore(),
       auth: FakeAuthService(signedIn: true),
       sync: NoopSyncEngine(),
+      reporter: const NoopErrorReporter(),
       child: MaterialApp(
         home: home,
         routes: {'/products': (_) => const ProductsScreen()},

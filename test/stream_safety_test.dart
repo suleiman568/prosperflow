@@ -9,6 +9,7 @@ import 'package:prosperflow/src/data/db/app_database.dart';
 import 'package:prosperflow/src/data/models.dart';
 import 'package:prosperflow/src/sync/sync_backend.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -136,6 +137,7 @@ void main() {
       _NoopBackend(),
       connectivity: connectivity.stream,
       initiallyOnline: false,
+      reporter: const NoopErrorReporter(),
     );
 
     final stream = engine.watchState();

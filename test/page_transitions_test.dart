@@ -6,6 +6,7 @@ import 'package:prosperflow/src/auth/auth_service.dart';
 import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/theme/page_transitions.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -18,6 +19,7 @@ void main() {
         store: fixtureStore(),
         auth: FakeAuthService(signedIn: true),
         sync: NoopSyncEngine(),
+        reporter: const NoopErrorReporter(),
         child: const ProsperFlowApp(),
       ),
     );

@@ -7,6 +7,7 @@ import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/screens/dashboard/dashboard_screen.dart';
 import 'package:prosperflow/src/screens/record_sale/record_sale_screen.dart';
 import 'package:prosperflow/src/widgets/primary_button.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -94,6 +95,7 @@ void main() {
         store: store,
         auth: FakeAuthService(signedIn: true),
         sync: NoopSyncEngine(),
+        reporter: const NoopErrorReporter(),
         child: MaterialApp(
           home: const RecordSaleScreen(),
           routes: {'/dashboard': (_) => const DashboardScreen()},

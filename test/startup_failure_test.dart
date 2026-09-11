@@ -13,6 +13,7 @@ import 'package:prosperflow/src/screens/startup_failure_screen.dart';
 import 'package:prosperflow/src/startup.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/sync_widgets.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -123,7 +124,11 @@ void main() {
         Startup? startup;
         final escaped = <Object>[];
         await runZonedGuarded(() async {
-          startup = await connectBackend(db: db, store: DriftStore(db));
+          startup = await connectBackend(
+            db: db,
+            store: DriftStore(db),
+            reporter: const NoopErrorReporter(),
+          );
         }, (error, _) => escaped.add(error));
         await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -151,7 +156,11 @@ void main() {
       () async {
         final store = MemoryStore();
 
-        final startup = await connectBackend(db: null, store: store);
+        final startup = await connectBackend(
+          db: null,
+          store: store,
+          reporter: const NoopErrorReporter(),
+        );
 
         // The preview has no backend by design. What must never happen is this
         // same pair being reached because something threw on a real phone.

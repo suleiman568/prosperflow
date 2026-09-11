@@ -15,6 +15,11 @@ class RecordingErrorReporter implements ErrorReporter {
   final issues = <({String kind, Object? error, Map<String, String> tags})>[];
   String? trader;
 
+  /// Every call, nulls included. `trader` alone cannot tell "never attributed"
+  /// from "attributed, then cleared on sign-out", and the difference is the
+  /// whole point of the sign-out case.
+  final traderWrites = <String?>[];
+
   @override
   Future<void> reportCrash(Object error, StackTrace stackTrace) async =>
       crashes.add((error, stackTrace));
@@ -28,7 +33,10 @@ class RecordingErrorReporter implements ErrorReporter {
   }) async => issues.add((kind: kind, error: error, tags: tags));
 
   @override
-  Future<void> setTrader(String? traderId) async => trader = traderId;
+  Future<void> setTrader(String? traderId) async {
+    trader = traderId;
+    traderWrites.add(traderId);
+  }
 }
 
 void main() {

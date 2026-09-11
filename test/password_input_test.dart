@@ -5,6 +5,7 @@ import 'package:prosperflow/src/auth/auth_service.dart';
 import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/screens/login/login_screen.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -15,6 +16,7 @@ Future<void> _pumpLogin(WidgetTester tester) async {
       store: fixtureStore(),
       auth: FakeAuthService(), // signed out
       sync: NoopSyncEngine(),
+      reporter: const NoopErrorReporter(),
       child: const MaterialApp(home: LoginScreen()),
     ),
   );

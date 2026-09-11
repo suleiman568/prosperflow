@@ -10,6 +10,7 @@ import 'package:prosperflow/src/data/models.dart';
 import 'package:prosperflow/src/screens/dashboard/dashboard_screen.dart';
 import 'package:prosperflow/src/sync/sync_backend.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 import 'seed_data.dart';
@@ -93,6 +94,7 @@ void main() {
           connectivity: connectivity.stream,
           initiallyOnline: false, // queue everything while offline
           writeDebounce: const Duration(milliseconds: 1),
+          reporter: const NoopErrorReporter(),
         );
 
         final palm = (await store.watchProducts().first).firstWhere(
@@ -154,6 +156,7 @@ void main() {
           connectivity: connectivity.stream,
           initiallyOnline: true,
           writeDebounce: const Duration(seconds: 30), // keep auto-sync out
+          reporter: const NoopErrorReporter(),
         );
 
         final yam = (await store.watchProducts().first).firstWhere(

@@ -12,6 +12,7 @@ import 'package:prosperflow/src/screens/products/products_screen.dart';
 import 'package:prosperflow/src/screens/record_sale/record_sale_screen.dart';
 import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -40,6 +41,7 @@ void main() {
           store: fixtureStore(),
           auth: FakeAuthService(signedIn: false),
           sync: NoopSyncEngine(),
+          reporter: const NoopErrorReporter(),
           child: const ProsperFlowApp(),
         ),
       );
@@ -63,6 +65,7 @@ void main() {
           store: fixtureStore(),
           auth: FakeAuthService(signedIn: false),
           sync: NoopSyncEngine(),
+          reporter: const NoopErrorReporter(),
           child: const ProsperFlowApp(),
         ),
       );
