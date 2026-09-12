@@ -7,8 +7,10 @@ import 'package:prosperflow/src/brand/brand_lockup.dart';
 import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/primary_button.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
+import 'telemetry_test.dart' show RecordingErrorReporter;
 
 Future<FakeAuthService> _pumpApp(WidgetTester tester) async {
   final auth = FakeAuthService(); // signed out
@@ -17,6 +19,7 @@ Future<FakeAuthService> _pumpApp(WidgetTester tester) async {
       store: fixtureStore(),
       auth: auth,
       sync: NoopSyncEngine(),
+      reporter: const NoopErrorReporter(),
       child: const ProsperFlowApp(),
     ),
   );
@@ -71,6 +74,43 @@ void main() {
 
     expect(auth.isSignedIn, isTrue);
     expect(find.text('Welcome back, Amina 👋'), findsOneWidget);
+  });
+
+  testWidgets('signing in attributes reports to the trader who signed in', (
+    tester,
+  ) async {
+    usePhoneSurface(tester);
+    final reporter = RecordingErrorReporter();
+    final auth = FakeAuthService(); // signed out, as a fresh launch is
+    await tester.pumpWidget(
+      AppScope(
+        store: fixtureStore(),
+        auth: auth,
+        sync: NoopSyncEngine(),
+        reporter: reporter,
+        child: const ProsperFlowApp(),
+      ),
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'prosper@market.ng'),
+      'amina@market.ng',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, '••••••••'),
+      'secret123',
+    );
+    await tester.tap(find.byType(PrimaryButton));
+    await tester.pumpAndSettle();
+
+    // Attribution used to happen only at bootstrap, so a phone that launched
+    // signed out — every first run, and every run after a sign-out — reported
+    // anonymously for the rest of the session however long the trader used it.
+    expect(
+      reporter.trader,
+      auth.traderId,
+      reason: 'sign-in is a path into the app, not a special case',
+    );
   });
 
   testWidgets('a rejected password shows the auth error', (tester) async {
@@ -130,6 +170,7 @@ void main() {
         store: fixtureStore(),
         auth: auth,
         sync: NoopSyncEngine(),
+        reporter: const NoopErrorReporter(),
         child: const ProsperFlowApp(),
       ),
     );

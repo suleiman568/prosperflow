@@ -6,8 +6,10 @@ import 'package:prosperflow/src/auth/auth_service.dart';
 import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/confirm_dialog.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
+import 'telemetry_test.dart' show RecordingErrorReporter;
 
 void main() {
   testWidgets('sign-out can be cancelled and stays on the dashboard', (
@@ -20,6 +22,7 @@ void main() {
         store: fixtureStore(),
         auth: auth,
         sync: NoopSyncEngine(),
+        reporter: const NoopErrorReporter(),
         child: const ProsperFlowApp(),
       ),
     );
@@ -36,6 +39,40 @@ void main() {
 
     expect(auth.isSignedIn, isTrue);
     expect(find.text('Welcome back, Prosper 👋'), findsOneWidget);
+  });
+
+  testWidgets('signing out detaches the trader from any later report', (
+    tester,
+  ) async {
+    usePhoneSurface(tester);
+    final auth = FakeAuthService(signedIn: true);
+    final reporter = RecordingErrorReporter();
+    await tester.pumpWidget(
+      AppScope(
+        store: fixtureStore(),
+        auth: auth,
+        sync: NoopSyncEngine(),
+        reporter: reporter,
+        child: const ProsperFlowApp(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.power_settings_new_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+
+    expect(auth.isSignedIn, isFalse);
+    // Between sign-out and the next sign-in, anything this phone reports would
+    // otherwise still carry the id of the trader who just left. A market phone
+    // gets handed over; this is the moment it happens.
+    expect(
+      reporter.traderWrites,
+      contains(null),
+      reason: 'sign-out must clear the trader, not wait for the next sign-in',
+    );
+    expect(reporter.trader, isNull);
   });
 
   testWidgets('confirmDialog returns true on confirm and false on cancel', (

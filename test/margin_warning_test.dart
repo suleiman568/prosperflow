@@ -7,6 +7,7 @@ import 'package:prosperflow/src/data/memory_store.dart';
 import 'package:prosperflow/src/screens/products/products_screen.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/primary_button.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 
@@ -135,6 +136,7 @@ void main() {
             store: store,
             auth: FakeAuthService(signedIn: true),
             sync: NoopSyncEngine(),
+            reporter: const NoopErrorReporter(),
             child: MaterialApp(
               // Force a large accessibility text scale AND a keyboard inset
               // across the whole app — the modal sheet's overlay included. At

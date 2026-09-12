@@ -1,4 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required by the app itself, and it has to be declared here.
+         The INTERNET permission in src/debug and src/profile is granted to the
+         Flutter tool for hot reload, and those manifests are not merged into a
+         release build — so a release APK had no network permission at all.
+         Android answers every DNS lookup from such an app with
+         "No address associated with hostname" (errno 7), which reads exactly
+         like the phone being offline while the browser beside it works fine.
+         Sync, sign-in and crash reporting were all unreachable in release. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="prosperflow"
         android:name="${applicationName}"

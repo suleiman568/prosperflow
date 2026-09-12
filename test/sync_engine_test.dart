@@ -8,6 +8,7 @@ import 'package:prosperflow/src/data/drift_store.dart';
 import 'package:prosperflow/src/data/models.dart';
 import 'package:prosperflow/src/sync/sync_backend.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'seed_data.dart';
 
@@ -75,6 +76,7 @@ void main() {
     connectivity: connectivity.stream,
     initiallyOnline: online,
     writeDebounce: const Duration(milliseconds: 10),
+    reporter: const NoopErrorReporter(),
   );
 
   Future<String> firstProductId() async =>

@@ -18,6 +18,7 @@ import 'package:prosperflow/src/sync/sync_backend.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/theme/tokens.dart';
 import 'package:prosperflow/src/widgets/primary_button.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 import 'seed_data.dart';
@@ -34,6 +35,7 @@ Future<void> pumpRecordSale(WidgetTester tester, MemoryStore store) async {
       store: store,
       auth: FakeAuthService(signedIn: true),
       sync: NoopSyncEngine(),
+      reporter: const NoopErrorReporter(),
       child: MaterialApp(
         home: const RecordSaleScreen(),
         routes: {'/dashboard': (_) => const DashboardScreen()},
@@ -172,6 +174,7 @@ void main() {
           connectivity: connectivity.stream,
           initiallyOnline: false,
           writeDebounce: const Duration(milliseconds: 1),
+          reporter: const NoopErrorReporter(),
         );
 
         final palm = await palmRow();

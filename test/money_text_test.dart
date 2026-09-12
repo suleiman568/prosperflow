@@ -13,6 +13,7 @@ import 'package:prosperflow/src/screens/dashboard/dashboard_screen.dart';
 import 'package:prosperflow/src/screens/reports/reports_screen.dart';
 import 'package:prosperflow/src/sync/sync_engine.dart';
 import 'package:prosperflow/src/widgets/money_text.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 /// Loads the bundled Inter faces so glyph widths match the real app — the
 /// test-default font renders every glyph as a square, which would make the
@@ -68,6 +69,7 @@ Future<void> _pumpScreen(
       store: store,
       auth: FakeAuthService(signedIn: true),
       sync: NoopSyncEngine(),
+      reporter: const NoopErrorReporter(),
       child: MaterialApp(home: home),
     ),
   );

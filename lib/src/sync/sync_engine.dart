@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import '../data/db/app_database.dart';
 import '../utils/streams.dart';
 import '../data/drift_store.dart';
+import '../telemetry/error_reporter.dart';
 import 'sync_backend.dart';
 import 'pull_ingest.dart';
 
@@ -105,7 +106,13 @@ class DriftSyncEngine implements SyncEngine {
     bool initiallyOnline = true,
     Duration writeDebounce = const Duration(seconds: 2),
     PullIngest? ingest,
+    // Required, with no default. A `const NoopErrorReporter()` default here is
+    // what let the app ship with every sync failure discarded: the wiring in
+    // `connectBackend` simply never passed one, and nothing anywhere said so.
+    // Silence has to be asked for by name.
+    required ErrorReporter reporter,
   }) : _online = initiallyOnline,
+       _reporter = reporter,
        _ingest = ingest ?? PullIngest(_db, DriftStore(_db)) {
     _connectivitySub = connectivity.listen(_onConnectivity);
     _outboxSub = _db
@@ -141,6 +148,7 @@ class DriftSyncEngine implements SyncEngine {
   final AppDatabase _db;
   final SyncBackend _backend;
   final PullIngest _ingest;
+  final ErrorReporter _reporter;
 
   bool _online;
   DateTime? _lastSyncAt;
@@ -149,6 +157,8 @@ class DriftSyncEngine implements SyncEngine {
   bool _flushing = false;
   bool _restoring = false;
   int _restoredRows = 0;
+  int _failedRestoreAttempts = 0;
+  bool _stuckRestoreReported = false;
 
   /// Whose restore [_restoring] and [_restoredRows] are describing.
   ///
@@ -306,7 +316,35 @@ class DriftSyncEngine implements SyncEngine {
       // belonged to a ledger the device no longer holds — and no backoff to
       // schedule, because the sign-in that took it over kicks its own sync.
       return SyncResult(pushedSales: pushedSales, failed: false);
-    } catch (_) {
+    } on WriteRefused catch (error, stackTrace) {
+      // The server is up and is refusing this write, so the retry that
+      // follows will not fix it. Reported apart from the noise of dropped
+      // connections because it means a permission problem on the server, and
+      // the trader's edit stays in the outbox until somebody notices.
+      unawaited(
+        _reporter.reportIssue(
+          'write_refused',
+          error: error,
+          stackTrace: stackTrace,
+          tags: {'table': error.table},
+        ),
+      );
+      _scheduleRetry();
+      return SyncResult(pushedSales: pushedSales, failed: true);
+    } catch (error, stackTrace) {
+      // Kept, not discarded. `catch (_)` threw away the type, the message and
+      // the stack of every sync failure the app has ever had, and the backoff
+      // then hid the symptom — which is how a device can fail to sync for
+      // days with nobody able to say why.
+      unawaited(
+        _reporter.reportIssue(
+          'sync_failed',
+          error: error,
+          stackTrace: stackTrace,
+          tags: {'restoring': '$_restoring'},
+        ),
+      );
+      if (_restoring) _noteFailedRestoreAttempt();
       _scheduleRetry();
       return SyncResult(pushedSales: pushedSales, failed: true);
     } finally {
@@ -356,6 +394,32 @@ class DriftSyncEngine implements SyncEngine {
             MetaCompanion.insert(key: _restoreKey(trader), value: 'yes'),
           );
     });
+  }
+
+  /// A restore that keeps failing is the pull gap showing itself: the trader
+  /// sits on "Restoring your data" and the backoff keeps the reason quiet.
+  ///
+  /// Reported after a few attempts rather than the first, because one failure
+  /// is usually a signal that came and went at the market, and once per
+  /// episode rather than per retry, because a phone that cannot reach the
+  /// server would otherwise report forever.
+  static const _stuckRestoreAfter = 3;
+
+  void _noteFailedRestoreAttempt() {
+    _failedRestoreAttempts++;
+    if (_failedRestoreAttempts < _stuckRestoreAfter || _stuckRestoreReported) {
+      return;
+    }
+    _stuckRestoreReported = true;
+    unawaited(
+      _reporter.reportIssue(
+        'restore_stuck',
+        tags: {
+          'attempts': '$_failedRestoreAttempts',
+          'rows_so_far': '$_restoredRows',
+        },
+      ),
+    );
   }
 
   /// Guards a write against the phone having changed hands. Call it inside
@@ -412,6 +476,8 @@ class DriftSyncEngine implements SyncEngine {
       // ledger that has them — so the marker waits, and the retry finishes the
       // job.
       await _markRestored(trader);
+      _failedRestoreAttempts = 0;
+      _stuckRestoreReported = false;
       // Only if the screens are still showing this trader's restore. The
       // durable marker is keyed by trader and so is safe to write regardless;
       // the published flag is a single field, and clearing it for a ledger

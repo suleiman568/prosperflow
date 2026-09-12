@@ -29,7 +29,13 @@ import '../../widgets/sync_widgets.dart';
 /// red FAB opens the Add Expense bottom sheet (description, amount, category,
 /// date).
 class ExpensesScreen extends StatefulWidget {
-  const ExpensesScreen({super.key});
+  const ExpensesScreen({super.key, this.clock = DateTime.now});
+
+  /// Injectable "now" so the date the Add Expense sheet opens on can be
+  /// pinned; production uses the wall clock. The spelled-out date changes
+  /// width through the year, so the longest one has to be reachable in a
+  /// test rather than waiting for September.
+  final DateTime Function() clock;
 
   static const route = '/expenses';
 
@@ -58,6 +64,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) => _AddExpenseSheet(
+        clock: widget.clock,
         onAdd: (description, amount, category, spentOn) async {
           await store.addExpense(
             description: description,
@@ -396,9 +403,10 @@ typedef _AddExpense =
     );
 
 class _AddExpenseSheet extends StatefulWidget {
-  const _AddExpenseSheet({required this.onAdd});
+  const _AddExpenseSheet({required this.onAdd, this.clock = DateTime.now});
 
   final _AddExpense onAdd;
+  final DateTime Function() clock;
 
   @override
   State<_AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -409,7 +417,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   final _amount = TextEditingController();
   static const _initialCategory = ExpenseCategory.delivery;
   ExpenseCategory _category = _initialCategory;
-  final DateTime _initialDate = DateTime.now();
+  late final DateTime _initialDate = widget.clock();
   late DateTime _date = _initialDate;
 
   static const _categoryLabels = {
@@ -553,7 +561,25 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(formatWeekdayDayMonth(_date), style: AppText.input),
+                    // Bounded and scaled rather than left at its natural
+                    // width. The date is spelled out in full, so its length
+                    // depends on the calendar: "Friday, 1 May" fits with room
+                    // to spare and "Wednesday, 22 September" does not, which
+                    // meant this row was correct for most of the year and
+                    // overflowed for the rest of it. Ellipsis is not an
+                    // option — half a date is worse than a small one.
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(
+                          formatWeekdayDayMonth(_date),
+                          maxLines: 1,
+                          style: AppText.input,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     const Icon(
                       Icons.calendar_today_rounded,
                       size: 16,

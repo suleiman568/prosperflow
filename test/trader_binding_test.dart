@@ -9,6 +9,7 @@ import 'package:prosperflow/src/data/app_scope.dart';
 import 'package:prosperflow/src/data/db/app_database.dart';
 import 'package:prosperflow/src/data/drift_store.dart';
 import 'package:prosperflow/src/data/memory_store.dart';
+import 'package:prosperflow/src/telemetry/error_reporter.dart';
 
 import 'helpers.dart';
 import 'seed_data.dart';
@@ -160,7 +161,11 @@ void main() {
       final store = MemoryStore(products: [palm]);
       final auth = FakeAuthService();
 
-      await bindLocalDataToTrader(store, auth);
+      await bindLocalDataToTrader(
+        store,
+        auth,
+        reporter: const NoopErrorReporter(),
+      );
 
       expect(await store.watchProducts().first, hasLength(1));
     });
@@ -170,12 +175,20 @@ void main() {
       final auth = FakeAuthService();
       await auth.signIn(email: 'a@market.ng', password: 'password');
 
-      await bindLocalDataToTrader(store, auth);
+      await bindLocalDataToTrader(
+        store,
+        auth,
+        reporter: const NoopErrorReporter(),
+      );
       expect(await store.watchProducts().first, hasLength(1));
 
       // Same phone, different trader.
       await auth.signIn(email: 'b@market.ng', password: 'password');
-      await bindLocalDataToTrader(store, auth);
+      await bindLocalDataToTrader(
+        store,
+        auth,
+        reporter: const NoopErrorReporter(),
+      );
 
       expect(await store.watchProducts().first, isEmpty);
     });

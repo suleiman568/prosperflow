@@ -1,5 +1,24 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Raised when the server accepted the request and changed nothing.
+///
+/// Distinct from a network failure on purpose. An update that matches no row
+/// means row-level security filtered it out or the row is gone — the server
+/// is working and is refusing this write, so retrying will not help and
+/// somebody needs to know. A dropped connection is the opposite: nothing is
+/// wrong with the ledger and the retry will fix it.
+class WriteRefused implements Exception {
+  WriteRefused(this.table, this.rowId);
+
+  final String table;
+  final String rowId;
+
+  @override
+  String toString() =>
+      'WriteRefused: $table/$rowId affected no rows — it is owned by another '
+      'trader, or no longer exists.';
+}
+
 /// Raised to abandon sync work whose trader is no longer the one it started
 /// under, because the phone changed hands part-way through.
 ///
@@ -165,10 +184,7 @@ class SupabaseSyncBackend implements SyncBackend {
           .eq(pk, id as Object)
           .select();
       if (affected.isEmpty) {
-        throw StateError(
-          'Update to $table/$id affected no rows — it is owned by another '
-          'trader, or no longer exists.',
-        );
+        throw WriteRefused(table, id as String);
       }
     }
   }
