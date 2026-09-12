@@ -123,18 +123,36 @@ Future<Startup> startUp({
   );
 
   if (startup is StartupReady) {
+    final ready = startup;
     try {
       // A restored session skips the login screen entirely, so the database
       // has to be claimed here too — otherwise the Dashboard renders the
       // previous trader's ledger before anything else runs. Binding also
       // attaches the trader to any report made from here on.
       await bindLocalDataToTrader(
-        startup.store,
-        startup.auth,
-        sync: startup.sync,
+        ready.store,
+        ready.auth,
+        sync: ready.sync,
         reporter: reporter,
       );
     } catch (error, stackTrace) {
+      // The engine is already running by this point — it opens its
+      // connectivity and outbox subscriptions in its constructor — and
+      // demoting the result to a failure makes it unreachable without making
+      // it stop. Left alone it keeps watching the outbox of a database
+      // nothing managed to claim, and every press of Try again adds another
+      // one beside it, each debouncing on the same writes and syncing
+      // independently.
+      //
+      // Guarded because `startUp` must not throw: a failure escaping here
+      // would strand the trader on the connecting spinner, which is the exact
+      // fault this function exists to prevent.
+      try {
+        ready.sync.dispose();
+      } catch (_) {
+        // Nothing useful to do, and the binding failure below is the more
+        // important of the two.
+      }
       // Claiming the database is as much a part of starting up as reaching the
       // server, and it fails the same way: a corrupt file, a migration that
       // will not apply, a disk with nothing left on it. Demoting it to the

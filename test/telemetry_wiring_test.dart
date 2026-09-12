@@ -125,18 +125,26 @@ void main() {
 
   group('a failure to claim the database is a startup failure', () {
     late AppDatabase db;
-    late StreamController<bool> connectivity;
     late RecordingErrorReporter reporter;
+
+    /// One per startup attempt. An engine subscribes to its connectivity
+    /// stream in its constructor and only lets go in `dispose`, so
+    /// `hasListener` says whether that attempt's engine is still running —
+    /// and keeping them per attempt makes a leak from any one of them visible
+    /// rather than only the last.
+    late List<StreamController<bool>> connectivity;
 
     setUp(() async {
       db = AppDatabase(NativeDatabase.memory());
-      connectivity = StreamController<bool>.broadcast();
+      connectivity = [];
       reporter = RecordingErrorReporter();
       await seedDatabase(db);
     });
 
     tearDown(() async {
-      await connectivity.close();
+      for (final c in connectivity) {
+        await c.close();
+      }
       await db.close();
     });
 
@@ -146,6 +154,8 @@ void main() {
       // it the bind returns early and this group would test nothing.
       final auth = FakeAuthService();
       await auth.signIn(email: 'ada@market.ng', password: 'password');
+      final source = StreamController<bool>.broadcast();
+      connectivity.add(source);
       return startUp(
         db: db,
         store: store,
@@ -153,7 +163,7 @@ void main() {
         connect: () async => BackendConnection(
           auth: auth,
           backend: FailingBackend(),
-          connectivity: connectivity.stream,
+          connectivity: source.stream,
           initiallyOnline: true,
         ),
       );
@@ -185,15 +195,53 @@ void main() {
       expect(reporter.issues.map((i) => i.kind), contains('startup_failed'));
     });
 
+    test('and the engine it had already started is shut down', () async {
+      await startUpWith(_UnclaimableStore());
+
+      // The engine is built before the binding is attempted, and demoting the
+      // result to a failure makes it unreachable without making it stop. Left
+      // running it keeps watching the outbox of a database nothing managed to
+      // claim.
+      expect(
+        connectivity.single.hasListener,
+        isFalse,
+        reason: 'an abandoned engine must be disposed, not just dropped',
+      );
+    });
+
+    test('and a retry does not leave a second one running beside it', () async {
+      // What the leak actually costs. Try again is right there on the failure
+      // screen, and a trader whose database will not open will press it more
+      // than once — each press adding an engine that debounces on the same
+      // writes and syncs on its own.
+      await startUpWith(_UnclaimableStore());
+      await startUpWith(_UnclaimableStore());
+      await startUpWith(_UnclaimableStore());
+
+      expect(connectivity, hasLength(3));
+      expect(
+        connectivity.where((c) => c.hasListener),
+        isEmpty,
+        reason: 'three attempts, three engines, none of them still listening',
+      );
+    });
+
     test('a startup that binds cleanly is still ready', () async {
       // The guard must not swallow the working case into a failure screen.
       final startup = await startUpWith(DriftStore(db));
 
       expect(startup, isA<StartupReady>());
       expect(reporter.issues, isEmpty);
+      // The other half of the disposal fix: shutting down an abandoned engine
+      // must not shut down a working one. Binding leaves a sync running on
+      // purpose — it is what fills a fresh install.
+      expect(
+        connectivity.single.hasListener,
+        isTrue,
+        reason: 'a startup that succeeded must hand back a live engine',
+      );
 
-      // Binding leaves a sync running on purpose — it is what fills a fresh
-      // install. Let it finish and shut it down, or it outlives the test and
+      // Let that sync finish and shut it down, or it outlives the test and
       // runs into the closed database in teardown.
       final ready = startup as StartupReady;
       await Future<void>.delayed(const Duration(milliseconds: 50));
